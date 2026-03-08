@@ -385,7 +385,38 @@ export default function Agenda() {
         /* ─── List View ─── */
         <Card>
           <CardContent className="p-0">
-            <div className="table-responsive">
+            {/* Mobile card list */}
+            <div className="block sm:hidden divide-y divide-border">
+              {getFilteredAppointments().length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum agendamento neste período
+                </p>
+              ) : (
+                getFilteredAppointments().map((apt) => (
+                  <div
+                    key={apt.id}
+                    onClick={() => handleAppointmentClick(apt)}
+                    className={cn(
+                      "p-4 cursor-pointer hover:bg-muted/50 transition-colors",
+                      isCompletedApt(apt.status) && "opacity-60"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={cn("font-medium text-sm", isCompletedApt(apt.status) && "line-through")}>
+                        {format(parseISO(apt.start_at), "dd/MM", { locale: ptBR })} • {format(parseISO(apt.start_at), 'HH:mm')} - {format(parseISO(apt.end_at), 'HH:mm')}
+                      </span>
+                      <Badge variant="outline" className={cn("text-xs", statusColors[apt.status])}>
+                        {statusLabels[apt.status]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm truncate">{apt.customer?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{apt.service?.name} • {apt.professional?.name}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block table-responsive">
               <Table>
                 <TableHeader>
                   <TableRow>
