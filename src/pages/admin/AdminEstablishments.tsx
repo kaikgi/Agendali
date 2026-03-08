@@ -388,7 +388,37 @@ export default function AdminEstablishments() {
         <TableSkeleton />
       ) : paginatedData.length > 0 ? (
         <>
-          <Card>
+          {/* Mobile card list */}
+          <div className="block lg:hidden space-y-3">
+            {paginatedData.map((est) => (
+              <Card key={est.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{est.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">/{est.slug} · {est.owner_email}</p>
+                    </div>
+                    <StatusBadge status={est.status} />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    <PlanBadge plan={getPlanCode(est)} />
+                    <CycleBadge cycle={getCycle(est)} />
+                    <span className="text-xs text-muted-foreground">{est.professionals_count} prof · {est.services_count} serv · {est.appointments_count} agend</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenManage(est)} className="gap-1.5 h-8 text-xs flex-1">
+                      <Settings2 className="h-3.5 w-3.5" /> Gerenciar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleOpenDelete(est)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <Card className="hidden lg:block">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
