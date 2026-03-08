@@ -337,12 +337,12 @@ export default function Bloqueios() {
 
         <TabsContent value="recorrente" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle>Bloqueios Recorrentes</CardTitle>
                 <CardDescription>Bloqueios que se repetem toda semana</CardDescription>
               </div>
-              <Button onClick={openNewRecorrente}>
+              <Button onClick={openNewRecorrente} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Bloqueio
               </Button>
