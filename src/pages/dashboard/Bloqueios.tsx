@@ -311,7 +311,7 @@ export default function Bloqueios() {
                           {block.reason && ` • ${block.reason}`}
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button 
                           variant="ghost" 
                           size="icon"
