@@ -13,9 +13,9 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
   // md  → header / navbar (44px)
   // lg  → hero / landing prominent (64px)
   const pixelHeights: Record<string, number> = {
-    sm: 36,
-    md: 44,
-    lg: 64,
+    sm: 44,
+    md: 54,
+    lg: 80,
   };
 
   const iconSizes: Record<string, string> = {
