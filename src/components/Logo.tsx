@@ -9,13 +9,13 @@ interface LogoProps {
 
 export function Logo({ className, size = "md", showText = true }: LogoProps) {
   // Heights tuned per context:
-  // sm  → sidebar / compact areas (36px)
-  // md  → header / navbar (44px)
-  // lg  → hero / landing prominent (64px)
+  // sm  → sidebar / compact areas (40px)
+  // md  → header / navbar (48px)
+  // lg  → hero / landing prominent (72px)
   const pixelHeights: Record<string, number> = {
-    sm: 44,
-    md: 54,
-    lg: 80,
+    sm: 40,
+    md: 48,
+    lg: 72,
   };
 
   const iconSizes: Record<string, string> = {
