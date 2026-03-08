@@ -339,7 +339,7 @@ export default function Profissionais() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Capacidade: {prof.capacity} cliente(s) simultâneo(s)
                 </p>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={prof.active}
@@ -347,7 +347,7 @@ export default function Profissionais() {
                     />
                     <span className="text-sm text-muted-foreground">Ativo</span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     <Button
                       variant="ghost"
                       size="icon"

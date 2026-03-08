@@ -115,7 +115,7 @@ export default function Horarios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Horários de Funcionamento</h1>
           <p className="text-muted-foreground">
@@ -127,6 +127,7 @@ export default function Horarios() {
           icon={<Save className="h-4 w-4" />}
           loadingLabel="Salvando..."
           successLabel="Salvo!"
+          className="w-full sm:w-auto"
         >
           Salvar
         </ActionButton>

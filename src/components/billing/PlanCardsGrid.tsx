@@ -89,13 +89,13 @@ export function PlanCardsGrid({
   return (
     <div className={cn("flex flex-col items-center", className)}>
       {/* ── Period Toggle ── */}
-      <div className="inline-flex items-center rounded-full border border-border bg-muted/50 p-1 mb-8">
+      <div className="inline-flex items-center rounded-full border border-border bg-muted/50 p-1 mb-8 flex-wrap justify-center">
         {PERIODS.map((p) => (
           <button
             key={p.key}
             onClick={() => setPeriod(p.key)}
             className={cn(
-              "relative px-5 py-2 rounded-full text-sm font-medium transition-all duration-200",
+              "relative px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
               period === p.key
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -103,7 +103,7 @@ export function PlanCardsGrid({
           >
             {p.label}
             {p.badge && period !== p.key && (
-              <span className="ml-1.5 text-[10px] font-bold text-primary">{p.badge}</span>
+              <span className="ml-1 sm:ml-1.5 text-[10px] font-bold text-primary">{p.badge}</span>
             )}
           </button>
         ))}
