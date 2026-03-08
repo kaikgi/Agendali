@@ -30,17 +30,11 @@ export function useAvailableSlots({
       const dayEnd = addDays(dayStart, 1);
 
       // Fetch business hours and professional hours in parallel
-      const [businessHoursRes, profHoursRes, appointmentsRes, timeBlocksRes, estTimeBlocksRes, recurringBlocksRes, estRecurringBlocksRes] = await Promise.all([
+      const [businessHoursRes, appointmentsRes, timeBlocksRes, estTimeBlocksRes, recurringBlocksRes, estRecurringBlocksRes] = await Promise.all([
         supabase
           .from('business_hours')
           .select('*')
           .eq('establishment_id', establishmentId)
-          .eq('weekday', weekday)
-          .maybeSingle(),
-        supabase
-          .from('professional_hours')
-          .select('*')
-          .eq('professional_id', professionalId)
           .eq('weekday', weekday)
           .maybeSingle(),
         supabase
@@ -83,35 +77,15 @@ export function useAvailableSlots({
       ]);
 
       const businessHours = businessHoursRes.data;
-      const profHours = profHoursRes.data;
 
-      // Determine working hours:
-      // 1. If professional has specific hours → use them
-      // 2. Else fall back to business hours
-      // 3. If neither exists → no slots
-      let openTime: string | null = null;
-      let closeTime: string | null = null;
-
-      if (profHours) {
-        // Professional has hours configured for this weekday
-        if (profHours.closed) return [];
-        openTime = profHours.start_time;
-        closeTime = profHours.end_time;
+      // Business rule: professionals use the ESTABLISHMENT's hours, not their own
+      if (!businessHours || businessHours.closed || !businessHours.open_time || !businessHours.close_time) {
+        console.log('[slots] Establishment closed on weekday', weekday, { businessHours });
+        return [];
       }
 
-      if (!openTime || !closeTime) {
-        // Fall back to business hours
-        if (!businessHours || businessHours.closed || !businessHours.open_time || !businessHours.close_time) {
-          // No hours configured at all for this day
-          console.log('[slots] No working hours found for weekday', weekday, {
-            profHours,
-            businessHours,
-          });
-          return [];
-        }
-        openTime = businessHours.open_time;
-        closeTime = businessHours.close_time;
-      }
+      const openTime = businessHours.open_time;
+      const closeTime = businessHours.close_time;
 
       // Parse times
       const [openHour, openMin] = openTime.split(':').map(Number);
