@@ -357,7 +357,7 @@ export default function Bloqueios() {
                   {recurringBlocks.map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg"
                     >
                       <div className="flex items-center gap-4">
                         <Switch 
