@@ -260,7 +260,7 @@ export default function Avaliacoes() {
         </Select>
 
         <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodFilter)}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por período" />
           </SelectTrigger>
           <SelectContent>
