@@ -298,7 +298,7 @@ export default function Bloqueios() {
                   {blocks.map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg"
                     >
                       <div>
                         <p className="font-medium">
