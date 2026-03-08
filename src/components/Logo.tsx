@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Calendar } from "lucide-react";
+import logoIcon from "@/assets/logo-icon.png";
 
 interface LogoProps {
   className?: string;
@@ -9,9 +9,9 @@ interface LogoProps {
 
 export function Logo({ className, size = "md", showText = true }: LogoProps) {
   const iconSizes: Record<string, string> = {
-    sm: "h-5 w-5",
-    md: "h-6 w-6",
-    lg: "h-8 w-8",
+    sm: "h-7 w-7",
+    md: "h-8 w-8",
+    lg: "h-10 w-10",
   };
 
   const textSizes: Record<string, string> = {
@@ -22,9 +22,12 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="bg-primary rounded-lg p-1.5">
-        <Calendar className={cn("text-primary-foreground", iconSizes[size])} />
-      </div>
+      <img
+        src={logoIcon}
+        alt="Agendali"
+        className={cn("object-contain rounded-lg", iconSizes[size])}
+        draggable={false}
+      />
       {showText && (
         <span className={cn("font-bold tracking-tight text-foreground", textSizes[size])}>
           Agendali
