@@ -244,9 +244,9 @@ export default function Avaliacoes() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <Select value={starFilter} onValueChange={(v) => setStarFilter(v as StarFilter)}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por nota" />
           </SelectTrigger>
           <SelectContent>
@@ -260,7 +260,7 @@ export default function Avaliacoes() {
         </Select>
 
         <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodFilter)}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por período" />
           </SelectTrigger>
           <SelectContent>
@@ -275,7 +275,7 @@ export default function Avaliacoes() {
         {periodFilter === 'custom' && (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+              <Button variant="outline" className="w-full sm:w-[240px] justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customDateRange.from ? (
                   customDateRange.to ? (

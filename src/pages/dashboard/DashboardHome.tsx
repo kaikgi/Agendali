@@ -53,7 +53,7 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hoje</CardTitle>
@@ -147,7 +147,7 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
               Nenhum dado disponível
             </p>
           ) : (
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] w-full">
               <BarChart
                 data={appointmentsByDay}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}

@@ -278,12 +278,12 @@ export default function Bloqueios() {
 
         <TabsContent value="pontual" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle>Bloqueios Pontuais</CardTitle>
                 <CardDescription>Bloqueios para datas e horários específicos</CardDescription>
               </div>
-              <Button onClick={openNewPontual}>
+              <Button onClick={openNewPontual} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Bloqueio
               </Button>
@@ -298,7 +298,7 @@ export default function Bloqueios() {
                   {blocks.map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg"
                     >
                       <div>
                         <p className="font-medium">
@@ -311,7 +311,7 @@ export default function Bloqueios() {
                           {block.reason && ` • ${block.reason}`}
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -337,12 +337,12 @@ export default function Bloqueios() {
 
         <TabsContent value="recorrente" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle>Bloqueios Recorrentes</CardTitle>
                 <CardDescription>Bloqueios que se repetem toda semana</CardDescription>
               </div>
-              <Button onClick={openNewRecorrente}>
+              <Button onClick={openNewRecorrente} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Bloqueio
               </Button>
@@ -357,7 +357,7 @@ export default function Bloqueios() {
                   {recurringBlocks.map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg"
                     >
                       <div className="flex items-center gap-4">
                         <Switch 
@@ -376,7 +376,7 @@ export default function Bloqueios() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button 
                           variant="ghost" 
                           size="icon"
