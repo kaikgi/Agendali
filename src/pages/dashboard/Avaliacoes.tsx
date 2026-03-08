@@ -275,7 +275,7 @@ export default function Avaliacoes() {
         {periodFilter === 'custom' && (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+              <Button variant="outline" className="w-full sm:w-[240px] justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customDateRange.from ? (
                   customDateRange.to ? (

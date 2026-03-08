@@ -147,7 +147,7 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
               Nenhum dado disponível
             </p>
           ) : (
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
+            <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] w-full">
               <BarChart
                 data={appointmentsByDay}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}

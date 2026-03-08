@@ -376,7 +376,7 @@ export default function Bloqueios() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button 
                           variant="ghost" 
                           size="icon"
