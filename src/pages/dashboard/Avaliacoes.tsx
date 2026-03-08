@@ -246,7 +246,7 @@ export default function Avaliacoes() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <Select value={starFilter} onValueChange={(v) => setStarFilter(v as StarFilter)}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por nota" />
           </SelectTrigger>
           <SelectContent>
