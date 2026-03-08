@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import logoPrincipal from "@/assets/logo-principal.png";
+import { Calendar } from "lucide-react";
 
 interface LogoProps {
   className?: string;
@@ -8,46 +8,28 @@ interface LogoProps {
 }
 
 export function Logo({ className, size = "md", showText = true }: LogoProps) {
-  // Heights tuned per context:
-  // sm  → sidebar / compact areas (40px)
-  // md  → header / navbar (48px)
-  // lg  → hero / landing prominent (72px)
-  const pixelHeights: Record<string, number> = {
-    sm: 40,
-    md: 48,
-    lg: 72,
-  };
-
   const iconSizes: Record<string, string> = {
-    sm: "h-8 w-8",
-    md: "h-10 w-10",
-    lg: "h-14 w-14",
+    sm: "h-5 w-5",
+    md: "h-6 w-6",
+    lg: "h-8 w-8",
   };
 
-  const h = pixelHeights[size];
-
-  if (showText) {
-    return (
-      <div className={cn("flex items-center", className)}>
-        <img
-          src={logoPrincipal}
-          alt="Agendali"
-          className="object-contain"
-          style={{ height: h, width: 'auto' }}
-          draggable={false}
-        />
-      </div>
-    );
-  }
+  const textSizes: Record<string, string> = {
+    sm: "text-lg",
+    md: "text-xl",
+    lg: "text-2xl",
+  };
 
   return (
-    <div className={cn("flex items-center", className)}>
-      <img
-        src="/logo-512.png"
-        alt="Agendali"
-        className={cn("object-contain rounded-lg", iconSizes[size])}
-        draggable={false}
-      />
+    <div className={cn("flex items-center gap-2", className)}>
+      <div className="bg-primary rounded-lg p-1.5">
+        <Calendar className={cn("text-primary-foreground", iconSizes[size])} />
+      </div>
+      {showText && (
+        <span className={cn("font-bold tracking-tight text-foreground", textSizes[size])}>
+          Agendali
+        </span>
+      )}
     </div>
   );
 }
