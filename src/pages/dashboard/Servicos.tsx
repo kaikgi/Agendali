@@ -203,7 +203,7 @@ export default function Servicos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Serviços</h1>
           <p className="text-muted-foreground">
@@ -211,7 +211,7 @@ export default function Servicos() {
           </p>
         </div>
 
-        <Button onClick={handleOpenCreate}>
+        <Button onClick={handleOpenCreate} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Novo Serviço
         </Button>
@@ -232,7 +232,7 @@ export default function Servicos() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
             <Card key={service.id}>
               <CardHeader className="pb-2">

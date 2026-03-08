@@ -353,7 +353,7 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground">
@@ -496,7 +496,7 @@ export default function Configuracoes() {
               placeholder="Breve descrição do seu negócio"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone / WhatsApp</Label>
               <PhoneInput
@@ -525,7 +525,7 @@ export default function Configuracoes() {
               placeholder="Rua, número, bairro"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Cidade</Label>
               <Input
@@ -581,7 +581,7 @@ export default function Configuracoes() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="reschedule">Antecedência mínima (horas)</Label>
               <Input
@@ -614,7 +614,7 @@ export default function Configuracoes() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="interval">Intervalo de horários (minutos)</Label>
               <Input

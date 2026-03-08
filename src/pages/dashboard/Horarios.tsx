@@ -115,7 +115,7 @@ export default function Horarios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Horários de Funcionamento</h1>
           <p className="text-muted-foreground">
@@ -127,6 +127,7 @@ export default function Horarios() {
           icon={<Save className="h-4 w-4" />}
           loadingLabel="Salvando..."
           successLabel="Salvo!"
+          className="w-full sm:w-auto"
         >
           Salvar
         </ActionButton>
@@ -147,9 +148,9 @@ export default function Horarios() {
             {localHours.map((row) => (
               <div
                 key={row.weekday}
-                className="flex items-center gap-4 py-3 border-b border-border last:border-0"
+                className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-3 border-b border-border last:border-0"
               >
-                <div className="w-24 font-medium">{WEEKDAYS[row.weekday]}</div>
+                <div className="w-24 font-medium shrink-0">{WEEKDAYS[row.weekday]}</div>
                 
                 <div className="flex items-center gap-2">
                   <Switch
@@ -167,14 +168,14 @@ export default function Horarios() {
                       type="time"
                       value={row.open_time}
                       onChange={(e) => handleTimeChange(row.weekday, 'open_time', e.target.value)}
-                      className="w-32"
+                      className="w-28 sm:w-32"
                     />
-                    <span className="text-muted-foreground">até</span>
+                    <span className="text-muted-foreground text-sm">até</span>
                     <Input
                       type="time"
                       value={row.close_time}
                       onChange={(e) => handleTimeChange(row.weekday, 'close_time', e.target.value)}
-                      className="w-32"
+                      className="w-28 sm:w-32"
                     />
                   </div>
                 )}

@@ -270,7 +270,7 @@ export default function Profissionais() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Profissionais</h1>
           <p className="text-muted-foreground">
@@ -287,7 +287,7 @@ export default function Profissionais() {
           )}
         </div>
 
-        <Button onClick={handleOpenCreate} disabled={limits ? !limits.canAddProfessional : false}>
+        <Button onClick={handleOpenCreate} disabled={limits ? !limits.canAddProfessional : false} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Novo Profissional
         </Button>
@@ -314,7 +314,7 @@ export default function Profissionais() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {professionals.map((prof) => (
             <Card key={prof.id}>
               <CardHeader className="pb-2">
@@ -339,7 +339,7 @@ export default function Profissionais() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Capacidade: {prof.capacity} cliente(s) simultâneo(s)
                 </p>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={prof.active}
@@ -347,7 +347,7 @@ export default function Profissionais() {
                     />
                     <span className="text-sm text-muted-foreground">Ativo</span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     <Button
                       variant="ghost"
                       size="icon"
