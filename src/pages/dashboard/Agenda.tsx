@@ -58,9 +58,20 @@ const statusLabels: Record<string, string> = {
   completed: 'Concluído',
   no_show: 'Não compareceu',
   canceled: 'Cancelado',
-  canceled_by_customer: 'Cancelado',
-  canceled_by_establishment: 'Cancelado',
+  canceled_by_customer: 'Cancelado pelo cliente',
+  canceled_by_establishment: 'Cancelado pelo estabelecimento',
 };
+
+// Unique legend entries (deduped by label) for the status bar
+const legendStatuses: { key: string; label: string }[] = [
+  { key: 'booked', label: 'Agendado' },
+  { key: 'confirmed', label: 'Confirmado' },
+  { key: 'arrived', label: 'Chegou' },
+  { key: 'in_service', label: 'Em atendimento' },
+  { key: 'completed', label: 'Concluído' },
+  { key: 'no_show', label: 'Não compareceu' },
+  { key: 'canceled', label: 'Cancelado' },
+];
 
 type ViewMode = 'week' | 'month' | 'list';
 
