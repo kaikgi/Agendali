@@ -263,7 +263,7 @@ export default function Configuracoes() {
     // Check if slug changed and is not available
     if (normalizedSlug !== establishment.slug && slugAvailable === false) {
       toast({ title: 'Este link já está em uso', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     
