@@ -102,6 +102,13 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
         },
         (formErrors) => {
           console.log('submit blocked by validation', formErrors);
+          // Scroll to first error
+          const firstErrorField = Object.keys(formErrors)[0];
+          if (firstErrorField) {
+            const el = document.getElementById(firstErrorField);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el?.focus();
+          }
         }
       )}
       className="space-y-6"
