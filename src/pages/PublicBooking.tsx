@@ -270,6 +270,20 @@ export default function PublicBooking() {
         sendConfirmationEmail(result.appointment_id).catch((emailErr) => {
           console.warn('Failed to send confirmation email:', emailErr);
         });
+
+        // Also create email jobs in the queue for tracking and reminders
+        if (customerData.email) {
+          supabase.rpc('create_appointment_email_jobs', {
+            p_appointment_id: result.appointment_id,
+            p_establishment_id: establishment.id,
+            p_customer_email: customerData.email,
+            p_customer_name: customerData.name,
+            p_appointment_start: startAt.toISOString(),
+          }).then(({ error: jobErr }) => {
+            if (jobErr) console.warn('Failed to create email jobs:', jobErr);
+            else console.log('Email jobs created for appointment', result.appointment_id);
+          });
+        }
       }
 
       setIsSuccess(true);
