@@ -159,6 +159,7 @@ export default function PublicBooking() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     setIsAuthLoading(true);
     
     try {
@@ -170,16 +171,18 @@ export default function PublicBooking() {
       if (error) throw error;
       
       setShowLoginModal(false);
+      setAuthError(null);
       toast({
         title: 'Login realizado',
         description: 'Você foi autenticado com sucesso.',
       });
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro no login',
-        description: error instanceof Error ? error.message : 'Email ou senha incorretos.',
-      });
+      const msg = error instanceof Error ? error.message : 'Email ou senha incorretos.';
+      if (msg.includes('Invalid login')) {
+        setAuthError('Email ou senha incorretos.');
+      } else {
+        setAuthError(msg);
+      }
     } finally {
       setIsAuthLoading(false);
     }
