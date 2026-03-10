@@ -593,12 +593,13 @@ export default function PublicBooking() {
 
         {currentStep === 3 && session && (
           <CustomerStep 
+            key={`${user?.id}-${profile?.full_name}-${profile?.phone}`}
             establishment={{...establishment, ask_email: true}} 
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting}
             defaultValues={{
-              name: profile?.full_name || '',
-              phone: profile?.phone || '',
+              name: profile?.full_name || user?.user_metadata?.full_name || '',
+              phone: profile?.phone || user?.user_metadata?.phone || '',
               email: user?.email || '',
             }}
           />
