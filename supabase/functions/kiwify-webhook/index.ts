@@ -214,7 +214,6 @@ serve(async (req) => {
         JSON.stringify({ ok: true, ignored: true, reason: `NON_ACTIONABLE_EVENT: ${eventType}` }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-      )
     }
 
     // Look up product in kiwify_products table
