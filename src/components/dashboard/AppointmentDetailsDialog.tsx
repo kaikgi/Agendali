@@ -71,7 +71,7 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
 
   const handleStatusChange = async (newStatus: AppointmentStatus) => {
     try {
-      await updateStatus({ id: appointment.id, status: newStatus });
+      await updateStatus({ id: appointment.id, status: newStatus, oldStatus: appointment.status });
       toast({ title: 'Status atualizado com sucesso!' });
       // Auto-close modal on success
       onOpenChange(false);
