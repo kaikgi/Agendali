@@ -990,6 +990,42 @@ export type Database = {
           },
         ]
       }
+      signup_invitations: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          kiwify_order_id: string | null
+          plan_code: string
+          status: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          kiwify_order_id?: string | null
+          plan_code: string
+          status?: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          kiwify_order_id?: string | null
+          plan_code?: string
+          status?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       subscription_events: {
         Row: {
           amount_cents: number | null
@@ -1210,6 +1246,7 @@ export type Database = {
         Returns: boolean
       }
       check_signup_authorization: { Args: { p_email: string }; Returns: Json }
+      consume_signup_invitation: { Args: { p_token: string }; Returns: Json }
       get_admin_audit_logs: {
         Args: {
           p_action?: string
@@ -1300,6 +1337,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      validate_signup_invitation: { Args: { p_token: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
