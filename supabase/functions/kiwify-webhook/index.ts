@@ -559,61 +559,57 @@ async function sendInvitationEmail(
 
   const emailHtml = `
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
-    <tr>
-      <td align="center" style="padding:40px 20px;">
-        <table width="100%" style="max-width:560px;">
-          <tr>
-            <td style="text-align:center;padding-bottom:32px;">
-              <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
-              <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
+    <tr><td align="center" style="padding:40px 20px 0;">
+      <table width="100%" style="max-width:560px;">
+        <!-- Header -->
+        <tr><td style="text-align:center;padding-bottom:32px;">
+          <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
+          <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
+        </td></tr>
+
+        <!-- Badge -->
+        <tr><td align="center" style="padding-bottom:24px;">
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td style="background-color:#f0fdf4;border:1px solid #16a34a22;border-radius:100px;padding:8px 20px;">
+              <span style="font-size:14px;font-weight:600;color:#16a34a;">✅ Pagamento Confirmado</span>
             </td>
-          </tr>
-          <tr>
-            <td style="background-color:#f9fafb;border-radius:12px;padding:32px;">
-              <h2 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#111827;">
-                🎉 Pagamento confirmado!
-              </h2>
-              <p style="margin:0 0 12px;font-size:16px;line-height:1.6;color:#374151;">
-                Seu plano <strong>${planDisplayName}</strong> do Agendali está ativo.
-              </p>
-              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151;">
-                Clique no botão abaixo para criar sua conta e começar a usar o Agendali:
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <a href="${signupLink}" 
-                       style="display:inline-block;padding:14px 32px;background-color:#111827;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
-                      Criar minha conta
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
-                ⏳ Este link é válido por 24 horas. Se precisar de um novo link, entre em contato com nosso suporte.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="text-align:center;padding-top:24px;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">
-                Você recebeu este email porque adquiriu um plano no Agendali.
-              </p>
-              <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">
-                ${APP_URL}
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
+          </tr></table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td>
+          <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111827;">Sua assinatura foi ativada</h2>
+          <p style="margin:0 0 12px;font-size:16px;line-height:1.6;color:#374151;">Recebemos a confirmação do seu pagamento com sucesso.</p>
+          <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151;">Seu plano <strong style="color:#111827;">${planDisplayName}</strong> já está ativo e pronto para uso. Para começar a usar o Agendali, crie sua conta usando o mesmo email da compra.</p>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td align="center" style="padding-bottom:8px;">
+          <a href="${signupLink}" style="display:inline-block;padding:14px 32px;background-color:#111827;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Criar minha conta</a>
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:24px;">
+          <p style="margin:8px 0 0;font-size:12px;color:#9ca3af;word-break:break-all;">Ou copie e cole: <a href="${signupLink}" style="color:#6b7280;text-decoration:underline;">${signupLink}</a></p>
+        </td></tr>
+
+        <!-- Note -->
+        <tr><td style="padding-bottom:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+            <tr><td style="padding:14px 18px;font-size:14px;color:#6b7280;line-height:1.5;">
+              ⏳ Este link é válido por <strong>24 horas</strong> e pode ser usado apenas uma vez.
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Divider + footer -->
+        <tr><td style="padding-top:24px;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;text-align:center;font-size:12px;color:#9ca3af;line-height:1.6;">Você recebeu este email porque adquiriu um plano no <a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">Agendali</a>.</p>
+          <p style="margin:8px 0 0;text-align:center;font-size:12px;"><a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">agendali.online</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
   </table>
 </body>
 </html>`
