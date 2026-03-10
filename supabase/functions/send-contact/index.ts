@@ -85,7 +85,7 @@ serve(async (req: Request) => {
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;">
 <table width="100%" style="max-width:560px;">
   <tr><td style="text-align:center;padding-bottom:24px;">
-    <img src="https://www.agendali.online/logo-192.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
+    <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
   </td></tr>
   <tr><td style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:24px;">
     <h2 style="margin:0 0 16px;font-size:18px;color:#111827;">📩 Nova mensagem de contato</h2>
@@ -129,7 +129,7 @@ serve(async (req: Request) => {
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;">
 <table width="100%" style="max-width:560px;">
   <tr><td style="text-align:center;padding-bottom:24px;">
-    <img src="https://www.agendali.online/logo-192.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
+    <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
     <p style="margin:10px 0 0;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;">AGENDALI</p>
   </td></tr>
   <tr><td>

@@ -139,7 +139,7 @@ function getStatusMessage(type: EmailRequest['type'], establishmentName: string)
 function getEmailHtml(type: EmailRequest['type'], data: AppointmentData): string {
   const { customer, professional, service, establishment, start_at } = data;
   const baseUrl = `https://www.agendali.online/${establishment.slug}`;
-  const logoUrl = 'https://www.agendali.online/logo-192.png';
+  const logoUrl = 'https://www.agendali.online/logo-512.png';
   const { accent, bg } = getStatusColor(type);
   const icon = getStatusIcon(type);
   const title = getStatusTitle(type);

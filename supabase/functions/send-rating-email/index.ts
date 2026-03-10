@@ -84,7 +84,7 @@ function getStarsColor(stars: number): string {
 function getRatingEmailHtml(data: RatingData, _ownerEmail: string): string {
   const { customer, appointment, establishment, stars, comment, created_at } = data;
   const starsColor = getStarsColor(stars);
-  const logoUrl = 'https://www.agendali.online/logo-192.png';
+  const logoUrl = 'https://www.agendali.online/logo-512.png';
   const feedbackMsg = stars >= 4 ? '🎉 Ótimo trabalho! Continue assim!' : stars >= 3 ? '💪 Bom trabalho! Há espaço para melhorar.' : '⚠️ Esta avaliação precisa de atenção.';
 
   return `<!DOCTYPE html>
