@@ -74,7 +74,7 @@ export function useProfessionalPortalAuth() {
       professionalSlug: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.rpc('professional_portal_login', {
+      const { data, error } = await (supabase.rpc as any)('professional_portal_login', {
         p_establishment_slug: establishmentSlug,
         p_professional_slug: professionalSlug,
         p_password: password,
