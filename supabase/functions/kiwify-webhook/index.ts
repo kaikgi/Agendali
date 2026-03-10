@@ -596,7 +596,7 @@ async function sendInvitationEmail(
                 </tr>
               </table>
               <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
-                ⏳ Este link expira em 7 dias. Se precisar de um novo link, entre em contato com nosso suporte.
+                ⏳ Este link é válido por 24 horas. Se precisar de um novo link, entre em contato com nosso suporte.
               </p>
             </td>
           </tr>
