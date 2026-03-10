@@ -23,6 +23,7 @@ export const customerFormSchema = z.object({
     .max(500, 'Observações devem ter no máximo 500 caracteres')
     .optional(),
   acceptPolicy: z.boolean().optional(),
+  reminderHours: z.number().nullable().optional(),
 });
 
 export type CustomerFormData = z.infer<typeof customerFormSchema>;

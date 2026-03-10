@@ -18,8 +18,18 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, CheckCircle2, Bell, BellOff } from 'lucide-react';
 import type { Establishment } from '@/hooks/useEstablishment';
+
+const REMINDER_OPTIONS = [
+  { value: null, label: 'Não quero lembrete', icon: BellOff },
+  { value: 1, label: '1 hora antes', icon: Bell },
+  { value: 2, label: '2 horas antes', icon: Bell },
+  { value: 3, label: '3 horas antes', icon: Bell },
+  { value: 6, label: '6 horas antes', icon: Bell },
+  { value: 12, label: '12 horas antes', icon: Bell },
+  { value: 24, label: '24 horas antes', icon: Bell },
+] as const;
 
 interface CustomerStepProps {
   establishment: Establishment;
@@ -58,10 +68,13 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       email: defaultValues?.email || '',
       notes: '',
       acceptPolicy: false,
+      reminderHours: 2,
     },
   });
 
   const acceptPolicy = watch('acceptPolicy');
+  const reminderHours = watch('reminderHours');
+  const emailValue = watch('email');
 
   const handlePolicyRead = () => {
     setPolicyRead(true);
@@ -69,7 +82,6 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   };
 
   const handleCheckboxChange = (checked: boolean) => {
-    // Only allow checking if policy has been read
     if (checked && !policyRead) {
       setPolicyModalOpen(true);
       return;
@@ -93,6 +105,9 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
 
   const policyText = establishment.cancellation_policy_text || defaultPolicyText;
 
+  // Only show reminder section if email is provided (since reminders are sent via email)
+  const showReminderSection = establishment.ask_email && emailValue && emailValue.length > 3;
+
   return (
     <form
       onSubmit={handleSubmit(
@@ -102,7 +117,6 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
         },
         (formErrors) => {
           console.log('submit blocked by validation', formErrors);
-          // Scroll to first error
           const firstErrorField = Object.keys(formErrors)[0];
           if (firstErrorField) {
             const el = document.getElementById(firstErrorField);
@@ -165,6 +179,40 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
           </div>
         )}
 
+        {/* Reminder preference */}
+        {showReminderSection && (
+          <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              <h3 className="font-medium text-sm">Lembrete por email</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Escolha com quanto tempo de antecedência deseja receber um lembrete.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {REMINDER_OPTIONS.map((option) => {
+                const isSelected = reminderHours === option.value;
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={String(option.value)}
+                    type="button"
+                    onClick={() => setValue('reminderHours', option.value)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {establishment.require_policy_acceptance && (
           <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
             <div className="flex items-center gap-2">
@@ -176,7 +224,6 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
               Antes de confirmar, leia e aceite nossa política de cancelamento.
             </p>
 
-            {/* Policy Modal */}
             <Dialog open={policyModalOpen} onOpenChange={setPolicyModalOpen}>
               <DialogTrigger asChild>
                 <Button 
@@ -227,7 +274,6 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
               </DialogContent>
             </Dialog>
 
-            {/* Checkbox - only enabled after reading */}
             <div className="flex items-start gap-2 pt-2">
               <Checkbox
                 id="acceptPolicy"
