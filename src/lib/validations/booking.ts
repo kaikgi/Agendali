@@ -11,7 +11,8 @@ export const customerFormSchema = z.object({
   phone: z
     .string()
     .min(1, 'Telefone é obrigatório')
-    .regex(phoneRegex, 'Telefone deve ter DDD + 8 ou 9 dígitos'),
+    .transform((v) => v.replace(/\D/g, ''))
+    .pipe(z.string().regex(phoneRegex, 'Telefone deve ter DDD + 8 ou 9 dígitos')),
   email: z
     .string()
     .email('Email inválido')
