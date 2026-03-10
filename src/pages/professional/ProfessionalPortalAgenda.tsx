@@ -23,7 +23,6 @@ import {
   List,
   LogOut,
   Loader2,
-  Settings,
   Calendar as CalendarIcon,
   Search,
 } from 'lucide-react';
@@ -68,7 +67,7 @@ const statusLabels: Record<string, string> = {
 };
 
 type ViewMode = 'week' | 'list';
-type TabMode = 'agenda' | 'calendar' | 'profile' | 'settings';
+type TabMode = 'agenda' | 'calendar' | 'profile';
 
 interface PortalAppointment {
   id: string;
@@ -182,6 +181,14 @@ export default function ProfessionalPortalAgenda() {
     return filtered.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
   }, [appointments, statusFilter, searchQuery]);
 
+  // Today's next appointment
+  const nextAppointment = useMemo(() => {
+    const now = new Date();
+    return (appointments || [])
+      .filter((a) => ['booked', 'confirmed'].includes(a.status) && new Date(a.start_at) > now)
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0] || null;
+  }, [appointments]);
+
   const getAppointmentsForDay = (date: Date) => {
     return filteredAppointments.filter((apt) => isSameDay(parseISO(apt.start_at), date));
   };
@@ -202,7 +209,7 @@ export default function ProfessionalPortalAgenda() {
             <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
               <LogOut className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="text-lg font-semibold text-center">Portal do profissional desativado</h2>
+            <h2 className="text-lg font-semibold text-center">Portal desativado</h2>
             <p className="text-sm text-muted-foreground text-center">
               O acesso ao portal foi desativado pelo estabelecimento. Entre em contato com o administrador para reativar.
             </p>
@@ -227,16 +234,16 @@ export default function ProfessionalPortalAgenda() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
                 {photoUrl ? <AvatarImage src={photoUrl} alt={session.professional_name} /> : null}
-                <AvatarFallback className="text-sm font-semibold">{initials}</AvatarFallback>
+                <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <h1 className="font-semibold text-sm sm:text-base truncate">{session.professional_name}</h1>
                 <p className="text-xs text-muted-foreground truncate">{session.establishment_name}</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
               <LogOut className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Sair</span>
             </Button>
@@ -245,25 +252,48 @@ export default function ProfessionalPortalAgenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 sm:py-6">
+      <main className="container mx-auto px-4 py-4 sm:py-6 max-w-5xl">
+        {/* Next appointment quick card */}
+        {nextAppointment && activeTab === 'agenda' && (
+          <button
+            type="button"
+            onClick={() => handleAppointmentClick(nextAppointment)}
+            className="w-full mb-6 p-4 rounded-xl border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-primary uppercase tracking-wide">Próximo atendimento</p>
+                <p className="font-semibold mt-1">{nextAppointment.customer_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {nextAppointment.service_name} • {format(parseISO(nextAppointment.start_at), "HH:mm 'de' EEEE", { locale: ptBR })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-primary">
+                  {format(parseISO(nextAppointment.start_at), 'HH:mm')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {format(parseISO(nextAppointment.start_at), 'dd/MM')}
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
+
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabMode)}>
           <div className="mb-6 overflow-x-auto">
             <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="agenda" className="gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="agenda" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <List className="h-4 w-4" />
-                <span className="hidden sm:inline">Agenda</span>
+                <span>Agenda</span>
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <CalendarIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Calendário</span>
+                <span>Calendário</span>
               </TabsTrigger>
-              <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm">
+              <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Perfil</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Config.</span>
+                <span>Perfil</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -414,8 +444,11 @@ export default function ProfessionalPortalAgenda() {
                     <TableBody>
                       {filteredAppointments.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                            Nenhum agendamento neste período
+                          <TableCell colSpan={4} className="text-center text-muted-foreground py-12">
+                            <div className="flex flex-col items-center gap-2">
+                              <CalendarDays className="h-8 w-8 text-muted-foreground/50" />
+                              <p>Nenhum agendamento neste período</p>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -491,30 +524,6 @@ export default function ProfessionalPortalAgenda() {
               currentPhotoUrl={photoUrl}
               onProfileUpdated={handleProfileUpdated}
             />
-          </TabsContent>
-
-          {/* ============ SETTINGS TAB ============ */}
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Configurações
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-muted-foreground text-sm space-y-3">
-                  <p>
-                    Para configurar seus horários de trabalho, entre em contato com o administrador do
-                    estabelecimento.
-                  </p>
-                  <p>
-                    Se precisar alterar sua senha de acesso ao portal, solicite ao gestor do
-                    estabelecimento.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </main>

@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, User, Scissors, FileText, CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import {
+  Clock,
+  User,
+  Scissors,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  ThumbsUp,
+  Phone,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +76,7 @@ export function ProfessionalAppointmentDialog({
   if (!appointment) return null;
 
   const canAct = ['booked', 'confirmed'].includes(appointment.status);
+  const canConfirm = appointment.status === 'booked';
 
   const handleAction = async (newStatus: string) => {
     setLoading(newStatus);
@@ -89,6 +100,12 @@ export function ProfessionalAppointmentDialog({
     } finally {
       setLoading(null);
     }
+  };
+
+  const handleWhatsApp = () => {
+    const phone = appointment.customer_phone.replace(/\D/g, '');
+    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
+    window.open(`https://wa.me/${fullPhone}`, '_blank');
   };
 
   return (
@@ -121,9 +138,21 @@ export function ProfessionalAppointmentDialog({
 
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="font-medium">{appointment.customer_name}</p>
-                <p className="text-sm text-muted-foreground">{appointment.customer_phone}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">{appointment.customer_phone}</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
+                    onClick={handleWhatsApp}
+                  >
+                    <Phone className="h-3 w-3 mr-1" />
+                    WhatsApp
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -145,32 +174,68 @@ export function ProfessionalAppointmentDialog({
         </div>
 
         {canAct && (
-          <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
-            <Button
-              variant="outline"
-              className="text-destructive hover:text-destructive"
-              onClick={() => handleAction('canceled')}
-              disabled={!!loading}
-            >
-              {loading === 'canceled' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
-              Cancelar
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleAction('no_show')}
-              disabled={!!loading}
-            >
-              {loading === 'no_show' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
-              Não compareceu
-            </Button>
-            <Button
-              onClick={() => handleAction('completed')}
-              disabled={!!loading}
-            >
-              {loading === 'completed' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Concluir
-            </Button>
-          </DialogFooter>
+          <div className="space-y-3 pt-4 border-t">
+            {/* Primary actions */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {canConfirm && (
+                <Button
+                  variant="outline"
+                  className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                  onClick={() => handleAction('confirmed')}
+                  disabled={!!loading}
+                >
+                  {loading === 'confirmed' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                  )}
+                  Confirmar
+                </Button>
+              )}
+              <Button
+                className="flex-1"
+                onClick={() => handleAction('completed')}
+                disabled={!!loading}
+              >
+                {loading === 'completed' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
+                Concluir
+              </Button>
+            </div>
+
+            {/* Secondary actions */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => handleAction('no_show')}
+                disabled={!!loading}
+              >
+                {loading === 'no_show' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                )}
+                Não compareceu
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 text-destructive hover:text-destructive"
+                onClick={() => handleAction('canceled')}
+                disabled={!!loading}
+              >
+                {loading === 'canceled' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
+                Cancelar
+              </Button>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
