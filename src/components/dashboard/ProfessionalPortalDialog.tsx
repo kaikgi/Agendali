@@ -121,9 +121,9 @@ export function ProfessionalPortalDialog({
       throw new Error('password mismatch');
     }
 
-    if (isSettingPassword && password.length < 4) {
-      toast({ title: 'A senha deve ter pelo menos 4 caracteres', variant: 'destructive' });
-      throw new Error('password too short');
+    if (isSettingPassword && !isPasswordStrong(password)) {
+      toast({ title: 'A senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres)', variant: 'destructive' });
+      throw new Error('password too weak');
     }
 
     // First-time setup: password is required if no existing password
