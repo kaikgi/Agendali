@@ -63,44 +63,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Check if an email is authorized to create an account.
-   * Must exist in allowed_establishment_signups and not be used yet.
-   * Also checks for pending payments (pix_created but not yet approved).
+   * Uses a secure RPC that doesn't expose the table directly.
    */
   const checkEmailAuthorized = async (email: string): Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }> => {
     const normalizedEmail = email.toLowerCase().trim();
     
-    const { data, error } = await supabase
-      .from('allowed_establishment_signups')
-      .select('email, plan_id, used')
-      .eq('email', normalizedEmail)
-      .eq('used', false)
-      .limit(1);
+    const { data, error } = await supabase.rpc('check_signup_authorization', {
+      p_email: normalizedEmail,
+    });
 
-    if (!error && data && data.length > 0) {
-      return { authorized: true, planId: data[0].plan_id };
+    if (error) {
+      console.error('[Auth] Error checking email authorization:', error.message);
+      return { authorized: false };
     }
 
-    // Check if there's a pending payment (pix_created/boleto but not yet approved)
-    const { data: pendingEvents } = await supabase
-      .from('billing_webhook_events')
-      .select('event_type, payload')
-      .in('event_type', ['pix_created', 'boleto_created', 'waiting_payment'])
-      .order('received_at', { ascending: false })
-      .limit(10);
+    const result = data as { authorized: boolean; plan_id?: string; pending_payment?: boolean } | null;
+    if (!result) return { authorized: false };
 
-    if (pendingEvents && pendingEvents.length > 0) {
-      const hasPending = pendingEvents.some((evt) => {
-        const payload = evt.payload as Record<string, unknown> | null;
-        const customer = payload?.Customer as Record<string, unknown> | null;
-        const evtEmail = (customer?.email as string || payload?.customer_email as string || '').toLowerCase().trim();
-        return evtEmail === normalizedEmail;
-      });
-      if (hasPending) {
-        return { authorized: false, pendingPayment: true };
-      }
-    }
-
-    return { authorized: false };
+    return {
+      authorized: result.authorized,
+      planId: result.plan_id,
+      pendingPayment: result.pending_payment,
+    };
   };
 
   /**
