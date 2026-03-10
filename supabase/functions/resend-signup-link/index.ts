@@ -102,7 +102,7 @@ serve(async (req) => {
       .eq('status', 'pending')
 
     if (invalidateInvError) {
-      console.error('[RESEND-LINK] Error invalidating old invitations:', invalidateInvErr)
+      console.error('[RESEND-LINK] Error invalidating old invitations:', invalidateInvError)
     }
 
     // 6. Generate new signup_token
