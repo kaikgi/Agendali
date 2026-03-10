@@ -2,7 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const RESEND_FROM = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
+const RAW_RESEND_FROM = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
+// Extract just the email if RESEND_FROM contains "Name <email>" format
+const RESEND_FROM = RAW_RESEND_FROM.includes("<")
+  ? RAW_RESEND_FROM.match(/<([^>]+)>/)?.[1] || RAW_RESEND_FROM
+  : RAW_RESEND_FROM;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
