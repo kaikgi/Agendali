@@ -228,8 +228,10 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           created_at: string
+          customer_email: string | null
           customer_id: string
           customer_notes: string | null
+          customer_phone: string | null
           customer_reminder_hours: number | null
           customer_user_id: string | null
           end_at: string
@@ -246,8 +248,10 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          customer_email?: string | null
           customer_id: string
           customer_notes?: string | null
+          customer_phone?: string | null
           customer_reminder_hours?: number | null
           customer_user_id?: string | null
           end_at: string
@@ -264,8 +268,10 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          customer_email?: string | null
           customer_id?: string
           customer_notes?: string | null
+          customer_phone?: string | null
           customer_reminder_hours?: number | null
           customer_user_id?: string | null
           end_at?: string
