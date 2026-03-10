@@ -58,7 +58,7 @@ export default function Profissionais() {
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedProfessional, setSelectedProfessional] = useState<{ id: string; name: string; slug: string | null; portal_enabled: boolean | null } | null>(null);
+  const [selectedProfessional, setSelectedProfessional] = useState<{ id: string; name: string; slug: string | null; portal_enabled: boolean | null; portal_password_hash: string | null } | null>(null);
   const [form, setForm] = useState<ProfessionalForm>({ name: '', capacity: '1', photo_url: null });
   
   // Photo upload state
@@ -357,7 +357,8 @@ export default function Profissionais() {
                           id: prof.id, 
                           name: prof.name, 
                           slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false
+                          portal_enabled: (prof as any).portal_enabled ?? false,
+                          portal_password_hash: (prof as any).portal_password_hash || null,
                         });
                         setPortalDialogOpen(true);
                       }}
@@ -373,7 +374,8 @@ export default function Profissionais() {
                           id: prof.id, 
                           name: prof.name, 
                           slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false
+                          portal_enabled: (prof as any).portal_enabled ?? false,
+                          portal_password_hash: (prof as any).portal_password_hash || null,
                         });
                         setServicesDialogOpen(true);
                       }}
@@ -389,7 +391,8 @@ export default function Profissionais() {
                           id: prof.id, 
                           name: prof.name, 
                           slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false
+                          portal_enabled: (prof as any).portal_enabled ?? false,
+                          portal_password_hash: (prof as any).portal_password_hash || null,
                         });
                         setHoursDialogOpen(true);
                       }}

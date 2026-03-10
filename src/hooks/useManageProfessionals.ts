@@ -11,6 +11,7 @@ interface Professional {
   slug: string | null;
   portal_enabled: boolean | null;
   portal_last_login_at: string | null;
+  portal_password_hash: string | null;
 }
 
 interface CreateProfessionalData {
