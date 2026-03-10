@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RAW_RESEND_FROM = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
-// Extract just the email if RESEND_FROM contains "Name <email>" format
 const RESEND_FROM = RAW_RESEND_FROM.includes("<")
   ? RAW_RESEND_FROM.match(/<([^>]+)>/)?.[1] || RAW_RESEND_FROM
   : RAW_RESEND_FROM;
@@ -82,12 +81,11 @@ const TYPE_MAP: Record<string, TypeConfig> = {
   },
 };
 
-// Any email_type starting with "appointment_reminder" is treated as a reminder
 function isReminderType(t: string): boolean {
   return t.startsWith("appointment_reminder");
 }
 
-function getReminderConfig(estName: string): TypeConfig {
+function getReminderConfig(_estName: string): TypeConfig {
   return {
     icon: "⏰", title: "Lembrete de Agendamento",
     accent: "#d97706", bg: "#fffbeb",
@@ -97,8 +95,8 @@ function getReminderConfig(estName: string): TypeConfig {
   };
 }
 
-// ─── Build HTML ──────────────────────────────────────────────
-interface AppointmentPayload {
+// ─── Email payload ───────────────────────────────────────────
+interface EmailPayload {
   customer_name: string;
   professional_name: string;
   service_name: string;
@@ -110,7 +108,107 @@ interface AppointmentPayload {
   start_at: string;
 }
 
-function buildHtml(cfg: TypeConfig, p: AppointmentPayload): string {
+// ─── Build payload from job data + optional DB enrichment ────
+async function buildEmailPayload(
+  job: Record<string, unknown>,
+  supabase: ReturnType<typeof createClient>
+): Promise<{ payload: EmailPayload; shouldSkip: boolean; skipReason?: string }> {
+  const jobPayload = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
+  const emailType = job.email_type as string;
+
+  // Try to enrich from DB with separate simple queries (no relationship joins)
+  let dbStartAt: string | null = null;
+  let dbStatus: string | null = null;
+  let dbCustomerId: string | null = null;
+  let dbServiceId: string | null = null;
+  let dbProfessionalId: string | null = null;
+  let dbEstablishmentId: string | null = null;
+
+  // 1. Fetch appointment basics (no joins)
+  const { data: apt } = await supabase
+    .from("appointments")
+    .select("id, start_at, status, customer_id, professional_id, service_id, establishment_id")
+    .eq("id", job.appointment_id)
+    .maybeSingle();
+
+  if (apt) {
+    dbStartAt = apt.start_at;
+    dbStatus = apt.status;
+    dbCustomerId = apt.customer_id;
+    dbServiceId = apt.service_id;
+    dbProfessionalId = apt.professional_id;
+    dbEstablishmentId = apt.establishment_id;
+
+    // For reminders, skip if appointment was cancelled/completed
+    if (isReminderType(emailType) && !["booked", "confirmed"].includes(apt.status)) {
+      return { payload: {} as EmailPayload, shouldSkip: true, skipReason: `appointment status: ${apt.status}` };
+    }
+  } else {
+    console.log(`⚠️ Appointment ${job.appointment_id} not found in DB, using payload fallback`);
+    // For reminders without appointment, skip entirely
+    if (isReminderType(emailType)) {
+      return { payload: {} as EmailPayload, shouldSkip: true, skipReason: "appointment not found" };
+    }
+  }
+
+  // 2. Fetch related data with simple individual queries (only if payload is missing data)
+  let customerName = (jobPayload.customer_name as string) || (job.customer_name as string) || null;
+  let professionalName = (jobPayload.professional_name as string) || null;
+  let serviceName = (jobPayload.service_name as string) || null;
+  let serviceDuration = (jobPayload.service_duration as number) || null;
+  let estName = (jobPayload.establishment_name as string) || null;
+  let estSlug = (jobPayload.establishment_slug as string) || null;
+  let estPhone = (jobPayload.establishment_phone as string) || null;
+  let estAddress = (jobPayload.establishment_address as string) || null;
+  const startAt = (jobPayload.start_at as string) || dbStartAt || new Date().toISOString();
+
+  // Only query DB for missing fields
+  if (dbCustomerId && !customerName) {
+    const { data: cust } = await supabase.from("customers").select("name").eq("id", dbCustomerId).maybeSingle();
+    if (cust) customerName = cust.name;
+  }
+
+  if (dbProfessionalId && !professionalName) {
+    const { data: prof } = await supabase.from("professionals").select("name").eq("id", dbProfessionalId).maybeSingle();
+    if (prof) professionalName = prof.name;
+  }
+
+  if (dbServiceId && (!serviceName || !serviceDuration)) {
+    const { data: svc } = await supabase.from("services").select("name, duration_minutes").eq("id", dbServiceId).maybeSingle();
+    if (svc) {
+      serviceName = serviceName || svc.name;
+      serviceDuration = serviceDuration || svc.duration_minutes;
+    }
+  }
+
+  if (dbEstablishmentId && (!estName || !estSlug)) {
+    const { data: est } = await supabase.from("establishments").select("name, slug, phone, address").eq("id", dbEstablishmentId).maybeSingle();
+    if (est) {
+      estName = estName || est.name;
+      estSlug = estSlug || est.slug;
+      estPhone = estPhone || est.phone;
+      estAddress = estAddress || est.address;
+    }
+  }
+
+  return {
+    payload: {
+      customer_name: customerName || "Cliente",
+      professional_name: professionalName || "Profissional",
+      service_name: serviceName || "Serviço",
+      service_duration: serviceDuration || 30,
+      establishment_name: estName || "Agendali",
+      establishment_slug: estSlug || "agendali",
+      establishment_phone: estPhone,
+      establishment_address: estAddress,
+      start_at: startAt,
+    },
+    shouldSkip: false,
+  };
+}
+
+// ─── Build HTML ──────────────────────────────────────────────
+function buildHtml(cfg: TypeConfig, p: EmailPayload): string {
   const baseUrl = `https://www.agendali.online/${p.establishment_slug}`;
   const logoUrl = "https://www.agendali.online/logo-192.png";
   const { accent, bg } = cfg;
@@ -199,7 +297,6 @@ const handler = async (req: Request): Promise<Response> => {
     const results = { sent: 0, failed: 0, skipped: 0 };
 
     for (const job of jobs) {
-      // Skip if max attempts exceeded
       if (job.attempts >= job.max_attempts) {
         await supabase
           .from("appointment_email_jobs")
@@ -209,7 +306,7 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Mark as processing to prevent duplicates
+      // Lock job
       const { error: lockErr } = await supabase
         .from("appointment_email_jobs")
         .update({ status: "processing", updated_at: new Date().toISOString() })
@@ -223,74 +320,22 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       try {
-        // Try to fetch appointment data from DB
-        const { data: apt, error: aptErr } = await supabase
-          .from("appointments")
-          .select(`
-            id, start_at, end_at, status, customer_notes,
-            customer:customers(name, email, phone),
-            professional:professionals(name),
-            service:services(name, duration_minutes),
-            establishment:establishments(name, phone, address, slug)
-          `)
-          .eq("id", job.appointment_id)
-          .maybeSingle();
+        // Build payload using job data + simple DB lookups (no PostgREST joins)
+        const { payload: emailPayload, shouldSkip, skipReason } = await buildEmailPayload(job, supabase);
 
-        // Build payload from DB data or fallback to job fields + payload JSON
-        const jobPayload = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
-        let emailPayload: AppointmentPayload;
-        let establishmentName: string;
-
-        if (apt && !aptErr) {
-          const customer = apt.customer as unknown as { name: string; email: string | null; phone: string };
-          const professional = apt.professional as unknown as { name: string };
-          const service = apt.service as unknown as { name: string; duration_minutes: number };
-          const establishment = apt.establishment as unknown as { name: string; phone: string | null; address: string | null; slug: string };
-
-          // For reminder jobs, skip if appointment was cancelled/completed
-          if (isReminderType(job.email_type) && !["booked", "confirmed"].includes(apt.status)) {
-            await supabase
-              .from("appointment_email_jobs")
-              .update({ status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-              .eq("id", job.id);
-            console.log(`Skipped reminder for ${job.id} — appointment status: ${apt.status}`);
-            results.skipped++;
-            continue;
-          }
-
-          establishmentName = establishment.name;
-          emailPayload = {
-            customer_name: customer.name,
-            professional_name: professional.name,
-            service_name: service.name,
-            service_duration: service.duration_minutes,
-            establishment_name: establishment.name,
-            establishment_slug: establishment.slug,
-            establishment_phone: establishment.phone,
-            establishment_address: establishment.address,
-            start_at: apt.start_at,
-          };
-        } else {
-          // Fallback: use data from job columns + payload JSON
-          console.log(`⚠️ Appointment ${job.appointment_id} not found in DB, using payload fallback for job ${job.id}`);
-          establishmentName = (jobPayload.establishment_name as string) || "Agendali";
-          emailPayload = {
-            customer_name: job.customer_name || (jobPayload.customer_name as string) || "Cliente",
-            professional_name: (jobPayload.professional_name as string) || "Profissional",
-            service_name: (jobPayload.service_name as string) || "Serviço",
-            service_duration: (jobPayload.service_duration as number) || 30,
-            establishment_name: establishmentName,
-            establishment_slug: (jobPayload.establishment_slug as string) || "agendali",
-            establishment_phone: (jobPayload.establishment_phone as string) || null,
-            establishment_address: (jobPayload.establishment_address as string) || null,
-            start_at: (jobPayload.start_at as string) || new Date().toISOString(),
-          };
+        if (shouldSkip) {
+          await supabase
+            .from("appointment_email_jobs")
+            .update({ status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq("id", job.id);
+          console.log(`Skipped job ${job.id} — ${skipReason}`);
+          results.skipped++;
+          continue;
         }
 
-        // Determine email config
         const emailType = job.email_type as string;
         const cfg = isReminderType(emailType)
-          ? getReminderConfig(establishmentName)
+          ? getReminderConfig(emailPayload.establishment_name)
           : TYPE_MAP[emailType];
 
         if (!cfg) {
@@ -298,12 +343,12 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const html = buildHtml(cfg, emailPayload);
-        const subject = job.subject || cfg.subject(establishmentName);
-        const fromAddress = `${sanitizeName(establishmentName)} <${RESEND_FROM}>`;
+        const subject = job.subject || cfg.subject(emailPayload.establishment_name);
+        const fromAddress = `${sanitizeName(emailPayload.establishment_name)} <${RESEND_FROM}>`;
 
+        console.log(`📧 Sending ${emailType} to ${job.customer_email} for appointment ${job.appointment_id}`);
         const resendResult = await sendViaResend(job.customer_email, subject, html, fromAddress);
 
-        // Mark sent
         await supabase
           .from("appointment_email_jobs")
           .update({
