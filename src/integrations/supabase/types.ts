@@ -119,6 +119,75 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_email_jobs: {
+        Row: {
+          appointment_id: string
+          attempts: number
+          cancelled_at: string | null
+          created_at: string
+          customer_email: string
+          customer_name: string | null
+          dedupe_key: string | null
+          email_type: string
+          establishment_id: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          payload: Json
+          provider: string | null
+          provider_message_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          attempts?: number
+          cancelled_at?: string | null
+          created_at?: string
+          customer_email: string
+          customer_name?: string | null
+          dedupe_key?: string | null
+          email_type: string
+          establishment_id?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          payload?: Json
+          provider?: string | null
+          provider_message_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          attempts?: number
+          cancelled_at?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string | null
+          dedupe_key?: string | null
+          email_type?: string
+          establishment_id?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          payload?: Json
+          provider?: string | null
+          provider_message_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointment_manage_tokens: {
         Row: {
           appointment_id: string
@@ -1229,7 +1298,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      appointment_email_jobs_summary: {
+        Row: {
+          email_type: string | null
+          status: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       activate_subscription: {
@@ -1279,6 +1355,10 @@ export type Database = {
         Returns: string
       }
       admin_get_my_level: { Args: never; Returns: string }
+      cancel_pending_appointment_email_jobs: {
+        Args: { p_appointment_id: string }
+        Returns: number
+      }
       check_establishment_slug_available: {
         Args: { p_current_establishment_id: string; p_slug: string }
         Returns: boolean
@@ -1307,6 +1387,27 @@ export type Database = {
           reason: string
           success: boolean
         }[]
+      }
+      create_appointment_cancelled_email_job: {
+        Args: {
+          p_appointment_id: string
+          p_customer_email: string
+          p_customer_name: string
+          p_establishment_id: string
+          p_payload?: Json
+        }
+        Returns: Json
+      }
+      create_appointment_email_jobs: {
+        Args: {
+          p_appointment_id: string
+          p_appointment_start: string
+          p_customer_email: string
+          p_customer_name: string
+          p_establishment_id: string
+          p_payload?: Json
+        }
+        Returns: Json
       }
       get_admin_audit_logs: {
         Args: {
@@ -1387,6 +1488,17 @@ export type Database = {
           p_new_end_at: string
           p_new_start_at: string
           p_token: string
+        }
+        Returns: Json
+      }
+      recreate_appointment_email_jobs_for_reschedule: {
+        Args: {
+          p_appointment_id: string
+          p_customer_email: string
+          p_customer_name: string
+          p_establishment_id: string
+          p_new_appointment_start: string
+          p_payload?: Json
         }
         Returns: Json
       }
