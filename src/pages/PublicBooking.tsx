@@ -287,7 +287,7 @@ export default function PublicBooking() {
   };
 
   const handleSubmit = async (customerData: CustomerFormData) => {
-    console.log('submit clicked', {
+    console.log('[booking] submit clicked', {
       slug,
       customerData,
       selectedServiceId: selectedService?.id,
@@ -308,22 +308,7 @@ export default function PublicBooking() {
       return;
     }
 
-    // Check if user is logged in
-    if (!session) {
-      // Save pending data and show login modal
-      setPendingCustomerData(customerData);
-      setShowLoginModal(true);
-      
-      // Pre-fill signup form with customer data
-      setSignupName(customerData.name);
-      setSignupPhone(customerData.phone);
-      if (customerData.email) {
-        setSignupEmail(customerData.email);
-      }
-      return;
-    }
-
-    // User is logged in, proceed with booking
+    // Proceed directly — login is NOT required for public booking
     await handleConfirmedSubmit(customerData);
   };
 
