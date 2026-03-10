@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Copy, Check, Key, ShieldCheck } from 'lucide-react';
+import { Copy, Check, Key, ShieldCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,8 @@ import { ActionButton } from '@/components/ui/action-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength, isPasswordStrong } from '@/components/ui/password-strength';
 import { useSetProfessionalPassword } from '@/hooks/useProfessionalPortal';
 import { useToast } from '@/hooks/use-toast';
 import { getProfessionalPortalUrl } from '@/lib/publicUrl';
@@ -54,7 +56,6 @@ export function ProfessionalPortalDialog({
   const [portalEnabled, setPortalEnabled] = useState(professional.portal_enabled ?? false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [wantsChangePassword, setWantsChangePassword] = useState(false);
 
@@ -67,7 +68,6 @@ export function ProfessionalPortalDialog({
       setPortalEnabled(professional.portal_enabled ?? false);
       setPassword('');
       setConfirmPassword('');
-      setShowPassword(false);
       setCopied(false);
       setWantsChangePassword(false);
     }
@@ -87,14 +87,23 @@ export function ProfessionalPortalDialog({
   };
 
   const handleGeneratePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let generated = '';
-    for (let i = 0; i < 8; i++) {
-      generated += chars.charAt(Math.floor(Math.random() * chars.length));
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%&*';
+    const all = upper + lower + digits + special;
+    // Guarantee at least one of each
+    let generated = upper[Math.floor(Math.random() * upper.length)]
+      + lower[Math.floor(Math.random() * lower.length)]
+      + digits[Math.floor(Math.random() * digits.length)]
+      + special[Math.floor(Math.random() * special.length)];
+    for (let i = 4; i < 10; i++) {
+      generated += all[Math.floor(Math.random() * all.length)];
     }
+    // Shuffle
+    generated = generated.split('').sort(() => Math.random() - 0.5).join('');
     setPassword(generated);
     setConfirmPassword(generated);
-    setShowPassword(true);
     setWantsChangePassword(true);
   };
 
@@ -112,9 +121,9 @@ export function ProfessionalPortalDialog({
       throw new Error('password mismatch');
     }
 
-    if (isSettingPassword && password.length < 4) {
-      toast({ title: 'A senha deve ter pelo menos 4 caracteres', variant: 'destructive' });
-      throw new Error('password too short');
+    if (isSettingPassword && !isPasswordStrong(password)) {
+      toast({ title: 'A senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres)', variant: 'destructive' });
+      throw new Error('password too weak');
     }
 
     // First-time setup: password is required if no existing password
@@ -272,32 +281,20 @@ export function ProfessionalPortalDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={hasExistingPassword ? 'Digite a nova senha' : 'Digite uma senha'}
-                      autoFocus={!hasExistingPassword}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <PasswordInput
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={hasExistingPassword ? 'Digite a nova senha' : 'Digite uma senha'}
+                    autoFocus={!hasExistingPassword}
+                  />
+                  {password && <PasswordStrength password={password} />}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirmar senha</Label>
-                  <Input
+                  <PasswordInput
                     id="confirm-password"
-                    type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirme a senha"
@@ -321,8 +318,8 @@ export function ProfessionalPortalDialog({
 
                 <p className="text-xs text-muted-foreground">
                   {hasExistingPassword
-                    ? 'Preencha apenas se quiser alterar a senha atual. Mínimo 4 caracteres.'
-                    : 'Mínimo de 4 caracteres. O profissional usará esta senha para acessar o portal.'}
+                    ? 'Preencha apenas se quiser alterar a senha atual.'
+                    : 'O profissional usará esta senha para acessar o portal.'}
                 </p>
               </>
             )}

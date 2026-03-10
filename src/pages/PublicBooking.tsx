@@ -34,6 +34,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength, isPasswordStrong } from '@/components/ui/password-strength';
 
 const STEPS = ['Serviço', 'Profissional', 'Data/Hora', 'Dados'];
 const BOOKING_STORAGE_KEY = 'booking_state';
@@ -77,6 +79,7 @@ export default function PublicBooking() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
   const [pendingCustomerData, setPendingCustomerData] = useState<CustomerFormData | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -156,6 +159,7 @@ export default function PublicBooking() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     setIsAuthLoading(true);
     
     try {
@@ -167,16 +171,18 @@ export default function PublicBooking() {
       if (error) throw error;
       
       setShowLoginModal(false);
+      setAuthError(null);
       toast({
         title: 'Login realizado',
         description: 'Você foi autenticado com sucesso.',
       });
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro no login',
-        description: error instanceof Error ? error.message : 'Email ou senha incorretos.',
-      });
+      const msg = error instanceof Error ? error.message : 'Email ou senha incorretos.';
+      if (msg.includes('Invalid login')) {
+        setAuthError('Email ou senha incorretos.');
+      } else {
+        setAuthError(msg);
+      }
     } finally {
       setIsAuthLoading(false);
     }
@@ -184,17 +190,39 @@ export default function PublicBooking() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
+
+    // Client-side validations
+    if (!signupName.trim()) {
+      setAuthError('Nome é obrigatório.');
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setAuthError('Telefone deve ter DDD + 8 ou 9 dígitos.');
+      return;
+    }
+    if (!signupEmail.trim()) {
+      setAuthError('Email é obrigatório.');
+      return;
+    }
+    if (!isPasswordStrong(signupPassword)) {
+      setAuthError('Senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres).');
+      return;
+    }
+
     setIsAuthLoading(true);
     
     try {
+      // 1. Create user
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
           emailRedirectTo: buildPublicUrl(`/${slug}`),
           data: {
-            full_name: signupName,
-            phone: signupPhone,
+            full_name: signupName.trim(),
+            phone: phoneDigits,
             account_type: 'customer',
           },
         },
@@ -202,19 +230,37 @@ export default function PublicBooking() {
       
       if (error) throw error;
       
-      // Profile is auto-created by database trigger (handle_new_user)
+      // 2. If no session returned (email confirmation required), try auto-login
+      if (!data.session) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: signupEmail,
+          password: signupPassword,
+        });
+        if (signInError) {
+          // Email confirmation might be required
+          setShowLoginModal(false);
+          toast({
+            title: 'Conta criada!',
+            description: 'Verifique seu email para confirmar a conta e depois volte para agendar.',
+          });
+          return;
+        }
+      }
       
+      // Profile is auto-created by database trigger (handle_new_user)
       setShowLoginModal(false);
+      setAuthError(null);
       toast({
         title: 'Conta criada',
-        description: 'Sua conta foi criada com sucesso.',
+        description: 'Sua conta foi criada com sucesso. Continue para agendar.',
       });
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro no cadastro',
-        description: error instanceof Error ? error.message : 'Não foi possível criar a conta.',
-      });
+      const msg = error instanceof Error ? error.message : 'Não foi possível criar a conta.';
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
+        setAuthError('Este email já possui uma conta. Faça login na aba "Entrar".');
+      } else {
+        setAuthError(msg);
+      }
     } finally {
       setIsAuthLoading(false);
     }
@@ -578,7 +624,7 @@ export default function PublicBooking() {
             </TabsList>
 
             <TabsContent value="login" className="space-y-4 mt-4">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={(e) => { setAuthError(null); handleLogin(e); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
@@ -592,21 +638,22 @@ export default function PublicBooking() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
-                  <Input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                   />
                 </div>
+                {authError && authTab === 'login' && (
+                  <p className="text-sm text-destructive">{authError}</p>
+                )}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
+                  {isAuthLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
-
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-4 mt-4">
@@ -643,22 +690,23 @@ export default function PublicBooking() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha *</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
-                    minLength={6}
                   />
+                  {signupPassword && <PasswordStrength password={signupPassword} />}
                 </div>
+                {authError && authTab === 'signup' && (
+                  <p className="text-sm text-destructive">{authError}</p>
+                )}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar conta e agendar
+                  {isAuthLoading ? 'Criando conta...' : 'Criar conta e agendar'}
                 </Button>
               </form>
-
             </TabsContent>
           </Tabs>
         </DialogContent>
