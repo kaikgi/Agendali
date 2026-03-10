@@ -318,8 +318,8 @@ export function ProfessionalPortalDialog({
 
                 <p className="text-xs text-muted-foreground">
                   {hasExistingPassword
-                    ? 'Preencha apenas se quiser alterar a senha atual. Mínimo 4 caracteres.'
-                    : 'Mínimo de 4 caracteres. O profissional usará esta senha para acessar o portal.'}
+                    ? 'Preencha apenas se quiser alterar a senha atual.'
+                    : 'O profissional usará esta senha para acessar o portal.'}
                 </p>
               </>
             )}

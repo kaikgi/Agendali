@@ -621,7 +621,7 @@ export default function PublicBooking() {
             </TabsList>
 
             <TabsContent value="login" className="space-y-4 mt-4">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={(e) => { setAuthError(null); handleLogin(e); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
@@ -635,21 +635,22 @@ export default function PublicBooking() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
-                  <Input
+                  <PasswordInput
                     id="login-password"
-                    type="password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                   />
                 </div>
+                {authError && authTab === 'login' && (
+                  <p className="text-sm text-destructive">{authError}</p>
+                )}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
+                  {isAuthLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
-
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-4 mt-4">
@@ -686,22 +687,23 @@ export default function PublicBooking() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha *</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
-                    minLength={6}
                   />
+                  {signupPassword && <PasswordStrength password={signupPassword} />}
                 </div>
+                {authError && authTab === 'signup' && (
+                  <p className="text-sm text-destructive">{authError}</p>
+                )}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar conta e agendar
+                  {isAuthLoading ? 'Criando conta...' : 'Criar conta e agendar'}
                 </Button>
               </form>
-
             </TabsContent>
           </Tabs>
         </DialogContent>

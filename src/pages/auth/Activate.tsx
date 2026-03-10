@@ -12,8 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
 
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~';]).{8,}$/;
+
 const activateSchema = z.object({
-  password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres'),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .regex(strongPasswordRegex, 'Senha deve conter maiúscula, minúscula, número e caractere especial'),
   confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
