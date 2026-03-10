@@ -210,7 +210,7 @@ async function buildEmailPayload(
 // ─── Build HTML ──────────────────────────────────────────────
 function buildHtml(cfg: TypeConfig, p: EmailPayload): string {
   const baseUrl = `https://www.agendali.online/${p.establishment_slug}`;
-  const logoUrl = "https://www.agendali.online/logo-192.png";
+  const logoUrl = "https://www.agendali.online/logo-512.png";
   const { accent, bg } = cfg;
 
   return `<!DOCTYPE html>

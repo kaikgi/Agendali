@@ -60,7 +60,7 @@ function getReminderEmailHtml(appointment: {
   reminder_hours: number;
 }): string {
   const baseUrl = `https://www.agendali.online/${appointment.establishment_slug}`;
-  const logoUrl = 'https://www.agendali.online/logo-192.png';
+  const logoUrl = 'https://www.agendali.online/logo-512.png';
   const hoursText = appointment.reminder_hours === 1 ? '1 hora' : `${appointment.reminder_hours} horas`;
   
   return `<!DOCTYPE html>
