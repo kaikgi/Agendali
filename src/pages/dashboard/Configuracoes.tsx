@@ -257,7 +257,7 @@ export default function Configuracoes() {
     const validation = validateSlug(normalizedSlug);
     if (!validation.valid) {
       toast({ title: validation.error || 'Slug inválido', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     // Check if slug changed and is not available
