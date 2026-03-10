@@ -128,16 +128,16 @@ serve(async (req) => {
             from: `Agendali <${Deno.env.get("RESEND_FROM") || "contato@agendali.online"}>`,
             to: [message.email],
             subject: `Re: Sua mensagem para o Agendali`,
-            html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;">
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px 0;">
 <table width="100%" style="max-width:560px;">
-  <tr><td style="text-align:center;padding-bottom:24px;">
-    <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
-    <p style="margin:10px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
+  <tr><td style="text-align:center;padding-bottom:32px;">
+    <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
+    <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
   </td></tr>
   <tr><td>
-    <p style="margin:0 0 16px;font-size:16px;color:#374151;">Olá, <strong style="color:#111827;">${message.name}</strong>!</p>
+    <p style="margin:0 0 6px;font-size:16px;color:#374151;">Olá, <strong style="color:#111827;">${message.name}</strong>!</p>
     <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#374151;">Recebemos sua mensagem e aqui está nossa resposta:</p>
   </td></tr>
   <tr><td style="padding-bottom:16px;">
@@ -160,7 +160,8 @@ serve(async (req) => {
     <p style="margin:0;font-size:14px;color:#374151;">Atenciosamente,<br/><strong>Equipe Agendali</strong></p>
   </td></tr>
   <tr><td style="padding-top:24px;border-top:1px solid #e5e7eb;">
-    <p style="margin:24px 0 0;text-align:center;font-size:12px;"><a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">agendali.online</a></p>
+    <p style="margin:0;text-align:center;font-size:12px;color:#9ca3af;line-height:1.6;">Enviado pelo <a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">Agendali</a></p>
+    <p style="margin:8px 0 0;text-align:center;font-size:12px;"><a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">agendali.online</a></p>
   </td></tr>
 </table>
 </td></tr></table></body></html>`,
