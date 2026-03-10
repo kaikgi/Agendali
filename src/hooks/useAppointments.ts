@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { sendCancellationEmail } from '@/lib/emailNotifications';
 
 type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled';
 
@@ -103,22 +102,30 @@ export function useUpdateAppointmentStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
+    mutationFn: async ({ id, status, oldStatus }: { id: string; status: AppointmentStatus; oldStatus?: string }) => {
       const { error } = await supabase
         .from('appointments')
-        .update({ status })
+        .update({ 
+          status,
+          ...(status === 'completed' ? { completed_at: new Date().toISOString(), completed_by: 'owner' } : {}),
+        })
         .eq('id', id);
       if (error) throw error;
       
-      // Send cancellation email if status is canceled
-      if (status === 'canceled') {
-        sendCancellationEmail(id).catch((emailErr) => {
-          console.warn('Failed to send cancellation email:', emailErr);
-        });
-      }
+      // Create email notification job via server-side RPC (fire and forget)
+      (supabase.rpc as any)('notify_appointment_status_change', {
+        p_appointment_id: id,
+        p_new_status: status,
+        p_old_status: oldStatus ?? null,
+      }).then(({ data, error: rpcErr }: any) => {
+        if (rpcErr) {
+          console.warn('Failed to create email notification job:', rpcErr.message);
+        } else {
+          console.log('Email notification job result:', data);
+        }
+      });
     },
     onSuccess: () => {
-      // Invalidate all appointment-related queries to ensure UI updates everywhere
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments-month'] });

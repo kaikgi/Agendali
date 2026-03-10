@@ -79,6 +79,20 @@ const TYPE_MAP: Record<string, TypeConfig> = {
     subject: (n) => `🔄 Agendamento reagendado - ${n}`,
     showCTA: false, showWarning: false, showFooterNote: true,
   },
+  appointment_completed: {
+    icon: "🎉", title: "Atendimento Concluído",
+    accent: "#7c3aed", bg: "#f5f3ff",
+    message: (n) => `Seu atendimento em <strong>${n}</strong> foi concluído com sucesso. Obrigado pela preferência!`,
+    subject: (n) => `🎉 Atendimento concluído - ${n}`,
+    showCTA: true, showWarning: false, showFooterNote: false,
+  },
+  appointment_no_show: {
+    icon: "📋", title: "Registro de Ausência",
+    accent: "#6b7280", bg: "#f9fafb",
+    message: (n) => `Identificamos que você não compareceu ao seu agendamento em <strong>${n}</strong>. Caso tenha tido algum imprevisto, entre em contato conosco. Estamos à disposição para reagendar.`,
+    subject: (n) => `📋 Registro de ausência - ${n}`,
+    showCTA: true, showWarning: false, showFooterNote: false,
+  },
 };
 
 function isReminderType(t: string): boolean {
