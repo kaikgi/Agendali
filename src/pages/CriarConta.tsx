@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock, Ban } from 'lucide-react';
 import { signupSchema, SignupFormData } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,12 +16,13 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getPublicBaseUrl } from '@/lib/publicUrl';
 
-interface InvitationData {
+interface TokenValidation {
   valid: boolean;
-  error?: string;
-  invitation_id?: string;
-  email?: string;
-  plan_code?: string;
+  reason: string;
+  email: string | null;
+  plan_id: string | null;
+  order_id: string | null;
+  expires_at: string | null;
 }
 
 export default function CriarConta() {
@@ -31,7 +32,7 @@ export default function CriarConta() {
   const { toast } = useToast();
 
   const [validating, setValidating] = useState(true);
-  const [invitation, setInvitation] = useState<InvitationData | null>(null);
+  const [tokenData, setTokenData] = useState<TokenValidation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -53,24 +54,29 @@ export default function CriarConta() {
   useEffect(() => {
     if (!token) {
       setValidating(false);
-      setInvitation({ valid: false, error: 'Nenhum token de convite fornecido. Você precisa acessar o link enviado por email.' });
+      setTokenData({ valid: false, reason: 'not_found', email: null, plan_id: null, order_id: null, expires_at: null });
       return;
     }
 
     const validate = async () => {
-      const { data, error } = await supabase.rpc('validate_signup_invitation', {
-        p_token: token,
-      });
+      try {
+        const { data, error } = await supabase.rpc('check_signup_token', { p_token: token });
 
-      if (error) {
-        console.error('Error validating invitation:', error);
-        setInvitation({ valid: false, error: 'Erro ao validar o convite. Tente novamente.' });
-      } else {
-        const result = data as unknown as InvitationData;
-        setInvitation(result);
-        if (result.valid && result.email) {
-          setValue('email', result.email);
+        if (error) {
+          console.error('Error validating token:', error);
+          setTokenData({ valid: false, reason: 'error', email: null, plan_id: null, order_id: null, expires_at: null });
+        } else if (data && data.length > 0) {
+          const result = data[0] as TokenValidation;
+          setTokenData(result);
+          if (result.valid && result.email) {
+            setValue('email', result.email);
+          }
+        } else {
+          setTokenData({ valid: false, reason: 'not_found', email: null, plan_id: null, order_id: null, expires_at: null });
         }
+      } catch (err) {
+        console.error('Token validation error:', err);
+        setTokenData({ valid: false, reason: 'error', email: null, plan_id: null, order_id: null, expires_at: null });
       }
       setValidating(false);
     };
@@ -79,7 +85,7 @@ export default function CriarConta() {
   }, [token, setValue]);
 
   const onSubmit = async (data: SignupFormData) => {
-    if (!token || !invitation?.valid) return;
+    if (!token || !tokenData?.valid || !tokenData.email) return;
 
     setAuthError(null);
     setIsLoading(true);
@@ -87,7 +93,7 @@ export default function CriarConta() {
     try {
       // 1. Create auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email!,
+        email: tokenData.email,
         password: data.password,
         options: {
           emailRedirectTo: `${getPublicBaseUrl()}/dashboard`,
@@ -104,12 +110,10 @@ export default function CriarConta() {
       }
 
       const userId = authData.user.id;
-      const planCode = invitation.plan_code || 'solo';
+      const planCode = tokenData.plan_id || 'solo';
 
       // 2. Update phone
-      await supabase.from('profiles').update({
-        phone: data.phone,
-      }).eq('id', userId);
+      await supabase.from('profiles').update({ phone: data.phone }).eq('id', userId);
 
       // 3. Create establishment
       const { data: establishment, error: estError } = await supabase
@@ -154,14 +158,14 @@ export default function CriarConta() {
       });
       await supabase.from('business_hours').insert(defaultHours);
 
-      // 6. Consume invitation token
-      await supabase.rpc('consume_signup_invitation', { p_token: token });
+      // 6. Consume token
+      await supabase.rpc('consume_signup_token', { p_token: token });
 
       // 7. Mark allowed signup as used
       await supabase
         .from('allowed_establishment_signups')
         .update({ used: true })
-        .eq('email', invitation.email!.toLowerCase().trim());
+        .eq('email', tokenData.email.toLowerCase().trim());
 
       setIsLoading(false);
       toast({
@@ -194,32 +198,56 @@ export default function CriarConta() {
     );
   }
 
-  // Invalid token
-  if (!invitation?.valid) {
-    const isExpired = invitation?.error?.includes('expirou');
-    const isUsed = invitation?.error?.includes('utilizado');
+  // Invalid token states
+  if (!tokenData?.valid) {
+    const reason = tokenData?.reason || 'not_found';
+
+    const stateConfig: Record<string, { icon: React.ReactNode; title: string; description: string; showLogin: boolean }> = {
+      used: {
+        icon: <CheckCircle2 className="h-12 w-12 text-muted-foreground mx-auto" />,
+        title: 'Convite já utilizado',
+        description: 'Este link já foi utilizado para criar uma conta. Faça login para acessar.',
+        showLogin: true,
+      },
+      expired: {
+        icon: <Clock className="h-12 w-12 text-muted-foreground mx-auto" />,
+        title: 'Convite expirado',
+        description: 'Este link expirou. Entre em contato com o suporte para solicitar um novo.',
+        showLogin: false,
+      },
+      cancelled: {
+        icon: <Ban className="h-12 w-12 text-destructive mx-auto" />,
+        title: 'Convite cancelado',
+        description: 'Este convite foi cancelado. Entre em contato com o suporte.',
+        showLogin: false,
+      },
+      not_found: {
+        icon: <XCircle className="h-12 w-12 text-destructive mx-auto" />,
+        title: 'Convite inválido',
+        description: 'Nenhum token de convite fornecido ou o link está incorreto. Verifique o email recebido.',
+        showLogin: false,
+      },
+      error: {
+        icon: <AlertCircle className="h-12 w-12 text-destructive mx-auto" />,
+        title: 'Erro na validação',
+        description: 'Ocorreu um erro ao validar o convite. Tente novamente.',
+        showLogin: false,
+      },
+    };
+
+    const config = stateConfig[reason] || stateConfig.not_found;
 
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6 text-center">
           <Logo />
           <div className="mt-6 space-y-4">
-            {isUsed ? (
-              <CheckCircle2 className="h-12 w-12 text-muted-foreground mx-auto" />
-            ) : isExpired ? (
-              <Clock className="h-12 w-12 text-muted-foreground mx-auto" />
-            ) : (
-              <XCircle className="h-12 w-12 text-destructive mx-auto" />
-            )}
-            <h1 className="text-xl font-bold">
-              {isUsed ? 'Convite já utilizado' : isExpired ? 'Convite expirado' : 'Convite inválido'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {invitation?.error || 'Não foi possível validar o convite.'}
-            </p>
+            {config.icon}
+            <h1 className="text-xl font-bold">{config.title}</h1>
+            <p className="text-sm text-muted-foreground">{config.description}</p>
           </div>
           <div className="space-y-2">
-            {isUsed && (
+            {config.showLogin && (
               <Button asChild className="w-full">
                 <Link to="/login">Fazer login</Link>
               </Button>
@@ -241,19 +269,15 @@ export default function CriarConta() {
           <Link to="/" className="inline-block">
             <Logo />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight">
-            Criar sua conta
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Complete o cadastro para acessar o Agendali
-          </p>
+          <h1 className="mt-6 text-2xl font-bold tracking-tight">Criar sua conta</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Complete o cadastro para acessar o Agendali</p>
         </div>
 
         <Alert variant="default" className="border-primary/20 bg-primary/5">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm">
-            Pagamento confirmado! Plano <strong className="capitalize">{invitation.plan_code}</strong> ativo para{' '}
-            <strong>{invitation.email}</strong>
+            Pagamento confirmado! Plano <strong className="capitalize">{tokenData.plan_id || 'solo'}</strong> ativo para{' '}
+            <strong>{tokenData.email}</strong>
           </AlertDescription>
         </Alert>
 
@@ -282,7 +306,7 @@ export default function CriarConta() {
             <Input
               id="email"
               type="email"
-              value={invitation.email || ''}
+              value={tokenData.email || ''}
               disabled
               className="bg-muted cursor-not-allowed"
             />
