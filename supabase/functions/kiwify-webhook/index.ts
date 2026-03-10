@@ -216,27 +216,10 @@ serve(async (req) => {
       )
     }
 
-    // Look up product in kiwify_products table
+    // Look up product/plan mapping
     const productMatch = await findAgendaliProduct(supabase, productId, productName)
-
-    if (!productMatch) {
-      console.log(`[KIWIFY] ⚠️ Product NOT recognized as Agendali. ProductID: ${productId}, Name: ${productName}. IGNORING.`)
-      await supabase
-        .from('billing_webhook_events')
-        .update({
-          processed_at: new Date().toISOString(),
-          ignored: true,
-          ignore_reason: 'NOT_AGENDALI_PRODUCT',
-        })
-        .eq('id', insertedEvent.id)
-      return new Response(
-        JSON.stringify({ ok: true, ignored: true, reason: 'NOT_AGENDALI_PRODUCT' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     const planCode = productMatch.plan_code
-    console.log(`[KIWIFY] ✅ Agendali product matched: plan=${planCode}`)
+    console.log(`[KIWIFY] ✅ Product resolved: plan=${planCode} (product="${productName}", id=${productId})`)
 
     // Process event
     let processingError: string | null = null
@@ -271,14 +254,18 @@ serve(async (req) => {
 })
 
 /**
- * Find matching Agendali product by product_id or product_name
+ * Find matching Agendali product/plan by product_id or product_name.
+ * 
+ * This webhook endpoint is Agendali-specific, so ALL products received here
+ * are assumed to be Agendali products. We try to match a specific plan,
+ * and default to 'solo' if no match is found.
  */
 async function findAgendaliProduct(
   supabase: SupabaseClient,
   productId: string | null,
   productName: string,
-): Promise<{ plan_code: string } | null> {
-  // Try by kiwify_product_id first
+): Promise<{ plan_code: string }> {
+  // 1. Try exact match by kiwify_product_id
   if (productId) {
     const { data } = await supabase
       .from('kiwify_products')
@@ -287,10 +274,13 @@ async function findAgendaliProduct(
       .eq('active', true)
       .limit(1)
       .single()
-    if (data) return data
+    if (data) {
+      console.log(`[KIWIFY] Product matched by ID: ${productId} -> plan=${data.plan_code}`)
+      return data
+    }
   }
 
-  // Try by product_name (partial match)
+  // 2. Try matching by product_name against registered products
   if (productName) {
     const nameLower = productName.toLowerCase()
     const { data: allProducts } = await supabase
@@ -299,29 +289,28 @@ async function findAgendaliProduct(
       .eq('active', true)
 
     if (allProducts) {
-      // Check if product name contains "agendali"
-      if (!nameLower.includes('agendali')) {
-        return null // Not an Agendali product
-      }
-
-      // Try to match specific plan by name
       for (const p of allProducts) {
         if (p.product_name && nameLower.includes(p.product_name.toLowerCase())) {
+          console.log(`[KIWIFY] Product matched by name: "${productName}" -> plan=${p.plan_code}`)
           return { plan_code: p.plan_code }
         }
       }
+    }
 
-      // If name contains "agendali" but no specific match, detect plan from name
-      if (nameLower.includes('pro') || nameLower.includes('profissional')) return { plan_code: 'pro' }
-      if (nameLower.includes('studio')) return { plan_code: 'studio' }
-      if (nameLower.includes('solo') || nameLower.includes('básico') || nameLower.includes('basic') || nameLower.includes('basico')) return { plan_code: 'solo' }
-
-      // Default to solo if it says "agendali" but no specific plan keyword
-      return { plan_code: 'solo' }
+    // 3. Try detecting plan from keywords in product name
+    if (nameLower.includes('pro') || nameLower.includes('profissional')) {
+      console.log(`[KIWIFY] Product matched by keyword "pro" in name: "${productName}"`)
+      return { plan_code: 'pro' }
+    }
+    if (nameLower.includes('studio')) {
+      console.log(`[KIWIFY] Product matched by keyword "studio" in name: "${productName}"`)
+      return { plan_code: 'studio' }
     }
   }
 
-  return null
+  // 4. Default: this webhook is Agendali-only, so default to 'solo'
+  console.log(`[KIWIFY] No specific plan match for product "${productName}" (ID: ${productId}). Defaulting to 'solo'.`)
+  return { plan_code: 'solo' }
 }
 
 async function processKiwifyEvent(
