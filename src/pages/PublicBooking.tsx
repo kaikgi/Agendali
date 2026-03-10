@@ -300,6 +300,8 @@ export default function PublicBooking() {
         canonicalPhone,
       });
 
+      // RPC now handles: appointment creation, customer_email/phone persistence,
+      // customer_reminder_hours, AND email job creation — all atomically in the DB
       const { data, error } = await supabase.rpc('public_create_appointment', {
         p_slug: slug,
         p_service_id: selectedService.id,
@@ -311,61 +313,25 @@ export default function PublicBooking() {
         p_customer_email: canonicalEmail || null,
         p_customer_notes: customerData.notes || null,
         p_customer_user_id: canonicalUserId,
+        p_customer_reminder_hours: customerData.reminderHours ?? null,
       });
 
       if (error) {
-        console.log('RPC error:', error);
+        console.error('[booking] RPC error:', JSON.stringify(error));
         throw new Error(error.message || 'Erro ao criar agendamento');
       }
 
       const result = data?.[0];
+      console.log('[booking] Appointment created successfully:', {
+        appointment_id: result?.appointment_id,
+        customer_email: canonicalEmail,
+        customer_name: canonicalName,
+        reminder_hours: customerData.reminderHours,
+      });
+
       if (result?.manage_token) {
         setManageToken(result.manage_token);
       }
-
-      // Save reminder preference on the appointment
-      if (result?.appointment_id && customerData.reminderHours != null) {
-        const { error: updateErr } = await supabase
-          .from('appointments')
-          .update({ customer_reminder_hours: customerData.reminderHours })
-          .eq('id', result.appointment_id);
-        if (updateErr) console.warn('[booking] Failed to save reminder preference:', updateErr);
-        else console.log('[booking] Reminder preference saved:', customerData.reminderHours);
-      }
-
-      // Create email jobs using canonical email
-      if (result?.appointment_id && canonicalEmail) {
-        console.log('[booking] Creating email jobs...', {
-          appointment_id: result.appointment_id,
-          establishment_id: establishment.id,
-          customer_email: canonicalEmail,
-          customer_name: canonicalName,
-          appointment_start: startAt.toISOString(),
-          reminder_hours: customerData.reminderHours ?? null,
-        });
-
-        const { data: jobResult, error: jobErr } = await supabase.rpc('create_appointment_email_jobs', {
-          p_appointment_id: result.appointment_id,
-          p_establishment_id: establishment.id,
-          p_customer_email: canonicalEmail,
-          p_customer_name: canonicalName,
-          p_appointment_start: startAt.toISOString(),
-          p_customer_reminder_hours: customerData.reminderHours ?? null,
-        });
-
-        if (jobErr) {
-          console.error('[booking] FAILED to create email jobs:', JSON.stringify(jobErr));
-        } else if (jobResult && typeof jobResult === 'object' && (jobResult as Record<string, unknown>).ok === false) {
-          console.error('[booking] Email job RPC returned failure:', JSON.stringify(jobResult));
-        } else {
-          console.log('[booking] Email jobs created successfully:', JSON.stringify(jobResult));
-        }
-      } else if (result?.appointment_id && !canonicalEmail) {
-        console.log('[booking] No customer email available, skipping email job creation');
-      }
-
-      // Email is now handled entirely via the queue (create_appointment_email_jobs)
-      // No need for the legacy sendConfirmationEmail edge function call
 
       setIsSuccess(true);
     } catch (error) {
