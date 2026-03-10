@@ -265,6 +265,17 @@ export default function PublicBooking() {
         setManageToken(result.manage_token);
       }
 
+      // Save reminder preference on the appointment
+      if (result?.appointment_id && customerData.reminderHours != null) {
+        supabase
+          .from('appointments')
+          .update({ customer_reminder_hours: customerData.reminderHours })
+          .eq('id', result.appointment_id)
+          .then(({ error: updateErr }) => {
+            if (updateErr) console.warn('Failed to save reminder preference:', updateErr);
+          });
+      }
+
       // Send confirmation email (fire and forget - don't block success)
       if (result?.appointment_id) {
         sendConfirmationEmail(result.appointment_id).catch((emailErr) => {
@@ -279,6 +290,7 @@ export default function PublicBooking() {
             p_customer_email: customerData.email,
             p_customer_name: customerData.name,
             p_appointment_start: startAt.toISOString(),
+            p_customer_reminder_hours: customerData.reminderHours ?? null,
           }).then(({ error: jobErr }) => {
             if (jobErr) console.warn('Failed to create email jobs:', jobErr);
             else console.log('Email jobs created for appointment', result.appointment_id);
