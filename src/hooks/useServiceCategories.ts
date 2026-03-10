@@ -124,10 +124,10 @@ export function useServiceCategories(establishmentId: string | undefined) {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       // Move services to "no category" first
-      const { error: unlinkError } = await supabase
-        .from('services')
-        .update({ category_id: null } as any)
-        .eq('category_id' as any, id);
+      const { error: unlinkError } = await (supabase
+        .from('services') as any)
+        .update({ category_id: null })
+        .eq('category_id', id);
       if (unlinkError) throw unlinkError;
 
       const { error } = await supabase
