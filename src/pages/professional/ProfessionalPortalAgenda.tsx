@@ -46,9 +46,7 @@ import { ProfessionalSummaryCards } from '@/components/professional/Professional
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CompletionPromptDialog } from '@/components/completion/CompletionPromptDialog';
+import { useQueryClient } from '@tanstack/react-query';
 
 const statusColors: Record<string, string> = {
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
