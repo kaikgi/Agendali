@@ -129,9 +129,9 @@ export default function Servicos() {
 
   const handleSaveCategory = async () => {
     const trimmed = categoryName.trim();
-    if (!trimmed) { setCategoryError('Nome é obrigatório'); return; }
-    if (trimmed.length < 2) { setCategoryError('Mínimo 2 caracteres'); return; }
-    if (trimmed.length > 80) { setCategoryError('Máximo 80 caracteres'); return; }
+    if (!trimmed) { setCategoryError('Nome é obrigatório'); throw new Error('validation'); }
+    if (trimmed.length < 2) { setCategoryError('Mínimo 2 caracteres'); throw new Error('validation'); }
+    if (trimmed.length > 80) { setCategoryError('Máximo 80 caracteres'); throw new Error('validation'); }
 
     try {
       if (editingCategoryId) {
@@ -142,8 +142,9 @@ export default function Servicos() {
       setCategoryDialogOpen(false);
       setCategoryName('');
       setCategoryError('');
-    } catch {
-      // Error handled by mutation's onError
+    } catch (err) {
+      // Re-throw so ActionButton shows error state
+      throw err;
     }
   };
 
@@ -211,21 +212,21 @@ export default function Servicos() {
 
   const handleSaveService = async () => {
     const trimmedName = serviceForm.name.trim();
-    if (!trimmedName) { toast({ title: 'Nome é obrigatório', variant: 'destructive' }); return; }
+    if (!trimmedName) { toast({ title: 'Nome é obrigatório', variant: 'destructive' }); throw new Error('validation'); }
 
     const durationNum = parseInt(serviceForm.duration_minutes);
     if (isNaN(durationNum) || durationNum < 5) {
-      toast({ title: 'Duração mínima: 5 minutos', variant: 'destructive' }); return;
+      toast({ title: 'Duração mínima: 5 minutos', variant: 'destructive' }); throw new Error('validation');
     }
 
     let priceNum: number | null = null;
     if (serviceForm.price.trim()) {
       const parsed = parseFloat(serviceForm.price.replace(',', '.'));
-      if (isNaN(parsed) || parsed < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); return; }
+      if (isNaN(parsed) || parsed < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); throw new Error('validation'); }
       priceNum = Math.round(parsed * 100);
     }
 
-    if (!establishment?.id) return;
+    if (!establishment?.id) throw new Error('missing establishment');
     const categoryId = serviceForm.category_id || null;
 
     try {
