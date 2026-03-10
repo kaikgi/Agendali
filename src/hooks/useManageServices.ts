@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Service {
+export interface Service {
   id: string;
   name: string;
   description: string | null;
@@ -9,6 +9,8 @@ interface Service {
   price_cents: number | null;
   active: boolean;
   created_at: string;
+  category: string | null;
+  sort_order: number;
 }
 
 interface CreateServiceData {
@@ -17,6 +19,8 @@ interface CreateServiceData {
   description?: string;
   duration_minutes: number;
   price_cents?: number;
+  category?: string;
+  sort_order?: number;
 }
 
 export function useManageServices(establishmentId: string | undefined) {
@@ -29,6 +33,7 @@ export function useManageServices(establishmentId: string | undefined) {
         .from('services')
         .select('*')
         .eq('establishment_id', establishmentId)
+        .order('sort_order')
         .order('name');
       if (error) throw error;
       return data as Service[];
@@ -60,6 +65,23 @@ export function useManageServices(establishmentId: string | undefined) {
     },
   });
 
+  const bulkUpdateOrderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number; category?: string | null }[]) => {
+      // Update each service's sort_order (and optionally category)
+      const promises = updates.map(({ id, sort_order, category }) => {
+        const updateData: Record<string, unknown> = { sort_order };
+        if (category !== undefined) updateData.category = category;
+        return supabase.from('services').update(updateData).eq('id', id);
+      });
+      const results = await Promise.all(promises);
+      const firstError = results.find(r => r.error);
+      if (firstError?.error) throw firstError.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage-services', establishmentId] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -80,9 +102,11 @@ export function useManageServices(establishmentId: string | undefined) {
     refetch: listQuery.refetch,
     create: createMutation.mutateAsync,
     update: updateMutation.mutateAsync,
+    bulkUpdateOrder: bulkUpdateOrderMutation.mutateAsync,
     delete: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isSavingOrder: bulkUpdateOrderMutation.isPending,
   };
 }
