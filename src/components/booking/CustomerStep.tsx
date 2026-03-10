@@ -193,8 +193,8 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
                   </DialogDescription>
                 </DialogHeader>
                 
-                <ScrollArea className="max-h-[50vh] pr-4">
-                  <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+                <ScrollArea className="max-h-[60vh] pr-4">
+                  <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed space-y-1">
                     {policyText}
                   </div>
                 </ScrollArea>
