@@ -222,7 +222,7 @@ export default function Servicos() {
     let priceNum: number | null = null;
     if (serviceForm.price.trim()) {
       const parsed = parseFloat(serviceForm.price.replace(',', '.'));
-      if (isNaN(parsed) || parsed < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); return; }
+      if (isNaN(parsed) || parsed < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); throw new Error('validation'); }
       priceNum = Math.round(parsed * 100);
     }
 
