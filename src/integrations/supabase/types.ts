@@ -641,6 +641,38 @@ export type Database = {
           },
         ]
       }
+      professional_portal_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          professional_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          professional_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          professional_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_portal_sessions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_services: {
         Row: {
           professional_id: string
@@ -1158,10 +1190,22 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_professional_appointments: {
+        Args: { p_end_date: string; p_start_date: string; p_token: string }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
       is_master_admin: { Args: never; Returns: boolean }
+      professional_portal_login: {
+        Args: {
+          p_establishment_slug: string
+          p_password: string
+          p_professional_slug: string
+        }
+        Returns: Json
+      }
       public_create_appointment: {
         Args: {
           p_customer_email?: string
@@ -1189,7 +1233,15 @@ export type Database = {
         }
         Returns: Json
       }
+      set_professional_portal_password: {
+        Args: { p_password: string; p_professional_id: string }
+        Returns: Json
+      }
       slugify: { Args: { input: string }; Returns: string }
+      validate_professional_session: {
+        Args: { p_token: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
