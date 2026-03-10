@@ -187,17 +187,39 @@ export default function PublicBooking() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
+
+    // Client-side validations
+    if (!signupName.trim()) {
+      setAuthError('Nome é obrigatório.');
+      return;
+    }
+    const phoneDigits = signupPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setAuthError('Telefone deve ter DDD + 8 ou 9 dígitos.');
+      return;
+    }
+    if (!signupEmail.trim()) {
+      setAuthError('Email é obrigatório.');
+      return;
+    }
+    if (!isPasswordStrong(signupPassword)) {
+      setAuthError('Senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres).');
+      return;
+    }
+
     setIsAuthLoading(true);
     
     try {
+      // 1. Create user
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
           emailRedirectTo: buildPublicUrl(`/${slug}`),
           data: {
-            full_name: signupName,
-            phone: signupPhone,
+            full_name: signupName.trim(),
+            phone: phoneDigits,
             account_type: 'customer',
           },
         },
@@ -205,19 +227,37 @@ export default function PublicBooking() {
       
       if (error) throw error;
       
-      // Profile is auto-created by database trigger (handle_new_user)
+      // 2. If no session returned (email confirmation required), try auto-login
+      if (!data.session) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: signupEmail,
+          password: signupPassword,
+        });
+        if (signInError) {
+          // Email confirmation might be required
+          setShowLoginModal(false);
+          toast({
+            title: 'Conta criada!',
+            description: 'Verifique seu email para confirmar a conta e depois volte para agendar.',
+          });
+          return;
+        }
+      }
       
+      // Profile is auto-created by database trigger (handle_new_user)
       setShowLoginModal(false);
+      setAuthError(null);
       toast({
         title: 'Conta criada',
-        description: 'Sua conta foi criada com sucesso.',
+        description: 'Sua conta foi criada com sucesso. Continue para agendar.',
       });
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro no cadastro',
-        description: error instanceof Error ? error.message : 'Não foi possível criar a conta.',
-      });
+      const msg = error instanceof Error ? error.message : 'Não foi possível criar a conta.';
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
+        setAuthError('Este email já possui uma conta. Faça login na aba "Entrar".');
+      } else {
+        setAuthError(msg);
+      }
     } finally {
       setIsAuthLoading(false);
     }
