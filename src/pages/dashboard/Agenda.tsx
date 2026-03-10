@@ -501,7 +501,7 @@ export default function Agenda() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex flex-wrap gap-2">
-              {Object.entries(statusLabels).map(([key, label]) => (
+              {legendStatuses.map(({ key, label }) => (
                 <Badge key={key} variant="outline" className={cn("text-xs", statusColors[key])}>
                   {label}
                 </Badge>
