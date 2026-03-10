@@ -216,27 +216,10 @@ serve(async (req) => {
       )
     }
 
-    // Look up product in kiwify_products table
+    // Look up product/plan mapping
     const productMatch = await findAgendaliProduct(supabase, productId, productName)
-
-    if (!productMatch) {
-      console.log(`[KIWIFY] ⚠️ Product NOT recognized as Agendali. ProductID: ${productId}, Name: ${productName}. IGNORING.`)
-      await supabase
-        .from('billing_webhook_events')
-        .update({
-          processed_at: new Date().toISOString(),
-          ignored: true,
-          ignore_reason: 'NOT_AGENDALI_PRODUCT',
-        })
-        .eq('id', insertedEvent.id)
-      return new Response(
-        JSON.stringify({ ok: true, ignored: true, reason: 'NOT_AGENDALI_PRODUCT' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     const planCode = productMatch.plan_code
-    console.log(`[KIWIFY] ✅ Agendali product matched: plan=${planCode}`)
+    console.log(`[KIWIFY] ✅ Product resolved: plan=${planCode} (product="${productName}", id=${productId})`)
 
     // Process event
     let processingError: string | null = null
