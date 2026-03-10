@@ -249,9 +249,9 @@ export default function CriarConta() {
           </p>
         </div>
 
-        <Alert variant="default" className="border-green-200 bg-green-50">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-sm text-green-800">
+        <Alert variant="default" className="border-primary/20 bg-primary/5">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
             Pagamento confirmado! Plano <strong className="capitalize">{invitation.plan_code}</strong> ativo para{' '}
             <strong>{invitation.email}</strong>
           </AlertDescription>
