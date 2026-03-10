@@ -87,14 +87,23 @@ export function ProfessionalPortalDialog({
   };
 
   const handleGeneratePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let generated = '';
-    for (let i = 0; i < 8; i++) {
-      generated += chars.charAt(Math.floor(Math.random() * chars.length));
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const special = '!@#$%&*';
+    const all = upper + lower + digits + special;
+    // Guarantee at least one of each
+    let generated = upper[Math.floor(Math.random() * upper.length)]
+      + lower[Math.floor(Math.random() * lower.length)]
+      + digits[Math.floor(Math.random() * digits.length)]
+      + special[Math.floor(Math.random() * special.length)];
+    for (let i = 4; i < 10; i++) {
+      generated += all[Math.floor(Math.random() * all.length)];
     }
+    // Shuffle
+    generated = generated.split('').sort(() => Math.random() - 0.5).join('');
     setPassword(generated);
     setConfirmPassword(generated);
-    setShowPassword(true);
     setWantsChangePassword(true);
   };
 
