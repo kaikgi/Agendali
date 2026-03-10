@@ -895,6 +895,7 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          category: string | null
           created_at: string
           description: string | null
           duration_minutes: number
@@ -902,9 +903,11 @@ export type Database = {
           id: string
           name: string
           price_cents: number | null
+          sort_order: number
         }
         Insert: {
           active?: boolean
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_minutes: number
@@ -912,9 +915,11 @@ export type Database = {
           id?: string
           name: string
           price_cents?: number | null
+          sort_order?: number
         }
         Update: {
           active?: boolean
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
@@ -922,6 +927,7 @@ export type Database = {
           id?: string
           name?: string
           price_cents?: number | null
+          sort_order?: number
         }
         Relationships: [
           {

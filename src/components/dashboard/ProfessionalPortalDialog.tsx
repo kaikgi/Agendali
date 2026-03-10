@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Copy, Check, Key } from 'lucide-react';
 import {
   Dialog,
@@ -30,6 +30,15 @@ interface ProfessionalPortalDialogProps {
   onUpdate: (data: { id: string; slug?: string; portal_enabled?: boolean }) => Promise<void>;
 }
 
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export function ProfessionalPortalDialog({
   open,
   onOpenChange,
@@ -46,19 +55,20 @@ export function ProfessionalPortalDialog({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
-  
 
-  // Use the canonical public URL, never window.location.origin
+  // Reset state when dialog opens or professional changes
+  useEffect(() => {
+    if (open) {
+      setSlug(professional.slug || generateSlug(professional.name));
+      setPortalEnabled(professional.portal_enabled ?? false);
+      setPassword('');
+      setConfirmPassword('');
+      setShowPassword(false);
+      setCopied(false);
+    }
+  }, [open, professional.id]);
+
   const portalUrl = getProfessionalPortalUrl(establishmentSlug, slug);
-
-  function generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
 
   const handleCopyUrl = async () => {
     try {
@@ -83,24 +93,21 @@ export function ProfessionalPortalDialog({
   };
 
   const handleSave = async () => {
-    // Validate slug
     if (!slug.trim()) {
       toast({ title: 'O slug é obrigatório', variant: 'destructive' });
-      return;
+      throw new Error('slug required');
     }
 
-    // Validate password if provided
     if (password && password !== confirmPassword) {
       toast({ title: 'As senhas não coincidem', variant: 'destructive' });
-      return;
+      throw new Error('password mismatch');
     }
 
     if (password && password.length < 4) {
       toast({ title: 'A senha deve ter pelo menos 4 caracteres', variant: 'destructive' });
-      return;
+      throw new Error('password too short');
     }
 
-    
     try {
       // Update slug and portal_enabled
       await onUpdate({
@@ -118,7 +125,9 @@ export function ProfessionalPortalDialog({
       }
 
       toast({ title: 'Portal configurado com sucesso!' });
-      onOpenChange(false);
+      
+      // Close after brief delay so user sees success feedback
+      setTimeout(() => onOpenChange(false), 1200);
     } catch (error: any) {
       const msg = error?.message || '';
       const isSlugConflict = error?.code === '23505' || msg.includes('idx_professionals_slug_unique');
@@ -129,6 +138,7 @@ export function ProfessionalPortalDialog({
           : msg,
         variant: 'destructive',
       });
+      throw error; // Re-throw so ActionButton shows error state
     }
   };
 
