@@ -29,8 +29,9 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
         draggable={false}
       />
       {showText && (
-        <span className={cn("font-bold tracking-tight text-foreground", textSizes[size])}>
-          Agendali
+        <span className={cn("font-bold tracking-tight", textSizes[size])}>
+          <span className="text-foreground">Agenda</span>
+          <span className="text-muted-foreground">li</span>
         </span>
       )}
     </div>

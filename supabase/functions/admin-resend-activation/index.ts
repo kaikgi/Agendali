@@ -135,7 +135,7 @@ serve(async (req) => {
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
     <tr><td align="center" style="padding:40px 20px;">
       <table width="100%" style="max-width:560px;">
-        <tr><td style="text-align:center;padding-bottom:32px;"><h1 style="margin:0;font-size:28px;font-weight:700;color:#111827;">Agendali</h1></td></tr>
+        <tr><td style="text-align:center;padding-bottom:32px;"><img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" /><p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p></td></tr>
         <tr><td style="background-color:#f9fafb;border-radius:12px;padding:32px;">
           <h2 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#111827;">🎉 Ative sua conta do Agendali</h2>
           <p style="margin:0 0 12px;font-size:16px;line-height:1.6;color:#374151;">Seu plano <strong>${planNames[signup.plan_id] || signup.plan_id}</strong> está ativo.</p>
