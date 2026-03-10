@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { customerFormSchema, CustomerFormData } from '@/lib/validations/booking';
@@ -45,6 +45,7 @@ interface CustomerStepProps {
 export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const hasAutoFilled = useRef(false);
 
   const {
     register,
@@ -52,7 +53,7 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     setValue,
     watch,
     control,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<CustomerFormData>({
     resolver: zodResolver(
       establishment.require_policy_acceptance
@@ -71,6 +72,23 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       reminderHours: 2,
     },
   });
+
+  // Auto-fill form when defaultValues change (e.g. after login/signup)
+  useEffect(() => {
+    if (!defaultValues) return;
+    // Always update email (readonly field)
+    if (defaultValues.email) {
+      setValue('email', defaultValues.email);
+    }
+    // Only auto-fill name/phone if they haven't been manually edited
+    if (defaultValues.name && !dirtyFields.name) {
+      setValue('name', defaultValues.name);
+    }
+    if (defaultValues.phone && !dirtyFields.phone) {
+      setValue('phone', defaultValues.phone);
+    }
+    hasAutoFilled.current = true;
+  }, [defaultValues?.name, defaultValues?.phone, defaultValues?.email]);
 
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
@@ -161,7 +179,12 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
               type="email"
               placeholder="seu@email.com"
               {...register('email')}
+              readOnly={!!defaultValues?.email}
+              className={defaultValues?.email ? 'bg-muted cursor-not-allowed' : ''}
             />
+            {defaultValues?.email && (
+              <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+            )}
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
         )}
