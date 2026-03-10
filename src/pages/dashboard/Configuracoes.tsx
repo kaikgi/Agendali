@@ -249,7 +249,7 @@ export default function Configuracoes() {
   };
 
   const handleSave = async () => {
-    if (!establishment) return;
+    if (!establishment) throw new Error('validation');
 
     const normalizedSlug = normalizeSlug(slug);
 
