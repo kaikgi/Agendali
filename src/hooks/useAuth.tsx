@@ -18,7 +18,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string }>;
+  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,8 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Check if an email is authorized to create an account.
    * Must exist in allowed_establishment_signups and not be used yet.
+   * Also checks for pending payments (pix_created but not yet approved).
    */
-  const checkEmailAuthorized = async (email: string): Promise<{ authorized: boolean; planId?: string }> => {
+  const checkEmailAuthorized = async (email: string): Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }> => {
     const normalizedEmail = email.toLowerCase().trim();
     
     const { data, error } = await supabase
@@ -75,11 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('used', false)
       .limit(1);
 
-    if (error || !data || data.length === 0) {
-      return { authorized: false };
+    if (!error && data && data.length > 0) {
+      return { authorized: true, planId: data[0].plan_id };
     }
 
-    return { authorized: true, planId: data[0].plan_id };
+    // Check if there's a pending payment (pix_created/boleto but not yet approved)
+    const { data: pendingEvents } = await supabase
+      .from('billing_webhook_events')
+      .select('event_type, payload')
+      .in('event_type', ['pix_created', 'boleto_created', 'waiting_payment'])
+      .order('received_at', { ascending: false })
+      .limit(10);
+
+    if (pendingEvents && pendingEvents.length > 0) {
+      const hasPending = pendingEvents.some((evt) => {
+        const payload = evt.payload as Record<string, unknown> | null;
+        const customer = payload?.Customer as Record<string, unknown> | null;
+        const evtEmail = (customer?.email as string || payload?.customer_email as string || '').toLowerCase().trim();
+        return evtEmail === normalizedEmail;
+      });
+      if (hasPending) {
+        return { authorized: false, pendingPayment: true };
+      }
+    }
+
+    return { authorized: false };
   };
 
   /**
@@ -90,11 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // 1. Check authorization
-    const { authorized, planId } = await checkEmailAuthorized(normalizedEmail);
+    const { authorized, planId, pendingPayment } = await checkEmailAuthorized(normalizedEmail);
     if (!authorized) {
-      return { 
-        error: new Error('Este email não está autorizado. Você precisa assinar um plano antes de criar sua conta.') 
-      };
+      const message = pendingPayment
+        ? 'Seu pagamento ainda não foi confirmado. Assim que a Kiwify confirmar o pagamento, seu email será liberado para criar a conta.'
+        : 'Este email não está autorizado. Você precisa assinar um plano antes de criar sua conta.';
+      return { error: new Error(message) };
     }
 
     // 2. Create auth user

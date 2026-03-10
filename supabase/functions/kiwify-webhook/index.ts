@@ -28,6 +28,8 @@ const IGNORED_EVENTS = new Set([
   'pix_created',
   'boleto_created',
   'waiting_payment',
+  'cart_abandoned',
+  'checkout_started',
 ])
 
 function normalizeEmail(email: string | undefined | null): string | null {
@@ -197,15 +199,19 @@ serve(async (req) => {
       throw insertError
     }
 
-    // ===== PRODUCT FILTER: only process Agendali products =====
+    // ===== EVENT FILTER: ignore non-actionable events =====
     if (IGNORED_EVENTS.has(eventType)) {
-      console.log(`[KIWIFY] Event ${eventType} acknowledged, no action needed`)
+      console.log(`[KIWIFY] Event ${eventType} is non-actionable (payment not confirmed), logging only`)
       await supabase
         .from('billing_webhook_events')
-        .update({ processed_at: new Date().toISOString() })
+        .update({
+          processed_at: new Date().toISOString(),
+          ignored: true,
+          ignore_reason: `NON_ACTIONABLE_EVENT: ${eventType}`,
+        })
         .eq('id', insertedEvent.id)
       return new Response(
-        JSON.stringify({ ok: true, ignored: true, reason: 'IGNORED_EVENT_TYPE' }),
+        JSON.stringify({ ok: true, ignored: true, reason: `NON_ACTIONABLE_EVENT: ${eventType}` }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -336,8 +342,8 @@ async function processKiwifyEvent(
   } else if (CANCELLATION_EVENTS.has(eventType)) {
     status = 'canceled'
   } else {
-    console.log(`[KIWIFY] Unknown event type "${eventType}", treating as active`)
-    status = 'active'
+    console.log(`[KIWIFY] ⚠️ Unknown event type "${eventType}", ignoring (will NOT authorize)`)
+    return // Do NOT process unknown events as active
   }
 
   // Calculate period dates
