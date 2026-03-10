@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import CriarConta from "./pages/CriarConta";
 import ForgotPassword from "./pages/ForgotPassword";
 import Entrar from "./pages/Entrar";
 import ResetPassword from "./pages/ResetPassword";
