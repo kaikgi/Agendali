@@ -69,7 +69,7 @@ export default function Horarios() {
   };
 
   const handleSave = async () => {
-    if (!establishment?.id) return;
+    if (!establishment?.id) throw new Error('missing establishment');
 
     try {
       const toUpsert = localHours.map((h) => ({

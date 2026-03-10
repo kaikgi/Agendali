@@ -152,13 +152,13 @@ export default function Profissionais() {
     const trimmedName = form.name.trim();
     if (!trimmedName) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     const capacityNum = parseInt(form.capacity);
     if (isNaN(capacityNum) || capacityNum < 1) {
       toast({ title: 'Capacidade deve ser pelo menos 1', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     try {
@@ -168,7 +168,7 @@ export default function Profissionais() {
       } else {
         if (!establishment?.id) {
           toast({ title: 'Estabelecimento não encontrado', variant: 'destructive' });
-          return;
+          throw new Error('validation');
         }
         const newProf = await create({
           establishment_id: establishment.id,

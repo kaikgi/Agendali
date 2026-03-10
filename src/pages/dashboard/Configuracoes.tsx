@@ -249,7 +249,7 @@ export default function Configuracoes() {
   };
 
   const handleSave = async () => {
-    if (!establishment) return;
+    if (!establishment) throw new Error('validation');
 
     const normalizedSlug = normalizeSlug(slug);
 
@@ -257,13 +257,13 @@ export default function Configuracoes() {
     const validation = validateSlug(normalizedSlug);
     if (!validation.valid) {
       toast({ title: validation.error || 'Slug inválido', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     // Check if slug changed and is not available
     if (normalizedSlug !== establishment.slug && slugAvailable === false) {
       toast({ title: 'Este link já está em uso', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     
@@ -296,7 +296,7 @@ export default function Configuracoes() {
         } else {
           throw error;
         }
-        return;
+        throw error;
       }
 
       setSlug(normalizedSlug);

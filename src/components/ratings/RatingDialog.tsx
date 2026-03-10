@@ -47,7 +47,7 @@ export function RatingDialog({
         title: 'Selecione uma avaliação',
         description: 'Por favor, escolha de 1 a 5 estrelas.',
       });
-      return;
+      throw new Error('validation');
     }
 
     try {
