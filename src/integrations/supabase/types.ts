@@ -892,10 +892,52 @@ export type Database = {
           },
         ]
       }
+      service_categories: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_categories_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           active: boolean
           category: string | null
+          category_id: string | null
           created_at: string
           description: string | null
           duration_minutes: number
@@ -908,6 +950,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           duration_minutes: number
@@ -920,6 +963,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
@@ -930,6 +974,13 @@ export type Database = {
           sort_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "services_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "services_establishment_id_fkey"
             columns: ["establishment_id"]
