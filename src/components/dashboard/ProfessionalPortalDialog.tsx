@@ -281,32 +281,20 @@ export function ProfessionalPortalDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={hasExistingPassword ? 'Digite a nova senha' : 'Digite uma senha'}
-                      autoFocus={!hasExistingPassword}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <PasswordInput
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={hasExistingPassword ? 'Digite a nova senha' : 'Digite uma senha'}
+                    autoFocus={!hasExistingPassword}
+                  />
+                  {password && <PasswordStrength password={password} />}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirmar senha</Label>
-                  <Input
+                  <PasswordInput
                     id="confirm-password"
-                    type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirme a senha"
