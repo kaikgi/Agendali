@@ -97,7 +97,7 @@ export default function PublicBooking() {
   const { data: professionals = [], isLoading: isLoadingProfessionals } = useProfessionalsByService(
     selectedService?.id
   );
-  const { data: availableSlots = [], isLoading: isLoadingSlots } = useAvailableSlots({
+  const { data: slotResult, isLoading: isLoadingSlots } = useAvailableSlots({
     establishmentId: establishment?.id,
     professionalId: selectedProfessional?.id,
     serviceDurationMinutes: selectedService?.duration_minutes ?? 30,
