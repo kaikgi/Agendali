@@ -38,7 +38,7 @@ export function useProfessionalPortalAuth() {
     queryFn: async () => {
       if (!token) return null;
 
-      const { data, error } = await supabase.rpc('validate_professional_session', {
+      const { data, error } = await (supabase.rpc as any)('validate_professional_session', {
         p_token: token,
       });
 
