@@ -56,7 +56,6 @@ export function ProfessionalPortalDialog({
   const [portalEnabled, setPortalEnabled] = useState(professional.portal_enabled ?? false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [wantsChangePassword, setWantsChangePassword] = useState(false);
 
