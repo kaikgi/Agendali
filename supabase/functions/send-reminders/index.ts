@@ -238,7 +238,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       try {
-        const fromAddress = `${establishment.name} <${RESEND_FROM}>`;
+        const sanitizedName = establishment.name
+          .replace(/[<>()[\]\\,;:"/!@#$%^&*{}|`~]/g, '')
+          .trim()
+          .substring(0, 60) || 'Agendali';
+        const fromAddress = `${sanitizedName} <${RESEND_FROM}>`;
         const hoursText = reminder_hours === 1 ? 'em 1 hora' : `em ${reminder_hours} horas`;
         const emailHtml = getReminderEmailHtml({
           customer_name: customer.name,

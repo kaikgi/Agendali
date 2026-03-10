@@ -312,8 +312,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Send email
-    const fromAddress = `${appointmentData.establishment.name} <${RESEND_FROM}>`;
+    // Send email - sanitize establishment name to prevent Resend API rejection
+    const sanitizedName = appointmentData.establishment.name
+      .replace(/[<>()[\]\\,;:"/!@#$%^&*{}|`~]/g, '')
+      .trim()
+      .substring(0, 60) || 'Agendali';
+    const fromAddress = `${sanitizedName} <${RESEND_FROM}>`;
     const emailResponse = await sendEmail(
       appointmentData.customer.email,
       getEmailSubject(type, appointmentData.establishment.name),
