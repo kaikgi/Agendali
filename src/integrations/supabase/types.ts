@@ -1026,6 +1026,45 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          order_id: string | null
+          plan_id: string | null
+          status: string
+          token: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          order_id?: string | null
+          plan_id?: string | null
+          status?: string
+          token: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          order_id?: string | null
+          plan_id?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       subscription_events: {
         Row: {
           amount_cents: number | null
@@ -1246,7 +1285,26 @@ export type Database = {
         Returns: boolean
       }
       check_signup_authorization: { Args: { p_email: string }; Returns: Json }
+      check_signup_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          order_id: string
+          plan_id: string
+          reason: string
+          valid: boolean
+        }[]
+      }
       consume_signup_invitation: { Args: { p_token: string }; Returns: Json }
+      consume_signup_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          reason: string
+          success: boolean
+        }[]
+      }
       get_admin_audit_logs: {
         Args: {
           p_action?: string
@@ -1293,6 +1351,7 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
       is_master_admin: { Args: never; Returns: boolean }
+      normalize_email: { Args: { input_email: string }; Returns: string }
       professional_portal_login: {
         Args: {
           p_establishment_slug: string
