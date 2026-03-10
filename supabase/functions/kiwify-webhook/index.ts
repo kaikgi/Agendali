@@ -343,8 +343,8 @@ async function processKiwifyEvent(
   } else if (CANCELLATION_EVENTS.has(eventType)) {
     status = 'canceled'
   } else {
-    console.log(`[KIWIFY] Unknown event type "${eventType}", treating as active`)
-    status = 'active'
+    console.log(`[KIWIFY] ⚠️ Unknown event type "${eventType}", ignoring (will NOT authorize)`)
+    return // Do NOT process unknown events as active
   }
 
   // Calculate period dates
