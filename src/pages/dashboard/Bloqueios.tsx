@@ -113,7 +113,7 @@ export default function Bloqueios() {
   const handleSavePontual = async () => {
     if (!establishment?.id || !pontualDate || !pontualStartTime || !pontualEndTime) {
       toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     try {
