@@ -391,7 +391,8 @@ export default function Profissionais() {
                           id: prof.id, 
                           name: prof.name, 
                           slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false
+                          portal_enabled: (prof as any).portal_enabled ?? false,
+                          portal_password_hash: (prof as any).portal_password_hash || null,
                         });
                         setHoursDialogOpen(true);
                       }}
