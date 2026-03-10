@@ -98,8 +98,9 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
       });
       setHasChanges(false);
       toast({ title: 'Notas salvas com sucesso!' });
-    } catch {
+    } catch (err) {
       toast({ title: 'Erro ao salvar notas', variant: 'destructive' });
+      throw err;
     }
   };
 
