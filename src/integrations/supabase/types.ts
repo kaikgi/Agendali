@@ -1401,30 +1401,18 @@ export type Database = {
         }
         Returns: Json
       }
-      create_appointment_email_jobs:
-        | {
-            Args: {
-              p_appointment_id: string
-              p_appointment_start: string
-              p_customer_email: string
-              p_customer_name: string
-              p_establishment_id: string
-              p_payload?: Json
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_appointment_id: string
-              p_appointment_start: string
-              p_customer_email: string
-              p_customer_name: string
-              p_customer_reminder_hours?: number
-              p_establishment_id: string
-              p_payload?: Json
-            }
-            Returns: Json
-          }
+      create_appointment_email_jobs: {
+        Args: {
+          p_appointment_id: string
+          p_appointment_start: string
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_reminder_hours?: number
+          p_establishment_id: string
+          p_payload?: Json
+        }
+        Returns: Json
+      }
       get_admin_audit_logs: {
         Args: {
           p_action?: string
