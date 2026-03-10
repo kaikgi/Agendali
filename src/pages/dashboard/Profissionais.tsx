@@ -202,9 +202,12 @@ export default function Profissionais() {
       setEditingId(null);
       setForm({ name: '', capacity: '1', photo_url: null });
     } catch (err: any) {
-      const msg = err?.message || 'Erro desconhecido';
-      console.error('Erro ao salvar profissional:', err);
-      toast({ title: 'Erro ao salvar profissional', description: msg, variant: 'destructive' });
+      if (err?.message !== 'validation') {
+        const msg = err?.message || 'Erro desconhecido';
+        console.error('Erro ao salvar profissional:', err);
+        toast({ title: 'Erro ao salvar profissional', description: msg, variant: 'destructive' });
+      }
+      throw err;
     }
   };
 
