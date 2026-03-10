@@ -219,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       try {
-        // Fetch appointment data
+        // Try to fetch appointment data from DB
         const { data: apt, error: aptErr } = await supabase
           .from("appointments")
           .select(`
@@ -230,49 +230,68 @@ const handler = async (req: Request): Promise<Response> => {
             establishment:establishments(name, phone, address, slug)
           `)
           .eq("id", job.appointment_id)
-          .single();
+          .maybeSingle();
 
-        if (aptErr || !apt) {
-          throw new Error(`Appointment not found: ${aptErr?.message || "null"}`);
-        }
+        // Build payload from DB data or fallback to job fields + payload JSON
+        const jobPayload = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
+        let emailPayload: AppointmentPayload;
+        let establishmentName: string;
 
-        const customer = apt.customer as unknown as { name: string; email: string | null; phone: string };
-        const professional = apt.professional as unknown as { name: string };
-        const service = apt.service as unknown as { name: string; duration_minutes: number };
-        const establishment = apt.establishment as unknown as { name: string; phone: string | null; address: string | null; slug: string };
+        if (apt && !aptErr) {
+          const customer = apt.customer as unknown as { name: string; email: string | null; phone: string };
+          const professional = apt.professional as unknown as { name: string };
+          const service = apt.service as unknown as { name: string; duration_minutes: number };
+          const establishment = apt.establishment as unknown as { name: string; phone: string | null; address: string | null; slug: string };
 
-        // For reminder jobs, skip if appointment was cancelled/completed
-        if (isReminderType(job.email_type) && !["booked", "confirmed"].includes(apt.status)) {
-          await supabase
-            .from("appointment_email_jobs")
-            .update({ status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-            .eq("id", job.id);
-          console.log(`Skipped reminder for ${job.id} — appointment status: ${apt.status}`);
-          results.skipped++;
-          continue;
+          // For reminder jobs, skip if appointment was cancelled/completed
+          if (isReminderType(job.email_type) && !["booked", "confirmed"].includes(apt.status)) {
+            await supabase
+              .from("appointment_email_jobs")
+              .update({ status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .eq("id", job.id);
+            console.log(`Skipped reminder for ${job.id} — appointment status: ${apt.status}`);
+            results.skipped++;
+            continue;
+          }
+
+          establishmentName = establishment.name;
+          emailPayload = {
+            customer_name: customer.name,
+            professional_name: professional.name,
+            service_name: service.name,
+            service_duration: service.duration_minutes,
+            establishment_name: establishment.name,
+            establishment_slug: establishment.slug,
+            establishment_phone: establishment.phone,
+            establishment_address: establishment.address,
+            start_at: apt.start_at,
+          };
+        } else {
+          // Fallback: use data from job columns + payload JSON
+          console.log(`⚠️ Appointment ${job.appointment_id} not found in DB, using payload fallback for job ${job.id}`);
+          establishmentName = (jobPayload.establishment_name as string) || "Agendali";
+          emailPayload = {
+            customer_name: job.customer_name || (jobPayload.customer_name as string) || "Cliente",
+            professional_name: (jobPayload.professional_name as string) || "Profissional",
+            service_name: (jobPayload.service_name as string) || "Serviço",
+            service_duration: (jobPayload.service_duration as number) || 30,
+            establishment_name: establishmentName,
+            establishment_slug: (jobPayload.establishment_slug as string) || "agendali",
+            establishment_phone: (jobPayload.establishment_phone as string) || null,
+            establishment_address: (jobPayload.establishment_address as string) || null,
+            start_at: (jobPayload.start_at as string) || new Date().toISOString(),
+          };
         }
 
         // Determine email config
         const emailType = job.email_type as string;
         const cfg = isReminderType(emailType)
-          ? getReminderConfig(establishment.name)
+          ? getReminderConfig(establishmentName)
           : TYPE_MAP[emailType];
 
         if (!cfg) {
           throw new Error(`Unknown email type: ${emailType}`);
         }
-
-        const payload: AppointmentPayload = {
-          customer_name: customer.name,
-          professional_name: professional.name,
-          service_name: service.name,
-          service_duration: service.duration_minutes,
-          establishment_name: establishment.name,
-          establishment_slug: establishment.slug,
-          establishment_phone: establishment.phone,
-          establishment_address: establishment.address,
-          start_at: apt.start_at,
-        };
 
         const html = buildHtml(cfg, payload);
         const subject = job.subject || cfg.subject(establishment.name);
