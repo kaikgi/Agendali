@@ -129,9 +129,9 @@ export default function Servicos() {
 
   const handleSaveCategory = async () => {
     const trimmed = categoryName.trim();
-    if (!trimmed) { setCategoryError('Nome é obrigatório'); return; }
-    if (trimmed.length < 2) { setCategoryError('Mínimo 2 caracteres'); return; }
-    if (trimmed.length > 80) { setCategoryError('Máximo 80 caracteres'); return; }
+    if (!trimmed) { setCategoryError('Nome é obrigatório'); throw new Error('validation'); }
+    if (trimmed.length < 2) { setCategoryError('Mínimo 2 caracteres'); throw new Error('validation'); }
+    if (trimmed.length > 80) { setCategoryError('Máximo 80 caracteres'); throw new Error('validation'); }
 
     try {
       if (editingCategoryId) {
@@ -142,8 +142,9 @@ export default function Servicos() {
       setCategoryDialogOpen(false);
       setCategoryName('');
       setCategoryError('');
-    } catch {
-      // Error handled by mutation's onError
+    } catch (err) {
+      // Re-throw so ActionButton shows error state
+      throw err;
     }
   };
 
