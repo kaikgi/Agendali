@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { loginSchema, LoginFormData } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,17 @@ export default function Login() {
   const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  // Resend link state
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  // Show success message from signup redirect
+  const signupSuccess = searchParams.get('signup') === 'success';
 
   useEffect(() => {
     if (!loading && user) {
@@ -77,6 +88,40 @@ export default function Login() {
     navigate('/dashboard');
   };
 
+  const handleResendLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = resendEmail.trim();
+
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setResendError('Informe um email válido.');
+      return;
+    }
+
+    setResendLoading(true);
+    setResendError(null);
+    setResendSuccess(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('resend-signup-link', {
+        body: { email: trimmedEmail },
+      });
+
+      if (error) {
+        throw new Error('Erro ao processar solicitação.');
+      }
+
+      if (data?.success === false && data?.message) {
+        setResendError(data.message);
+      } else {
+        setResendSuccess(true);
+      }
+    } catch (err: any) {
+      setResendError(err?.message || 'Erro ao enviar. Tente novamente.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
@@ -91,6 +136,15 @@ export default function Login() {
             Acesse o painel de gerenciamento
           </p>
         </div>
+
+        {signupSuccess && (
+          <Alert className="border-primary/20 bg-primary/5">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertDescription>
+              Conta criada com sucesso! Faça login para acessar.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {accountTypeError && (
           <Alert variant="destructive">
@@ -159,6 +213,73 @@ export default function Login() {
             Área do Cliente
           </Link>
         </p>
+
+        {/* Resend signup link section */}
+        <div className="border-t pt-4">
+          {!showResendForm ? (
+            <button
+              type="button"
+              onClick={() => setShowResendForm(true)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+            >
+              Não recebeu o link de cadastro?
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Reenviar link de cadastro</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Informe o email usado na compra. Se o pagamento estiver confirmado, enviaremos um novo link.
+              </p>
+
+              {resendSuccess ? (
+                <Alert className="border-primary/20 bg-primary/5">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <AlertDescription className="text-sm">
+                    Se o seu pagamento estiver confirmado e a conta ainda não tiver sido criada, enviaremos um novo link para o seu email.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <form onSubmit={handleResendLink} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="Email da compra"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    disabled={resendLoading}
+                  />
+                  {resendError && (
+                    <p className="text-sm text-destructive">{resendError}</p>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="w-full"
+                    disabled={resendLoading}
+                  >
+                    {resendLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Reenviar link
+                  </Button>
+                </form>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResendForm(false);
+                  setResendSuccess(false);
+                  setResendError(null);
+                  setResendEmail('');
+                }}
+                className="w-full text-center text-xs text-muted-foreground hover:underline"
+              >
+                Voltar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
