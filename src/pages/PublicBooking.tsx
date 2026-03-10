@@ -250,7 +250,7 @@ export default function PublicBooking() {
         p_end_at: endAt.toISOString(),
         p_customer_name: customerData.name,
         p_customer_phone: customerData.phone,
-        p_customer_email: customerData.email || null,
+        p_customer_email: customerData.email || user?.email || null,
         p_customer_notes: customerData.notes || null,
         p_customer_user_id: currentUser?.id || null,
       });
