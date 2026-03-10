@@ -276,11 +276,12 @@ export default function PublicBooking() {
       }
 
       // Create email jobs in the queue (confirmation + reminder)
-      if (result?.appointment_id && customerData.email) {
+      const customerEmail = customerData.email || user?.email;
+      if (result?.appointment_id && customerEmail) {
         console.log('[booking] Creating email jobs...', {
           appointment_id: result.appointment_id,
           establishment_id: establishment.id,
-          customer_email: customerData.email,
+          customer_email: customerEmail,
           customer_name: customerData.name,
           appointment_start: startAt.toISOString(),
           reminder_hours: customerData.reminderHours ?? null,
@@ -289,7 +290,7 @@ export default function PublicBooking() {
         const { data: jobResult, error: jobErr } = await supabase.rpc('create_appointment_email_jobs', {
           p_appointment_id: result.appointment_id,
           p_establishment_id: establishment.id,
-          p_customer_email: customerData.email,
+          p_customer_email: customerEmail,
           p_customer_name: customerData.name,
           p_appointment_start: startAt.toISOString(),
           p_customer_reminder_hours: customerData.reminderHours ?? null,
@@ -300,8 +301,8 @@ export default function PublicBooking() {
         } else {
           console.log('[booking] Email jobs created successfully:', jobResult);
         }
-      } else if (result?.appointment_id && !customerData.email) {
-        console.log('[booking] No customer email provided, skipping email job creation');
+      } else if (result?.appointment_id && !customerEmail) {
+        console.log('[booking] No customer email available, skipping email job creation');
       }
 
       // Also send immediate confirmation email via edge function (fire and forget)
