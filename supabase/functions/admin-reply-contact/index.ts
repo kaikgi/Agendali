@@ -134,7 +134,7 @@ serve(async (req) => {
 <table width="100%" style="max-width:560px;">
   <tr><td style="text-align:center;padding-bottom:24px;">
     <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="40" height="40" style="border-radius:8px;" />
-    <p style="margin:10px 0 0;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;">AGENDALI</p>
+    <p style="margin:10px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
   </td></tr>
   <tr><td>
     <p style="margin:0 0 16px;font-size:16px;color:#374151;">Olá, <strong style="color:#111827;">${message.name}</strong>!</p>

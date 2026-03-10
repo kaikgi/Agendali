@@ -571,7 +571,8 @@ async function sendInvitationEmail(
         <table width="100%" style="max-width:560px;">
           <tr>
             <td style="text-align:center;padding-bottom:32px;">
-              <h1 style="margin:0;font-size:28px;font-weight:700;color:#111827;">Agendali</h1>
+              <img src="https://www.agendali.online/logo-512.png" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
+              <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
             </td>
           </tr>
           <tr>

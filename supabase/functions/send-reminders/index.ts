@@ -71,7 +71,7 @@ function getReminderEmailHtml(appointment: {
       <table width="100%" style="max-width:560px;">
         <tr><td style="text-align:center;padding-bottom:32px;">
           <img src="${logoUrl}" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
-          <p style="margin:12px 0 0;font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9ca3af;">AGENDALI</p>
+          <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
         </td></tr>
 
         <tr><td align="center" style="padding-bottom:24px;">
