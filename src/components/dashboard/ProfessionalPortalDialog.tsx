@@ -68,7 +68,6 @@ export function ProfessionalPortalDialog({
       setPortalEnabled(professional.portal_enabled ?? false);
       setPassword('');
       setConfirmPassword('');
-      setShowPassword(false);
       setCopied(false);
       setWantsChangePassword(false);
     }
