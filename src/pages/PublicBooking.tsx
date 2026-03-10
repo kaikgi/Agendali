@@ -268,6 +268,7 @@ export default function PublicBooking() {
 
 
   // Called after login to complete booking
+  // Uses canonical auth data as single source of truth
   const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
     if (isSubmitting) return;
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
@@ -285,8 +286,19 @@ export default function PublicBooking() {
       const endAt = new Date(startAt);
       endAt.setMinutes(endAt.getMinutes() + selectedService.duration_minutes);
 
-      // Get current user ID for customer_user_id
+      // Canonical data: always from auth/profile, form is fallback for name/phone only
       const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const canonicalEmail = currentUser?.email || user?.email || '';
+      const canonicalName = customerData.name || profile?.full_name || '';
+      const canonicalPhone = customerData.phone || profile?.phone || '';
+      const canonicalUserId = currentUser?.id || null;
+
+      console.log('[booking] Canonical submit data:', {
+        canonicalUserId,
+        canonicalEmail,
+        canonicalName,
+        canonicalPhone,
+      });
 
       const { data, error } = await supabase.rpc('public_create_appointment', {
         p_slug: slug,
@@ -294,11 +306,11 @@ export default function PublicBooking() {
         p_professional_id: selectedProfessional.id,
         p_start_at: startAt.toISOString(),
         p_end_at: endAt.toISOString(),
-        p_customer_name: customerData.name,
-        p_customer_phone: customerData.phone,
-        p_customer_email: customerData.email || user?.email || null,
+        p_customer_name: canonicalName,
+        p_customer_phone: canonicalPhone,
+        p_customer_email: canonicalEmail || null,
         p_customer_notes: customerData.notes || null,
-        p_customer_user_id: currentUser?.id || null,
+        p_customer_user_id: canonicalUserId,
       });
 
       if (error) {
@@ -321,14 +333,13 @@ export default function PublicBooking() {
         else console.log('[booking] Reminder preference saved:', customerData.reminderHours);
       }
 
-      // Create email jobs in the queue (confirmation + reminder)
-      const customerEmail = customerData.email || user?.email;
-      if (result?.appointment_id && customerEmail) {
+      // Create email jobs using canonical email
+      if (result?.appointment_id && canonicalEmail) {
         console.log('[booking] Creating email jobs...', {
           appointment_id: result.appointment_id,
           establishment_id: establishment.id,
-          customer_email: customerEmail,
-          customer_name: customerData.name,
+          customer_email: canonicalEmail,
+          customer_name: canonicalName,
           appointment_start: startAt.toISOString(),
           reminder_hours: customerData.reminderHours ?? null,
         });
@@ -336,8 +347,8 @@ export default function PublicBooking() {
         const { data: jobResult, error: jobErr } = await supabase.rpc('create_appointment_email_jobs', {
           p_appointment_id: result.appointment_id,
           p_establishment_id: establishment.id,
-          p_customer_email: customerEmail,
-          p_customer_name: customerData.name,
+          p_customer_email: canonicalEmail,
+          p_customer_name: canonicalName,
           p_appointment_start: startAt.toISOString(),
           p_customer_reminder_hours: customerData.reminderHours ?? null,
         });
@@ -347,7 +358,7 @@ export default function PublicBooking() {
         } else {
           console.log('[booking] Email jobs created successfully:', jobResult);
         }
-      } else if (result?.appointment_id && !customerEmail) {
+      } else if (result?.appointment_id && !canonicalEmail) {
         console.log('[booking] No customer email available, skipping email job creation');
       }
 
@@ -373,16 +384,6 @@ export default function PublicBooking() {
   };
 
   const handleSubmit = async (customerData: CustomerFormData) => {
-    console.log('[booking] submit clicked', {
-      slug,
-      customerData,
-      selectedServiceId: selectedService?.id,
-      selectedProfessionalId: selectedProfessional?.id,
-      selectedDate,
-      selectedTime,
-      session: !!session,
-    });
-
     if (isSubmitting) return;
 
     if (!session) {
