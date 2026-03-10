@@ -362,12 +362,8 @@ export default function PublicBooking() {
         console.log('[booking] No customer email available, skipping email job creation');
       }
 
-      // Also send immediate confirmation email via edge function (fire and forget)
-      if (result?.appointment_id) {
-        sendConfirmationEmail(result.appointment_id).catch((emailErr) => {
-          console.warn('[booking] Failed to send immediate confirmation email:', emailErr);
-        });
-      }
+      // Email is now handled entirely via the queue (create_appointment_email_jobs)
+      // No need for the legacy sendConfirmationEmail edge function call
 
       setIsSuccess(true);
     } catch (error) {
