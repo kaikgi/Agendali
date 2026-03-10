@@ -1466,6 +1466,14 @@ export type Database = {
         | { Args: { p_user_id: string }; Returns: boolean }
       is_master_admin: { Args: never; Returns: boolean }
       normalize_email: { Args: { input_email: string }; Returns: string }
+      notify_appointment_status_change: {
+        Args: {
+          p_appointment_id: string
+          p_new_status: string
+          p_old_status?: string
+        }
+        Returns: Json
+      }
       professional_portal_login: {
         Args: {
           p_establishment_slug: string
