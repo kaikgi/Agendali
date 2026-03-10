@@ -127,7 +127,7 @@ export function useProfessionalPortalAppointments(
     queryFn: async () => {
       if (!token) return [];
 
-      const { data, error } = await supabase.rpc('get_professional_appointments', {
+      const { data, error } = await (supabase.rpc as any)('get_professional_appointments', {
         p_token: token,
         p_start_date: startDate.toISOString().split('T')[0],
         p_end_date: endDate.toISOString().split('T')[0],
