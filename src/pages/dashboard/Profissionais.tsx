@@ -152,7 +152,7 @@ export default function Profissionais() {
     const trimmedName = form.name.trim();
     if (!trimmedName) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     const capacityNum = parseInt(form.capacity);
