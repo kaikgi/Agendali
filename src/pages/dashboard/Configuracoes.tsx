@@ -294,7 +294,7 @@ export default function Configuracoes() {
           setSlugError('Este link já está em uso');
           toast({ title: 'Este link já está em uso', variant: 'destructive' });
         } else {
-          throw error;
+          toast({ title: 'Erro ao salvar', description: error.message || 'Tente novamente', variant: 'destructive' });
         }
         throw error;
       }
@@ -303,11 +303,11 @@ export default function Configuracoes() {
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
       toast({ title: 'Configurações salvas!' });
     } catch (err: any) {
-      toast({ 
-        title: 'Erro ao salvar', 
-        description: err?.message || 'Tente novamente',
-        variant: 'destructive' 
-      });
+      // Already toasted above or by validation — just re-throw for ActionButton
+      if (err?.message !== 'validation') {
+        console.error('Erro ao salvar configurações:', err);
+      }
+      throw err;
     }
   };
 

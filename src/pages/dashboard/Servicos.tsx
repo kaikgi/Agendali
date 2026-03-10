@@ -256,7 +256,10 @@ export default function Servicos() {
       setServiceDialogOpen(false);
     } catch (err: any) {
       console.error('Erro ao salvar serviço:', err);
-      toast({ title: 'Erro ao salvar serviço', description: err?.message, variant: 'destructive' });
+      if (err?.message !== 'validation') {
+        toast({ title: 'Erro ao salvar serviço', description: err?.message, variant: 'destructive' });
+      }
+      throw err;
     }
   };
 
