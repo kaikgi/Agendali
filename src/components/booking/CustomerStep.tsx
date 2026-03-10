@@ -79,11 +79,17 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
 
   const defaultPolicyText = `Política de Cancelamento
 
-• Cancelamentos devem ser feitos com no mínimo ${establishment.reschedule_min_hours || 2} horas de antecedência.
-• Reagendamentos estão sujeitos à disponibilidade.
-• Em caso de não comparecimento sem aviso prévio, o estabelecimento reserva o direito de aplicar penalidades em agendamentos futuros.
+Para garantir uma melhor organização da agenda e atendimento a todos os clientes, pedimos atenção às seguintes regras:
 
-Ao aceitar esta política, você concorda com os termos acima.`;
+• Cancelamentos ou reagendamentos devem ser solicitados com no mínimo ${establishment.reschedule_min_hours || 2} horas de antecedência em relação ao horário agendado.
+
+• Reagendamentos estão sujeitos à disponibilidade de horários na agenda do profissional.
+
+• Em caso de não comparecimento sem aviso prévio, o estabelecimento poderá aplicar restrições ou condições especiais para futuros agendamentos.
+
+• Cancelamentos frequentes ou faltas recorrentes podem resultar em limitações para novos agendamentos.
+
+Ao continuar com o agendamento, você declara estar ciente e de acordo com esta política.`;
 
   const policyText = establishment.cancellation_policy_text || defaultPolicyText;
 
