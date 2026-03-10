@@ -111,11 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // 1. Check authorization
-    const { authorized, planId } = await checkEmailAuthorized(normalizedEmail);
+    const { authorized, planId, pendingPayment } = await checkEmailAuthorized(normalizedEmail);
     if (!authorized) {
-      return { 
-        error: new Error('Este email não está autorizado. Você precisa assinar um plano antes de criar sua conta.') 
-      };
+      const message = pendingPayment
+        ? 'Seu pagamento ainda não foi confirmado. Assim que a Kiwify confirmar o pagamento, seu email será liberado para criar a conta.'
+        : 'Este email não está autorizado. Você precisa assinar um plano antes de criar sua conta.';
+      return { error: new Error(message) };
     }
 
     // 2. Create auth user
