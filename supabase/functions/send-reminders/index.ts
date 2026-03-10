@@ -192,7 +192,8 @@ const handler = async (req: Request): Promise<Response> => {
         .in("establishment_id", establishmentIds)
         .gte("start_at", startWindow.toISOString())
         .lte("start_at", endWindow.toISOString())
-        .in("status", ["booked", "confirmed"]);
+        .in("status", ["booked", "confirmed"])
+        .is("reminder_sent_at", null);
 
       if (fetchError) {
         console.error(`Error fetching appointments for ${hours}h window:`, fetchError);
@@ -265,6 +266,12 @@ const handler = async (req: Request): Promise<Response> => {
           appointmentId: appointment.id,
           status: "sent",
         });
+
+        // Mark reminder as sent to prevent duplicates
+        await supabase
+          .from("appointments")
+          .update({ reminder_sent_at: new Date().toISOString() })
+          .eq("id", appointment.id);
 
         console.log(`Reminder sent for appointment ${appointment.id} to ${customer.email}`);
       } catch (emailError) {
