@@ -285,8 +285,8 @@ export default function CriarConta() {
               value={invitation.email || ''}
               disabled
               className="bg-muted cursor-not-allowed"
-              {...register('email')}
             />
+            <input type="hidden" {...register('email')} />
             <p className="text-xs text-muted-foreground">
               O email é vinculado ao seu pagamento e não pode ser alterado.
             </p>
