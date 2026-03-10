@@ -167,6 +167,7 @@ export type Database = {
           id: string
           internal_notes: string | null
           professional_id: string
+          reminder_sent_at: string | null
           service_id: string
           start_at: string
           status: string
@@ -183,6 +184,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           professional_id: string
+          reminder_sent_at?: string | null
           service_id: string
           start_at: string
           status?: string
@@ -199,6 +201,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           professional_id?: string
+          reminder_sent_at?: string | null
           service_id?: string
           start_at?: string
           status?: string
