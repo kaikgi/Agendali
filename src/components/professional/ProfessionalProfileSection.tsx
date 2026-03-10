@@ -91,8 +91,8 @@ export function ProfessionalProfileSection({
       const fileName = `${session.professional_id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError, data } = await supabase.storage
-        .from('professional-photos')
-        .upload(fileName, file, {
+        .from('uploads')
+        .upload(`professional-photos/${fileName}`, file, {
           cacheControl: '3600',
           upsert: true,
         });
@@ -101,8 +101,8 @@ export function ProfessionalProfileSection({
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('professional-photos')
-        .getPublicUrl(fileName);
+        .from('uploads')
+        .getPublicUrl(`professional-photos/${fileName}`);
 
       // Update profile with new photo URL
       await updateMutation.mutateAsync({ photoUrl: publicUrl });

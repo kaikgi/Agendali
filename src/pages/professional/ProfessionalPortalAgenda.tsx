@@ -46,9 +46,7 @@ import { ProfessionalSummaryCards } from '@/components/professional/Professional
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CompletionPromptDialog } from '@/components/completion/CompletionPromptDialog';
+import { useQueryClient } from '@tanstack/react-query';
 
 const statusColors: Record<string, string> = {
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -115,22 +113,7 @@ export default function ProfessionalPortalAgenda() {
     activeTab === 'calendar' ? calMonthEnd : weekEnd
   );
 
-  // Fetch professional data for avatar
-  const { data: professionalData } = useQuery({
-    queryKey: ['professional-portal-profile', session?.professional_id],
-    queryFn: async () => {
-      if (!session?.professional_id) return null;
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('photo_url')
-        .eq('id', session.professional_id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.professional_id,
-    staleTime: 60000,
-  });
+  // Photo URL now comes from validate_professional_session RPC
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -224,7 +207,7 @@ export default function ProfessionalPortalAgenda() {
     return null;
   }
 
-  const photoUrl = professionalData?.photo_url;
+  const photoUrl = (session as any)?.professional_photo_url;
   const initials = session.professional_name?.charAt(0)?.toUpperCase() || '?';
 
   return (
@@ -537,11 +520,6 @@ export default function ProfessionalPortalAgenda() {
         onStatusChanged={handleStatusChanged}
       />
 
-      {/* Completion Prompt */}
-      <CompletionPromptDialog
-        establishmentId={session.establishment_id}
-        userType="professional"
-      />
     </div>
   );
 }

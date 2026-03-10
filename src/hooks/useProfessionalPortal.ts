@@ -8,6 +8,7 @@ interface PortalSession {
   valid: boolean;
   professional_id?: string;
   professional_name?: string;
+  professional_photo_url?: string | null;
   establishment_id?: string;
   establishment_name?: string;
   establishment_slug?: string;

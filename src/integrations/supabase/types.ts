@@ -1490,6 +1490,10 @@ export type Database = {
         }
         Returns: Json
       }
+      professional_update_profile: {
+        Args: { p_name?: string; p_photo_url?: string; p_token: string }
+        Returns: Json
+      }
       public_create_appointment: {
         Args: {
           p_customer_email?: string
