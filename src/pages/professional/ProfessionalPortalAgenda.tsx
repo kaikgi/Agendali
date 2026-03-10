@@ -520,11 +520,6 @@ export default function ProfessionalPortalAgenda() {
         onStatusChanged={handleStatusChanged}
       />
 
-      {/* Completion Prompt */}
-      <CompletionPromptDialog
-        establishmentId={session.establishment_id}
-        userType="professional"
-      />
     </div>
   );
 }
