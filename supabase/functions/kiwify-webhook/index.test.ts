@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://emkcaalgfutbukindxvy.supabase.co";
 const secret = Deno.env.get("KIWIFY_WEBHOOK_SECRET") || "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
