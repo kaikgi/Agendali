@@ -34,7 +34,7 @@ export default function ManageAppointment() {
   const cancelMutation = useCancelAppointment();
   const rescheduleMutation = useRescheduleAppointment();
 
-  const { data: availableSlots } = useAvailableSlots({
+  const { data: slotResult } = useAvailableSlots({
     establishmentId: appointment?.establishment?.id,
     professionalId: appointment?.professional?.id,
     serviceDurationMinutes: appointment?.service?.duration_minutes || 30,
@@ -42,6 +42,7 @@ export default function ManageAppointment() {
     slotIntervalMinutes: 15,
     bufferMinutes: 0,
   });
+  const availableSlots = slotResult?.slots ?? [];
 
   const canModify = appointment && 
     ['booked', 'confirmed'].includes(appointment.status) &&

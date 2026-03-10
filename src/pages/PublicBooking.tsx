@@ -487,7 +487,7 @@ export default function PublicBooking() {
             selectedTime={selectedTime}
             onSelectDate={handleDateSelect}
             onSelectTime={handleTimeSelect}
-            availableSlots={availableSlots}
+            slotResult={slotResult}
             isLoadingSlots={isLoadingSlots}
             maxFutureDays={establishment.max_future_days}
           />
