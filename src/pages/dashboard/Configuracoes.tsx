@@ -296,7 +296,7 @@ export default function Configuracoes() {
         } else {
           throw error;
         }
-        return;
+        throw error;
       }
 
       setSlug(normalizedSlug);

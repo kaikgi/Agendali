@@ -142,7 +142,7 @@ export default function Bloqueios() {
   const handleSaveRecorrente = async () => {
     if (!establishment?.id || !recorrenteStartTime || !recorrenteEndTime) {
       toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     try {

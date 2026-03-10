@@ -168,7 +168,7 @@ export default function Profissionais() {
       } else {
         if (!establishment?.id) {
           toast({ title: 'Estabelecimento não encontrado', variant: 'destructive' });
-          return;
+          throw new Error('validation');
         }
         const newProf = await create({
           establishment_id: establishment.id,
