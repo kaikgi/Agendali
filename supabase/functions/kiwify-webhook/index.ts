@@ -283,7 +283,7 @@ async function findAgendaliProduct(
   supabase: SupabaseClient,
   productId: string | null,
   productName: string,
-): Promise<{ plan_code: string }> {
+): Promise<{ plan_code: string } | null> {
   // 1. Try exact match by kiwify_product_id
   if (productId) {
     const { data } = await supabase
@@ -325,11 +325,15 @@ async function findAgendaliProduct(
       console.log(`[KIWIFY] Product matched by keyword "studio" in name: "${productName}"`)
       return { plan_code: 'studio' }
     }
+    if (nameLower.includes('solo')) {
+      console.log(`[KIWIFY] Product matched by keyword "solo" in name: "${productName}"`)
+      return { plan_code: 'solo' }
+    }
   }
 
-  // 4. Default: this webhook is Agendali-only, so default to 'solo'
-  console.log(`[KIWIFY] No specific plan match for product "${productName}" (ID: ${productId}). Defaulting to 'solo'.`)
-  return { plan_code: 'solo' }
+  // 4. No match — do NOT default to any plan
+  console.warn(`[KIWIFY] ⚠️ No product match for "${productName}" (ID: ${productId}). Will NOT authorize.`)
+  return null
 }
 
 async function processKiwifyEvent(
