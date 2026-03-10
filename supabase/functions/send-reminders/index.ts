@@ -192,7 +192,8 @@ const handler = async (req: Request): Promise<Response> => {
         .in("establishment_id", establishmentIds)
         .gte("start_at", startWindow.toISOString())
         .lte("start_at", endWindow.toISOString())
-        .in("status", ["booked", "confirmed"]);
+        .in("status", ["booked", "confirmed"])
+        .is("reminder_sent_at", null);
 
       if (fetchError) {
         console.error(`Error fetching appointments for ${hours}h window:`, fetchError);
