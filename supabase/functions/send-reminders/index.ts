@@ -267,6 +267,12 @@ const handler = async (req: Request): Promise<Response> => {
           status: "sent",
         });
 
+        // Mark reminder as sent to prevent duplicates
+        await supabase
+          .from("appointments")
+          .update({ reminder_sent_at: new Date().toISOString() })
+          .eq("id", appointment.id);
+
         console.log(`Reminder sent for appointment ${appointment.id} to ${customer.email}`);
       } catch (emailError) {
         console.error(`Failed to send reminder for ${appointment.id}:`, emailError);
