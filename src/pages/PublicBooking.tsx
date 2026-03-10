@@ -79,6 +79,7 @@ export default function PublicBooking() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
   const [pendingCustomerData, setPendingCustomerData] = useState<CustomerFormData | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
