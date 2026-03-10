@@ -1482,6 +1482,14 @@ export type Database = {
         }
         Returns: Json
       }
+      professional_update_appointment_status: {
+        Args: {
+          p_appointment_id: string
+          p_new_status: string
+          p_token: string
+        }
+        Returns: Json
+      }
       public_create_appointment: {
         Args: {
           p_customer_email?: string
