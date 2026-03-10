@@ -109,7 +109,7 @@ serve(async (req) => {
 
   if (method === 'GET') {
     return new Response(
-      JSON.stringify({ ok: true, version: '5.0.0', message: 'Kiwify webhook ready (product-filtered)' }),
+      JSON.stringify({ ok: true, version: '6.0.0', message: 'Kiwify webhook ready (strict product match, no fallback)' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
