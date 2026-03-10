@@ -226,7 +226,7 @@ export default function Servicos() {
       priceNum = Math.round(parsed * 100);
     }
 
-    if (!establishment?.id) return;
+    if (!establishment?.id) throw new Error('missing establishment');
     const categoryId = serviceForm.category_id || null;
 
     try {
