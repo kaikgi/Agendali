@@ -158,6 +158,18 @@ export default function CriarConta() {
         role: 'owner',
       } as any);
 
+      // 4b. Activate subscription via RPC
+      await supabase.rpc('activate_subscription', {
+        p_establishment_id: establishment.id,
+        p_plan: planCode,
+        p_billing_cycle: 'monthly',
+        p_status: 'active',
+        p_amount_cents: 0,
+        p_provider: 'kiwify',
+        p_provider_ref: tokenData.order_id || 'signup-token',
+        p_metadata: { source: 'signup_token', order_id: tokenData.order_id },
+      } as any);
+
       // 5. Create default business hours
       const defaultHours: any[] = [];
       for (let weekday = 1; weekday <= 6; weekday++) {
