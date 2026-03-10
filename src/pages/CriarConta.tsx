@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock, Ban } from 'lucide-react';
-import { signupSchema, SignupFormData } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,19 +33,13 @@ export default function CriarConta() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
-    mode: 'onChange',
-  });
-
-  const password = watch('password', '');
+  // Form state
+  const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Validate token on mount
   useEffect(() => {
@@ -60,17 +51,14 @@ export default function CriarConta() {
 
     const validate = async () => {
       try {
-        const { data, error } = await supabase.rpc('check_signup_token', { p_token: token });
+        const { data, error } = await supabase.rpc('check_signup_token', { p_token: token } as any);
 
         if (error) {
           console.error('Error validating token:', error);
           setTokenData({ valid: false, reason: 'error', email: null, plan_id: null, order_id: null, expires_at: null });
-        } else if (data && data.length > 0) {
+        } else if (data && Array.isArray(data) && data.length > 0) {
           const result = data[0] as TokenValidation;
           setTokenData(result);
-          if (result.valid && result.email) {
-            setValue('email', result.email);
-          }
         } else {
           setTokenData({ valid: false, reason: 'not_found', email: null, plan_id: null, order_id: null, expires_at: null });
         }
@@ -82,24 +70,57 @@ export default function CriarConta() {
     };
 
     validate();
-  }, [token, setValue]);
+  }, [token]);
 
-  const onSubmit = async (data: SignupFormData) => {
+  const passwordRules = useMemo(() => ({
+    minLength: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~';]/.test(password),
+  }), [password]);
+
+  const isPasswordStrong = Object.values(passwordRules).every(Boolean);
+
+  function validateForm(): boolean {
+    const errors: Record<string, string> = {};
+
+    if (!fullName.trim()) errors.fullName = 'Nome completo é obrigatório.';
+    if (!companyName.trim()) errors.companyName = 'Nome da empresa é obrigatório.';
+    
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length !== 11) errors.phone = 'Informe um telefone válido com 11 dígitos.';
+    
+    if (!isPasswordStrong) errors.password = 'A senha deve atender a todos os requisitos.';
+    if (password !== confirmPassword) errors.confirmPassword = 'As senhas não conferem.';
+    if (!confirmPassword) errors.confirmPassword = 'Confirme sua senha.';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!token || !tokenData?.valid || !tokenData.email) return;
+    if (!validateForm()) return;
 
     setAuthError(null);
     setIsLoading(true);
 
     try {
+      const email = tokenData.email.toLowerCase().trim();
+      const phoneDigits = phone.replace(/\D/g, '');
+      const planCode = tokenData.plan_id || 'solo';
+
       // 1. Create auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: tokenData.email,
-        password: data.password,
+        email,
+        password,
         options: {
           emailRedirectTo: `${getPublicBaseUrl()}/dashboard`,
           data: {
-            full_name: data.fullName,
-            company_name: data.companyName,
+            full_name: fullName.trim(),
+            company_name: companyName.trim(),
             account_type: 'establishment_owner',
           },
         },
@@ -110,20 +131,19 @@ export default function CriarConta() {
       }
 
       const userId = authData.user.id;
-      const planCode = tokenData.plan_id || 'solo';
 
-      // 2. Update phone
-      await supabase.from('profiles').update({ phone: data.phone }).eq('id', userId);
+      // 2. Update phone on profile
+      await supabase.from('profiles').update({ phone: phoneDigits }).eq('id', userId);
 
       // 3. Create establishment
       const { data: establishment, error: estError } = await supabase
         .from('establishments')
         .insert({
           owner_user_id: userId,
-          name: data.companyName,
+          name: companyName.trim(),
           status: 'active',
           plano: planCode,
-        })
+        } as any)
         .select('id')
         .single();
 
@@ -136,10 +156,10 @@ export default function CriarConta() {
         establishment_id: establishment.id,
         user_id: userId,
         role: 'owner',
-      });
+      } as any);
 
       // 5. Create default business hours
-      const defaultHours = [];
+      const defaultHours: any[] = [];
       for (let weekday = 1; weekday <= 6; weekday++) {
         defaultHours.push({
           establishment_id: establishment.id,
@@ -159,13 +179,13 @@ export default function CriarConta() {
       await supabase.from('business_hours').insert(defaultHours);
 
       // 6. Consume token
-      await supabase.rpc('consume_signup_token', { p_token: token });
+      await supabase.rpc('consume_signup_token', { p_token: token } as any);
 
       // 7. Mark allowed signup as used
       await supabase
         .from('allowed_establishment_signups')
         .update({ used: true })
-        .eq('email', tokenData.email.toLowerCase().trim());
+        .eq('email', email);
 
       setIsLoading(false);
       toast({
@@ -288,17 +308,31 @@ export default function CriarConta() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="fullName">Nome completo</Label>
-            <Input id="fullName" type="text" placeholder="Seu nome" autoComplete="name" {...register('fullName')} />
-            {errors.fullName && <p className="text-sm text-destructive">{errors.fullName.message}</p>}
+            <Input
+              id="fullName"
+              type="text"
+              placeholder="Seu nome"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+            {formErrors.fullName && <p className="text-sm text-destructive">{formErrors.fullName}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="companyName">Nome da empresa</Label>
-            <Input id="companyName" type="text" placeholder="Nome do seu estabelecimento" autoComplete="organization" {...register('companyName')} />
-            {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
+            <Input
+              id="companyName"
+              type="text"
+              placeholder="Nome do seu estabelecimento"
+              autoComplete="organization"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+            {formErrors.companyName && <p className="text-sm text-destructive">{formErrors.companyName}</p>}
           </div>
 
           <div className="space-y-2">
@@ -310,7 +344,6 @@ export default function CriarConta() {
               disabled
               className="bg-muted cursor-not-allowed"
             />
-            <input type="hidden" {...register('email')} />
             <p className="text-xs text-muted-foreground">
               O email é vinculado ao seu pagamento e não pode ser alterado.
             </p>
@@ -318,28 +351,38 @@ export default function CriarConta() {
 
           <div className="space-y-2">
             <Label htmlFor="phone">Telefone</Label>
-            <Controller
-              name="phone"
-              control={control}
-              defaultValue=""
-              render={({ field }) => (
-                <PhoneInput id="phone" placeholder="(11) 99999-9999" value={field.value} onChange={field.onChange} />
-              )}
+            <PhoneInput
+              id="phone"
+              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={(val) => setPhone(val)}
             />
-            {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
+            {formErrors.phone && <p className="text-sm text-destructive">{formErrors.phone}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <PasswordInput id="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password" {...register('password')} />
+            <PasswordInput
+              id="password"
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <PasswordStrength password={password} />
-            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+            {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmar senha</Label>
-            <PasswordInput id="confirmPassword" placeholder="Repita a senha" autoComplete="new-password" {...register('confirmPassword')} />
-            {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
+            <PasswordInput
+              id="confirmPassword"
+              placeholder="Repita a senha"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            {formErrors.confirmPassword && <p className="text-sm text-destructive">{formErrors.confirmPassword}</p>}
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
