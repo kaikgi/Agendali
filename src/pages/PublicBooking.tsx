@@ -338,6 +338,11 @@ export default function PublicBooking() {
 
     if (isSubmitting) return;
 
+    if (!session) {
+      setShowLoginModal(true);
+      return;
+    }
+
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
       toast({
         variant: 'destructive',
@@ -347,7 +352,6 @@ export default function PublicBooking() {
       return;
     }
 
-    // Proceed directly — login is NOT required for public booking
     await handleConfirmedSubmit(customerData);
   };
 
