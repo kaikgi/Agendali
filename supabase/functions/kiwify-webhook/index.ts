@@ -28,6 +28,8 @@ const IGNORED_EVENTS = new Set([
   'pix_created',
   'boleto_created',
   'waiting_payment',
+  'cart_abandoned',
+  'checkout_started',
 ])
 
 function normalizeEmail(email: string | undefined | null): string | null {
