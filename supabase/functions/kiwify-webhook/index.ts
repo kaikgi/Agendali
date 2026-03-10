@@ -109,7 +109,7 @@ serve(async (req) => {
 
   if (method === 'GET') {
     return new Response(
-      JSON.stringify({ ok: true, version: '6.0.0', message: 'Kiwify webhook ready (strict product match, no fallback)' }),
+      JSON.stringify({ ok: true, version: '7.0.0', message: 'Kiwify webhook ready (invitation-based signup)' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
@@ -156,7 +156,6 @@ serve(async (req) => {
     }
 
     const eventType = payload.webhook_event_type || 'unknown'
-    // Use order_id + event_type as composite key for idempotency (same order can have pix_created then order_approved)
     const orderId = payload.order_id || payload.subscription_id || payload.Subscription?.id || crypto.randomUUID()
     const eventId = `${orderId}__${eventType}`
     const buyerEmail = normalizeEmail(payload.Customer?.email || payload.customer_email)
@@ -281,7 +280,6 @@ async function findAgendaliProduct(
   productId: string | null,
   productName: string,
 ): Promise<{ plan_code: string } | null> {
-  // 1. Try exact match by kiwify_product_id
   if (productId) {
     const { data } = await supabase
       .from('kiwify_products')
@@ -296,7 +294,6 @@ async function findAgendaliProduct(
     }
   }
 
-  // 2. Try matching by product_name against registered products
   if (productName) {
     const nameLower = productName.toLowerCase()
     const { data: allProducts } = await supabase
@@ -313,22 +310,17 @@ async function findAgendaliProduct(
       }
     }
 
-    // 3. Try detecting plan from keywords in product name
     if (nameLower.includes('pro') || nameLower.includes('profissional')) {
-      console.log(`[KIWIFY] Product matched by keyword "pro" in name: "${productName}"`)
       return { plan_code: 'pro' }
     }
     if (nameLower.includes('studio')) {
-      console.log(`[KIWIFY] Product matched by keyword "studio" in name: "${productName}"`)
       return { plan_code: 'studio' }
     }
     if (nameLower.includes('solo')) {
-      console.log(`[KIWIFY] Product matched by keyword "solo" in name: "${productName}"`)
       return { plan_code: 'solo' }
     }
   }
 
-  // 4. No match — do NOT default to any plan
   console.warn(`[KIWIFY] ⚠️ No product match for "${productName}" (ID: ${productId}). Will NOT authorize.`)
   return null
 }
@@ -351,11 +343,10 @@ async function processKiwifyEvent(
   } else if (CANCELLATION_EVENTS.has(eventType)) {
     status = 'canceled'
   } else {
-    console.log(`[KIWIFY] ⚠️ Unknown event type "${eventType}", ignoring (will NOT authorize)`)
-    return // Do NOT process unknown events as active
+    console.log(`[KIWIFY] ⚠️ Unknown event type "${eventType}", ignoring`)
+    return
   }
 
-  // Calculate period dates
   const now = new Date()
   let periodStart = now
   if (payload.approved_date) {
@@ -379,13 +370,14 @@ async function processKiwifyEvent(
 
   // ===== ACTIVATION =====
   if (status === 'active') {
+    // 1. Upsert allowed_establishment_signups (backwards compatible)
     const { data: existingSignup } = await supabase
       .from('allowed_establishment_signups')
       .select('email, activation_sent_at, used')
       .eq('email', buyerEmail)
       .single()
 
-    const { error: signupError } = await supabase
+    await supabase
       .from('allowed_establishment_signups')
       .upsert({
         email: buyerEmail,
@@ -398,33 +390,24 @@ async function processKiwifyEvent(
         ignoreDuplicates: false,
       })
 
-    if (signupError && signupError.code !== '23505') {
-      console.error('[KIWIFY] Error upserting allowed signup:', signupError)
-    } else {
-      console.log(`[KIWIFY] ✅ Email ${buyerEmail} authorized for plan ${planCode}`)
-    }
+    console.log(`[KIWIFY] ✅ Email ${buyerEmail} authorized for plan ${planCode}`)
 
-    // Send activation email (only if not already sent)
+    // 2. Create signup invitation and send email (only if not already sent)
     const alreadySent = existingSignup?.activation_sent_at != null
     if (!alreadySent) {
-      await sendActivationEmail(supabase, buyerEmail, planCode)
+      await createInvitationAndSendEmail(supabase, buyerEmail, planCode, orderId)
     } else {
-      console.log(`[KIWIFY] Activation email already sent for ${buyerEmail}, skipping`)
+      console.log(`[KIWIFY] Invitation already sent for ${buyerEmail}, skipping`)
     }
   }
 
   // ===== CANCELLATION =====
   if (status === 'canceled') {
-    const { error: revokeError } = await supabase
+    await supabase
       .from('allowed_establishment_signups')
       .update({ used: true })
       .eq('email', buyerEmail)
-
-    if (revokeError) {
-      console.error('[KIWIFY] Error revoking signup:', revokeError)
-    } else {
-      console.log(`[KIWIFY] ❌ Email ${buyerEmail} revoked`)
-    }
+    console.log(`[KIWIFY] ❌ Email ${buyerEmail} revoked`)
   }
 
   // ===== SUBSCRIPTION: upsert if user exists =====
@@ -482,105 +465,88 @@ async function processKiwifyEvent(
     console.log(`[KIWIFY] Subscription ${status} for user ${userId}`)
 
     if (status === 'active') {
-      // Mark signup as used
       await supabase
         .from('allowed_establishment_signups')
         .update({ used: true })
         .eq('email', buyerEmail)
 
-      // Activate establishment
-      const { error: estUpdateError } = await supabase
+      await supabase
         .from('establishments')
         .update({ status: 'active' } as any)
         .eq('owner_user_id', userId)
-
-      if (estUpdateError) {
-        console.error('[KIWIFY] Error activating establishment:', estUpdateError)
-      } else {
-        console.log(`[KIWIFY] ✅ Establishment activated for user ${userId}`)
-      }
+      console.log(`[KIWIFY] ✅ Establishment activated for user ${userId}`)
     }
 
-    // On cancellation, mark establishment as canceled
     if (status === 'canceled') {
-      const { error: estRevertError } = await supabase
+      await supabase
         .from('establishments')
         .update({ status: 'canceled' } as any)
         .eq('owner_user_id', userId)
-
-      if (estRevertError) {
-        console.error('[KIWIFY] Error canceling establishment:', estRevertError)
-      } else {
-        console.log(`[KIWIFY] ❌ Establishment canceled for user ${userId}`)
-      }
+      console.log(`[KIWIFY] ❌ Establishment canceled for user ${userId}`)
     }
   } else {
-    console.log(`[KIWIFY] No user found for ${buyerEmail}. Email authorized for future signup.`)
+    console.log(`[KIWIFY] No user found for ${buyerEmail}. Invitation email sent for future signup.`)
   }
 }
 
 /**
- * Create auth user (if needed) and send activation email via Resend
+ * Generate a secure signup invitation token, store it, and send the invitation email.
  */
-async function sendActivationEmail(
+async function createInvitationAndSendEmail(
   supabase: SupabaseClient,
   email: string,
   planCode: string,
+  orderId: string,
 ) {
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  // 1. Generate secure token
+  const rawToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '')
+  const tokenHash = await hashToken(rawToken)
 
-  // Step 1: Create or find auth user
-  let userExists = false
-  const { data: existingUsers } = await supabase.auth.admin.listUsers()
-  if (existingUsers?.users) {
-    userExists = existingUsers.users.some(
-      (u: { email?: string }) => u.email?.toLowerCase().trim() === email
-    )
-  }
-
-  if (!userExists) {
-    const tempPassword = crypto.randomUUID() + 'A1!'
-    const { error: createError } = await supabase.auth.admin.createUser({
+  // 2. Store invitation
+  const { error: inviteError } = await supabase
+    .from('signup_invitations')
+    .insert({
       email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { activation_pending: true },
+      plan_code: planCode,
+      kiwify_order_id: orderId,
+      token_hash: tokenHash,
+      status: 'pending',
     })
-    if (createError) {
-      console.error('[KIWIFY] Error creating auth user:', createError)
-    } else {
-      console.log(`[KIWIFY] Auth user created for ${email}`)
-    }
-  }
 
-  // Step 2: Generate password reset link
-  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-    options: {
-      redirectTo: `${APP_URL}/auth/activate`,
-    },
-  })
-
-  if (linkError || !linkData?.properties?.action_link) {
-    console.error('[KIWIFY] Error generating activation link:', linkError)
-    await supabase
-      .from('allowed_establishment_signups')
-      .update({ activation_sent_at: new Date().toISOString() })
-      .eq('email', email)
+  if (inviteError) {
+    console.error('[KIWIFY] Error creating invitation:', inviteError)
     return
   }
 
-  const actionLink = linkData.properties.action_link
-  console.log(`[KIWIFY] Generated activation link for ${email}`)
+  console.log(`[KIWIFY] ✅ Signup invitation created for ${email}`)
 
-  // Step 3: Send email via Resend
+  // 3. Send invitation email
+  const signupLink = `${APP_URL}/criar-conta?token=${rawToken}`
+  await sendInvitationEmail(email, planCode, signupLink)
+
+  // 4. Mark activation as sent in allowed_establishment_signups
+  await supabase
+    .from('allowed_establishment_signups')
+    .update({ activation_sent_at: new Date().toISOString() })
+    .eq('email', email)
+}
+
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(token)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function sendInvitationEmail(
+  email: string,
+  planCode: string,
+  signupLink: string,
+) {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
   if (!resendApiKey) {
     console.warn('[KIWIFY] RESEND_API_KEY not configured, skipping email send')
-    await supabase
-      .from('allowed_establishment_signups')
-      .update({ activation_sent_at: new Date().toISOString() })
-      .eq('email', email)
     return
   }
 
@@ -611,28 +577,26 @@ async function sendActivationEmail(
           <tr>
             <td style="background-color:#f9fafb;border-radius:12px;padding:32px;">
               <h2 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#111827;">
-                🎉 Sua assinatura foi confirmada!
+                🎉 Pagamento confirmado!
               </h2>
               <p style="margin:0 0 12px;font-size:16px;line-height:1.6;color:#374151;">
-                Parabéns! Seu plano <strong>${planDisplayName}</strong> do Agendali está ativo.
+                Seu plano <strong>${planDisplayName}</strong> do Agendali está ativo.
               </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151;">
-                Clique no botão abaixo para criar sua senha e acessar o painel do seu estabelecimento:
+                Clique no botão abaixo para criar sua conta e começar a usar o Agendali:
               </p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <a href="${actionLink}" 
+                    <a href="${signupLink}" 
                        style="display:inline-block;padding:14px 32px;background-color:#111827;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
-                      Criar senha e acessar painel
+                      Criar minha conta
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
-                ⏳ Este link expira em 1 hora. Se expirar, acesse 
-                <a href="${APP_URL}/esqueci-senha" style="color:#111827;">agendali.online</a> 
-                e solicite um novo link.
+                ⏳ Este link expira em 7 dias. Se precisar de um novo link, entre em contato com nosso suporte.
               </p>
             </td>
           </tr>
@@ -663,7 +627,7 @@ async function sendActivationEmail(
       body: JSON.stringify({
         from: `Agendali <${Deno.env.get("RESEND_FROM") || "noreply@agendali.online"}>`,
         to: [email],
-        subject: 'Ative sua conta do Agendali — Crie sua senha',
+        subject: 'Crie sua conta no Agendali — Pagamento confirmado ✅',
         html: emailHtml,
       }),
     })
@@ -672,15 +636,9 @@ async function sendActivationEmail(
       const resendError = await resendResponse.text()
       console.error('[KIWIFY] Resend error:', resendError)
     } else {
-      console.log(`[KIWIFY] ✅ Activation email sent to ${email}`)
+      console.log(`[KIWIFY] ✅ Invitation email sent to ${email}`)
     }
   } catch (err) {
     console.error('[KIWIFY] Error sending email via Resend:', err)
   }
-
-  // Mark activation as sent
-  await supabase
-    .from('allowed_establishment_signups')
-    .update({ activation_sent_at: new Date().toISOString() })
-    .eq('email', email)
 }
