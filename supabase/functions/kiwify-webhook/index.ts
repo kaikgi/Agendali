@@ -274,10 +274,7 @@ serve(async (req) => {
 
 /**
  * Find matching Agendali product/plan by product_id or product_name.
- * 
- * This webhook endpoint is Agendali-specific, so ALL products received here
- * are assumed to be Agendali products. We try to match a specific plan,
- * and default to 'solo' if no match is found.
+ * Returns null if no confident match — will NOT authorize unknown products.
  */
 async function findAgendaliProduct(
   supabase: SupabaseClient,
