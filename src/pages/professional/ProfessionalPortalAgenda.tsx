@@ -113,22 +113,7 @@ export default function ProfessionalPortalAgenda() {
     activeTab === 'calendar' ? calMonthEnd : weekEnd
   );
 
-  // Fetch professional data for avatar
-  const { data: professionalData } = useQuery({
-    queryKey: ['professional-portal-profile', session?.professional_id],
-    queryFn: async () => {
-      if (!session?.professional_id) return null;
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('photo_url')
-        .eq('id', session.professional_id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.professional_id,
-    staleTime: 60000,
-  });
+  // Photo URL now comes from validate_professional_session RPC
 
   // Redirect if not authenticated
   useEffect(() => {
