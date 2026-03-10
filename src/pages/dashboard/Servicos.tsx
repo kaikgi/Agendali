@@ -212,7 +212,7 @@ export default function Servicos() {
 
   const handleSaveService = async () => {
     const trimmedName = serviceForm.name.trim();
-    if (!trimmedName) { toast({ title: 'Nome é obrigatório', variant: 'destructive' }); return; }
+    if (!trimmedName) { toast({ title: 'Nome é obrigatório', variant: 'destructive' }); throw new Error('validation'); }
 
     const durationNum = parseInt(serviceForm.duration_minutes);
     if (isNaN(durationNum) || durationNum < 5) {
