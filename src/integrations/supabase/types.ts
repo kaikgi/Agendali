@@ -230,6 +230,7 @@ export type Database = {
           created_at: string
           customer_id: string
           customer_notes: string | null
+          customer_reminder_hours: number | null
           customer_user_id: string | null
           end_at: string
           establishment_id: string
@@ -247,6 +248,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           customer_notes?: string | null
+          customer_reminder_hours?: number | null
           customer_user_id?: string | null
           end_at: string
           establishment_id: string
@@ -264,6 +266,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           customer_notes?: string | null
+          customer_reminder_hours?: number | null
           customer_user_id?: string | null
           end_at?: string
           establishment_id?: string
