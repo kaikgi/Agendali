@@ -155,7 +155,9 @@ serve(async (req) => {
     }
 
     const eventType = payload.webhook_event_type || 'unknown'
-    const eventId = payload.order_id || payload.subscription_id || payload.Subscription?.id || crypto.randomUUID()
+    // Use order_id + event_type as composite key for idempotency (same order can have pix_created then order_approved)
+    const orderId = payload.order_id || payload.subscription_id || payload.Subscription?.id || crypto.randomUUID()
+    const eventId = `${orderId}__${eventType}`
     const buyerEmail = normalizeEmail(payload.Customer?.email || payload.customer_email)
     const productId = payload.Product?.product_id || payload.product_id || null
     const productName = payload.Product?.product_name || payload.product_name || ''
