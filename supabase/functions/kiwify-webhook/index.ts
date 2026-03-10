@@ -27,6 +27,7 @@ const PAST_DUE_EVENTS = new Set([
 const IGNORED_EVENTS = new Set([
   'pix_created',
   'boleto_created',
+  'billet_created',
   'waiting_payment',
   'cart_abandoned',
   'checkout_started',
