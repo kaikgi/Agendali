@@ -216,7 +216,7 @@ export default function Servicos() {
 
     const durationNum = parseInt(serviceForm.duration_minutes);
     if (isNaN(durationNum) || durationNum < 5) {
-      toast({ title: 'Duração mínima: 5 minutos', variant: 'destructive' }); return;
+      toast({ title: 'Duração mínima: 5 minutos', variant: 'destructive' }); throw new Error('validation');
     }
 
     let priceNum: number | null = null;
