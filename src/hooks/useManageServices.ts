@@ -10,6 +10,7 @@ export interface Service {
   active: boolean;
   created_at: string;
   category: string | null;
+  category_id: string | null;
   sort_order: number;
 }
 
@@ -20,6 +21,7 @@ interface CreateServiceData {
   duration_minutes: number;
   price_cents?: number;
   category?: string;
+  category_id?: string | null;
   sort_order?: number;
 }
 

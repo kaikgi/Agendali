@@ -1,197 +1,258 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Scissors, RefreshCw, GripVertical, ChevronUp, ChevronDown, FolderPlus, Tag } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Plus, Pencil, Trash2, Scissors, RefreshCw, GripVertical,
+  ChevronUp, ChevronDown, FolderPlus, Tag, ChevronRight,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useManageServices, type Service } from '@/hooks/useManageServices';
+import { useServiceCategories, type ServiceCategory } from '@/hooks/useServiceCategories';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface ServiceForm {
   name: string;
   description: string;
   duration_minutes: string;
   price: string;
-  category: string;
+  category_id: string;
 }
 
-const NONE_CATEGORY = '__none__';
+const NONE_CATEGORY_VALUE = '__none__';
 
 export default function Servicos() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
-  const { services, isLoading, error, refetch, create, update, bulkUpdateOrder, delete: deleteService, isCreating, isUpdating, isSavingOrder } = useManageServices(establishment?.id);
+  const {
+    services, isLoading, error, refetch,
+    create, update, bulkUpdateOrder, delete: deleteService,
+    isCreating, isUpdating, isSavingOrder,
+  } = useManageServices(establishment?.id);
+  const {
+    categories, isLoading: catLoading,
+    create: createCategory, isCreating: isCatCreating,
+    update: updateCategory, isUpdating: isCatUpdating,
+    remove: deleteCategory, isDeleting: isCatDeleting,
+    reorder: reorderCategories, isReordering,
+  } = useServiceCategories(establishment?.id);
   const { toast } = useToast();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
-  const [categoryForm, setCategoryForm] = useState({ name: '', editingOld: '' });
-  const [form, setForm] = useState<ServiceForm>({
-    name: '',
-    description: '',
-    duration_minutes: '30',
-    price: '',
-    category: '',
+  // Service dialog
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceForm, setServiceForm] = useState<ServiceForm>({
+    name: '', description: '', duration_minutes: '30', price: '', category_id: '',
   });
 
-  // Extract unique categories from services, ordered by min sort_order
-  const categories = useMemo(() => {
-    const catMap = new Map<string, number>();
-    services.forEach((s) => {
-      if (s.category) {
-        const existing = catMap.get(s.category);
-        if (existing === undefined || s.sort_order < existing) {
-          catMap.set(s.category, s.sort_order);
-        }
-      }
-    });
-    return Array.from(catMap.entries())
-      .sort((a, b) => a[1] - b[1])
-      .map(([name]) => name);
-  }, [services]);
+  // Category dialog
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryError, setCategoryError] = useState('');
+
+  // Delete dialogs
+  const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
+  const [deleteCategoryName, setDeleteCategoryName] = useState('');
+
+  // Collapsed state
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   // Group services by category
   const groupedServices = useMemo(() => {
-    const groups: { category: string | null; services: Service[] }[] = [];
-    const catOrder = new Map(categories.map((c, i) => [c, i]));
-
-    // Group by category
-    const byCategory = new Map<string | null, Service[]>();
+    const groups: { category: ServiceCategory | null; services: Service[] }[] = [];
+    const byCatId = new Map<string | null, Service[]>();
     services.forEach((s) => {
-      const key = s.category || null;
-      if (!byCategory.has(key)) byCategory.set(key, []);
-      byCategory.get(key)!.push(s);
+      const key = s.category_id || null;
+      if (!byCatId.has(key)) byCatId.set(key, []);
+      byCatId.get(key)!.push(s);
     });
-
-    // Sort categories: named categories first (in order), then uncategorized
-    const sortedKeys = Array.from(byCategory.keys()).sort((a, b) => {
-      if (a === null) return 1;
-      if (b === null) return -1;
-      return (catOrder.get(a) ?? 999) - (catOrder.get(b) ?? 999);
+    categories.forEach((cat) => {
+      groups.push({
+        category: cat,
+        services: (byCatId.get(cat.id) ?? []).sort((a, b) => a.sort_order - b.sort_order),
+      });
     });
-
-    sortedKeys.forEach((key) => {
-      const items = byCategory.get(key)!.sort((a, b) => a.sort_order - b.sort_order);
-      groups.push({ category: key, services: items });
-    });
-
+    const uncategorized = byCatId.get(null) ?? [];
+    if (uncategorized.length > 0 || categories.length > 0) {
+      groups.push({
+        category: null,
+        services: uncategorized.sort((a, b) => a.sort_order - b.sort_order),
+      });
+    }
     return groups;
   }, [services, categories]);
 
-  const handleRetry = () => {
-    if (estError) refetchEst();
-    else refetch();
-  };
-
-  const handleOpenCreate = () => {
-    setEditingId(null);
-    setForm({ name: '', description: '', duration_minutes: '30', price: '', category: '' });
-    setDialogOpen(true);
-  };
-
-  const handleOpenEdit = (service: Service) => {
-    setEditingId(service.id);
-    setForm({
-      name: service.name,
-      description: service.description || '',
-      duration_minutes: String(service.duration_minutes),
-      price: service.price_cents ? (service.price_cents / 100).toFixed(2) : '',
-      category: service.category || '',
+  const toggleCollapse = (id: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
-    setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    const trimmedName = form.name.trim();
-    if (!trimmedName) {
-      toast({ title: 'Nome é obrigatório', variant: 'destructive' });
-      return;
-    }
+  // ── Category Handlers ──
 
-    const durationNum = parseInt(form.duration_minutes);
+  const openCreateCategory = () => {
+    setEditingCategoryId(null);
+    setCategoryName('');
+    setCategoryError('');
+    setCategoryDialogOpen(true);
+  };
+
+  const openEditCategory = (cat: ServiceCategory) => {
+    setEditingCategoryId(cat.id);
+    setCategoryName(cat.name);
+    setCategoryError('');
+    setCategoryDialogOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
+    const trimmed = categoryName.trim();
+    if (!trimmed) { setCategoryError('Nome é obrigatório'); return; }
+    if (trimmed.length < 2) { setCategoryError('Mínimo 2 caracteres'); return; }
+    if (trimmed.length > 80) { setCategoryError('Máximo 80 caracteres'); return; }
+
+    try {
+      if (editingCategoryId) {
+        await updateCategory({ id: editingCategoryId, name: trimmed });
+      } else {
+        await createCategory({ name: trimmed });
+      }
+      setCategoryDialogOpen(false);
+      setCategoryName('');
+      setCategoryError('');
+    } catch {
+      // Error handled by mutation's onError
+    }
+  };
+
+  const confirmDeleteCategory = (cat: ServiceCategory) => {
+    setDeleteCategoryId(cat.id);
+    setDeleteCategoryName(cat.name);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryId) return;
+    try {
+      await deleteCategory(deleteCategoryId);
+    } catch {
+      // handled by mutation
+    }
+    setDeleteCategoryId(null);
+    setDeleteCategoryName('');
+  };
+
+  const handleMoveCategoryUp = useCallback(async (catId: string) => {
+    const idx = categories.findIndex((c) => c.id === catId);
+    if (idx <= 0) return;
+    const prev = categories[idx - 1];
+    const curr = categories[idx];
+    try {
+      await reorderCategories([
+        { id: curr.id, sort_order: prev.sort_order },
+        { id: prev.id, sort_order: curr.sort_order },
+      ]);
+    } catch { /* handled */ }
+  }, [categories, reorderCategories]);
+
+  const handleMoveCategoryDown = useCallback(async (catId: string) => {
+    const idx = categories.findIndex((c) => c.id === catId);
+    if (idx < 0 || idx >= categories.length - 1) return;
+    const next = categories[idx + 1];
+    const curr = categories[idx];
+    try {
+      await reorderCategories([
+        { id: curr.id, sort_order: next.sort_order },
+        { id: next.id, sort_order: curr.sort_order },
+      ]);
+    } catch { /* handled */ }
+  }, [categories, reorderCategories]);
+
+  // ── Service Handlers ──
+
+  const openCreateService = () => {
+    setEditingServiceId(null);
+    setServiceForm({ name: '', description: '', duration_minutes: '30', price: '', category_id: '' });
+    setServiceDialogOpen(true);
+  };
+
+  const openEditService = (s: Service) => {
+    setEditingServiceId(s.id);
+    setServiceForm({
+      name: s.name,
+      description: s.description || '',
+      duration_minutes: String(s.duration_minutes),
+      price: s.price_cents ? (s.price_cents / 100).toFixed(2) : '',
+      category_id: s.category_id || '',
+    });
+    setServiceDialogOpen(true);
+  };
+
+  const handleSaveService = async () => {
+    const trimmedName = serviceForm.name.trim();
+    if (!trimmedName) { toast({ title: 'Nome é obrigatório', variant: 'destructive' }); return; }
+
+    const durationNum = parseInt(serviceForm.duration_minutes);
     if (isNaN(durationNum) || durationNum < 5) {
-      toast({ title: 'Duração deve ser de pelo menos 5 minutos', variant: 'destructive' });
-      return;
+      toast({ title: 'Duração mínima: 5 minutos', variant: 'destructive' }); return;
     }
 
     let priceNum: number | null = null;
-    if (form.price.trim()) {
-      const parsed = parseFloat(form.price.replace(',', '.'));
-      if (isNaN(parsed) || parsed < 0) {
-        toast({ title: 'Preço inválido', variant: 'destructive' });
-        return;
-      }
+    if (serviceForm.price.trim()) {
+      const parsed = parseFloat(serviceForm.price.replace(',', '.'));
+      if (isNaN(parsed) || parsed < 0) { toast({ title: 'Preço inválido', variant: 'destructive' }); return; }
       priceNum = Math.round(parsed * 100);
     }
 
-    if (!establishment?.id) {
-      toast({ title: 'Estabelecimento não encontrado', variant: 'destructive' });
-      return;
-    }
-
-    const categoryValue = form.category.trim() || null;
+    if (!establishment?.id) return;
+    const categoryId = serviceForm.category_id || null;
 
     try {
-      if (editingId) {
+      if (editingServiceId) {
         await update({
-          id: editingId,
+          id: editingServiceId,
           name: trimmedName,
-          description: form.description.trim() || null,
+          description: serviceForm.description.trim() || null,
           duration_minutes: durationNum,
           price_cents: priceNum,
-          category: categoryValue,
-        });
+          category_id: categoryId,
+        } as any);
         toast({ title: 'Serviço atualizado!' });
       } else {
-        // Set sort_order to be last
         const maxOrder = services.reduce((max, s) => Math.max(max, s.sort_order), -1);
         await create({
           establishment_id: establishment.id,
           name: trimmedName,
-          description: form.description.trim() || undefined,
+          description: serviceForm.description.trim() || undefined,
           duration_minutes: durationNum,
           price_cents: priceNum ?? undefined,
-          category: categoryValue ?? undefined,
+          category_id: categoryId ?? undefined,
           sort_order: maxOrder + 1,
         });
-        toast({ title: 'Serviço criado com sucesso!' });
+        toast({ title: 'Serviço criado!' });
       }
-      setDialogOpen(false);
-      setEditingId(null);
+      setServiceDialogOpen(false);
     } catch (err: any) {
       console.error('Erro ao salvar serviço:', err);
       toast({ title: 'Erro ao salvar serviço', description: err?.message, variant: 'destructive' });
@@ -200,176 +261,53 @@ export default function Servicos() {
 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
-      await update({ id, active: !currentActive });
+      await update({ id, active: !currentActive } as any);
       toast({ title: currentActive ? 'Serviço desativado' : 'Serviço ativado' });
     } catch (err: any) {
       toast({ title: 'Erro ao alterar status', description: err?.message, variant: 'destructive' });
     }
   };
 
-  const handleDelete = async () => {
-    if (!deletingId) return;
+  const handleDeleteService = async () => {
+    if (!deleteServiceId) return;
     try {
-      await deleteService(deletingId);
+      await deleteService(deleteServiceId);
       toast({ title: 'Serviço removido' });
-      setDeleteDialogOpen(false);
-      setDeletingId(null);
     } catch (err: any) {
-      toast({ title: 'Erro ao remover serviço', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Erro ao remover', description: err?.message, variant: 'destructive' });
     }
+    setDeleteServiceId(null);
   };
 
   const handleMoveService = useCallback(async (serviceId: string, direction: 'up' | 'down') => {
-    // Flatten all services in display order
-    const flat = groupedServices.flatMap(g => g.services);
-    const idx = flat.findIndex(s => s.id === serviceId);
+    const flat = groupedServices.flatMap((g) => g.services);
+    const idx = flat.findIndex((s) => s.id === serviceId);
     if (idx < 0) return;
-    
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (targetIdx < 0 || targetIdx >= flat.length) return;
-
-    // Swap sort_order values
-    const current = flat[idx];
-    const target = flat[targetIdx];
-    
     try {
       await bulkUpdateOrder([
-        { id: current.id, sort_order: target.sort_order },
-        { id: target.id, sort_order: current.sort_order },
+        { id: flat[idx].id, sort_order: flat[targetIdx].sort_order },
+        { id: flat[targetIdx].id, sort_order: flat[idx].sort_order },
       ]);
     } catch (err: any) {
       toast({ title: 'Erro ao reordenar', description: err?.message, variant: 'destructive' });
     }
   }, [groupedServices, bulkUpdateOrder, toast]);
 
-  const handleMoveCategoryUp = useCallback(async (categoryName: string) => {
-    const catIdx = categories.indexOf(categoryName);
-    if (catIdx <= 0) return;
-
-    // Swap sort_orders between all services in this category and the one above
-    const thisCat = groupedServices.find(g => g.category === categoryName);
-    const prevCatName = categories[catIdx - 1];
-    const prevCat = groupedServices.find(g => g.category === prevCatName);
-    
-    if (!thisCat || !prevCat) return;
-
-    // Reassign sort_orders: prev category gets current's positions, current gets prev's
-    const updates: { id: string; sort_order: number }[] = [];
-    let order = Math.min(
-      ...[...thisCat.services, ...prevCat.services].map(s => s.sort_order)
-    );
-
-    thisCat.services.forEach(s => {
-      updates.push({ id: s.id, sort_order: order++ });
-    });
-    prevCat.services.forEach(s => {
-      updates.push({ id: s.id, sort_order: order++ });
-    });
-
-    try {
-      await bulkUpdateOrder(updates);
-    } catch (err: any) {
-      toast({ title: 'Erro ao reordenar categorias', description: err?.message, variant: 'destructive' });
-    }
-  }, [categories, groupedServices, bulkUpdateOrder, toast]);
-
-  const handleMoveCategoryDown = useCallback(async (categoryName: string) => {
-    const catIdx = categories.indexOf(categoryName);
-    if (catIdx >= categories.length - 1) return;
-
-    const thisCat = groupedServices.find(g => g.category === categoryName);
-    const nextCatName = categories[catIdx + 1];
-    const nextCat = groupedServices.find(g => g.category === nextCatName);
-    
-    if (!thisCat || !nextCat) return;
-
-    const updates: { id: string; sort_order: number }[] = [];
-    let order = Math.min(
-      ...[...thisCat.services, ...nextCat.services].map(s => s.sort_order)
-    );
-
-    nextCat.services.forEach(s => {
-      updates.push({ id: s.id, sort_order: order++ });
-    });
-    thisCat.services.forEach(s => {
-      updates.push({ id: s.id, sort_order: order++ });
-    });
-
-    try {
-      await bulkUpdateOrder(updates);
-    } catch (err: any) {
-      toast({ title: 'Erro ao reordenar categorias', description: err?.message, variant: 'destructive' });
-    }
-  }, [categories, groupedServices, bulkUpdateOrder, toast]);
-
-  const handleSaveCategory = async () => {
-    const newName = categoryForm.name.trim();
-    if (!newName) {
-      toast({ title: 'Nome da categoria é obrigatório', variant: 'destructive' });
-      return;
-    }
-
-    if (categoryForm.editingOld) {
-      // Rename: update all services with old category to new
-      const toUpdate = services.filter(s => s.category === categoryForm.editingOld);
-      if (toUpdate.length === 0) return;
-
-      try {
-        await bulkUpdateOrder(
-          toUpdate.map(s => ({ id: s.id, sort_order: s.sort_order, category: newName }))
-        );
-        toast({ title: 'Categoria renomeada!' });
-        setCategoryDialogOpen(false);
-      } catch (err: any) {
-        toast({ title: 'Erro ao renomear categoria', description: err?.message, variant: 'destructive' });
-      }
-    } else {
-      // Just close — categories are created implicitly when assigned to a service
-      toast({ title: 'Categoria criada! Agora vincule serviços a ela.' });
-      setCategoryDialogOpen(false);
-    }
-  };
-
-  const handleDeleteCategory = async () => {
-    if (!deletingCategory) return;
-    const toUpdate = services.filter(s => s.category === deletingCategory);
-    
-    try {
-      await bulkUpdateOrder(
-        toUpdate.map(s => ({ id: s.id, sort_order: s.sort_order, category: null }))
-      );
-      toast({ title: 'Categoria removida. Serviços movidos para "Sem categoria".' });
-      setDeleteCategoryDialogOpen(false);
-      setDeletingCategory(null);
-    } catch (err: any) {
-      toast({ title: 'Erro ao remover categoria', description: err?.message, variant: 'destructive' });
-    }
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    setDialogOpen(open);
-    if (!open) {
-      setEditingId(null);
-      setForm({ name: '', description: '', duration_minutes: '30', price: '', category: '' });
-    }
-  };
-
   const formatPrice = (cents: number) => {
     if (!cents) return 'Preço não definido';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(cents / 100);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
   };
 
-  if (estLoading || isLoading) {
+  const handleRetry = () => { if (estError) refetchEst(); else refetch(); };
+
+  if (estLoading || isLoading || catLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40" />
-          ))}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40" />)}
         </div>
       </div>
     );
@@ -380,8 +318,7 @@ export default function Servicos() {
       <div className="text-center py-12">
         <p className="text-destructive mb-4">Erro ao carregar serviços</p>
         <Button variant="outline" onClick={handleRetry}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Tentar novamente
+          <RefreshCw className="h-4 w-4 mr-2" /> Tentar novamente
         </Button>
       </div>
     );
@@ -392,372 +329,273 @@ export default function Servicos() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Serviços</h1>
-          <p className="text-muted-foreground">
-            Gerencie os serviços oferecidos e organize por categorias
-          </p>
+          <p className="text-muted-foreground">Gerencie serviços e organize por categorias</p>
         </div>
-
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setCategoryForm({ name: '', editingOld: '' });
-              setCategoryDialogOpen(true);
-            }}
-          >
-            <FolderPlus className="h-4 w-4 mr-2" />
-            Nova Categoria
+          <Button variant="outline" onClick={openCreateCategory}>
+            <FolderPlus className="h-4 w-4 mr-2" /> Nova Categoria
           </Button>
-          <Button onClick={handleOpenCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Serviço
+          <Button onClick={openCreateService}>
+            <Plus className="h-4 w-4 mr-2" /> Novo Serviço
           </Button>
         </div>
       </div>
 
-      {services.length === 0 ? (
+      {services.length === 0 && categories.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <Scissors className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhum serviço cadastrado</h3>
-            <p className="text-muted-foreground mb-4">
-              Cadastre serviços para que clientes possam agendar
-            </p>
-            <Button onClick={handleOpenCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Cadastrar Serviço
-            </Button>
+            <p className="text-muted-foreground mb-4">Comece criando categorias e cadastrando serviços</p>
+            <div className="flex justify-center gap-2">
+              <Button variant="outline" onClick={openCreateCategory}>
+                <FolderPlus className="h-4 w-4 mr-2" /> Nova Categoria
+              </Button>
+              <Button onClick={openCreateService}>
+                <Plus className="h-4 w-4 mr-2" /> Cadastrar Serviço
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-6">
-          {groupedServices.map((group) => (
-            <div key={group.category ?? '__uncategorized'}>
-              {/* Category header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {group.category ? (
-                    <>
-                      <Tag className="h-4 w-4 text-primary" />
-                      <h2 className="text-lg font-semibold">{group.category}</h2>
-                      <Badge variant="secondary" className="text-xs">
-                        {group.services.length}
-                      </Badge>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-lg font-semibold text-muted-foreground">
-                        {categories.length > 0 ? 'Sem categoria' : 'Todos os serviços'}
-                      </h2>
-                      <Badge variant="secondary" className="text-xs">
-                        {group.services.length}
-                      </Badge>
-                    </>
-                  )}
-                </div>
-                {group.category && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleMoveCategoryUp(group.category!)}
-                      disabled={categories.indexOf(group.category!) === 0 || isSavingOrder}
-                      title="Mover categoria para cima"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleMoveCategoryDown(group.category!)}
-                      disabled={categories.indexOf(group.category!) === categories.length - 1 || isSavingOrder}
-                      title="Mover categoria para baixo"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setCategoryForm({ name: group.category!, editingOld: group.category! });
-                        setCategoryDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setDeletingCategory(group.category);
-                        setDeleteCategoryDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Excluir
-                    </Button>
-                  </div>
-                )}
-              </div>
+      )}
 
-              {/* Services list */}
-              <div className="space-y-2">
-                {group.services.map((service, idx) => (
-                  <Card key={service.id} className="transition-all">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        {/* Reorder controls */}
-                        <div className="flex flex-col items-center gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleMoveService(service.id, 'up')}
-                            disabled={isSavingOrder}
-                            title="Mover para cima"
-                          >
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleMoveService(service.id, 'down')}
-                            disabled={isSavingOrder}
-                            title="Mover para baixo"
-                          >
-                            <ChevronDown className="h-3 w-3" />
-                          </Button>
-                        </div>
+      {(services.length > 0 || categories.length > 0) && (
+        <div className="space-y-4">
+          {groupedServices.map((group) => {
+            const catId = group.category?.id ?? '__uncategorized';
+            const isCollapsed = collapsedCategories.has(catId);
+            const serviceCount = group.services.length;
 
-                        {/* Service info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium truncate">{service.name}</h3>
-                            <Badge variant={service.active ? 'default' : 'secondary'} className="text-xs shrink-0">
-                              {service.active ? 'Ativo' : 'Inativo'}
-                            </Badge>
-                          </div>
-                          {service.description && (
-                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
-                              {service.description}
-                            </p>
-                          )}
-                          <div className="flex gap-3 text-sm text-muted-foreground mt-1">
-                            <span>{service.duration_minutes} min</span>
-                            <span>{formatPrice(service.price_cents || 0)}</span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Switch
-                            checked={service.active}
-                            onCheckedChange={() => handleToggleActive(service.id, service.active)}
-                          />
-                          <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(service)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setDeletingId(service.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+            return (
+              <div key={catId} className="border rounded-lg overflow-hidden">
+                <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(catId)}>
+                  <div className="flex items-center justify-between bg-muted/40 px-4 py-3">
+                    <CollapsibleTrigger asChild>
+                      <button className="flex items-center gap-2 text-left flex-1 min-w-0">
+                        <ChevronRight className={cn(
+                          'h-4 w-4 shrink-0 transition-transform',
+                          !isCollapsed && 'rotate-90'
+                        )} />
+                        {group.category ? (
+                          <>
+                            <Tag className="h-4 w-4 text-primary shrink-0" />
+                            <span className="font-semibold truncate">{group.category.name}</span>
+                          </>
+                        ) : (
+                          <span className="font-semibold text-muted-foreground truncate">
+                            {categories.length > 0 ? 'Sem categoria' : 'Todos os serviços'}
+                          </span>
+                        )}
+                        <Badge variant="secondary" className="text-xs shrink-0">{serviceCount}</Badge>
+                      </button>
+                    </CollapsibleTrigger>
+                    {group.category && (
+                      <div className="flex items-center gap-0.5 shrink-0 ml-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => handleMoveCategoryUp(group.category!.id)}
+                          disabled={categories.indexOf(group.category!) === 0 || isReordering}>
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => handleMoveCategoryDown(group.category!.id)}
+                          disabled={categories.indexOf(group.category!) === categories.length - 1 || isReordering}>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => openEditCategory(group.category!)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => confirmDeleteCategory(group.category!)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    )}
+                  </div>
+                  <CollapsibleContent>
+                    {serviceCount === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        Nenhum serviço nesta categoria.
+                        {group.category && <span> Edite um serviço para vinculá-lo aqui.</span>}
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {group.services.map((service) => (
+                          <div key={service.id} className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex flex-col items-center gap-0.5 shrink-0">
+                              <Button variant="ghost" size="icon" className="h-6 w-6"
+                                onClick={() => handleMoveService(service.id, 'up')} disabled={isSavingOrder}>
+                                <ChevronUp className="h-3 w-3" />
+                              </Button>
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                              <Button variant="ghost" size="icon" className="h-6 w-6"
+                                onClick={() => handleMoveService(service.id, 'down')} disabled={isSavingOrder}>
+                                <ChevronDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium truncate">{service.name}</h3>
+                                <Badge variant={service.active ? 'default' : 'secondary'} className="text-xs shrink-0">
+                                  {service.active ? 'Ativo' : 'Inativo'}
+                                </Badge>
+                              </div>
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{service.description}</p>
+                              )}
+                              <div className="flex gap-3 text-sm text-muted-foreground mt-1">
+                                <span>{service.duration_minutes} min</span>
+                                <span>{formatPrice(service.price_cents || 0)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Switch checked={service.active}
+                                onCheckedChange={() => handleToggleActive(service.id, service.active)} />
+                              <Button variant="ghost" size="icon" onClick={() => openEditService(service)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteServiceId(service.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Create/Edit Service Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? 'Editar Serviço' : 'Novo Serviço'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !isCreating && !isUpdating) handleSubmit(); }}>
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Nome do serviço"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Descrição opcional"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select
-                value={form.category || NONE_CATEGORY}
-                onValueChange={(v) => setForm({ ...form, category: v === NONE_CATEGORY ? '' : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_CATEGORY}>Sem categoria</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Ou digite uma nova categoria no campo acima
-              </p>
-              <Input
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                placeholder="Ou digite uma nova categoria"
-                className="mt-1"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duração (minutos)</Label>
-                <Input
-                  id="duration"
-                  type="text"
-                  inputMode="numeric"
-                  value={form.duration_minutes}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setForm({ ...form, duration_minutes: val });
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="30"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Preço (R$)</Label>
-                <Input
-                  id="price"
-                  type="text"
-                  inputMode="decimal"
-                  value={form.price}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9.,]/g, '');
-                    setForm({ ...form, price: val });
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isCreating || isUpdating}>
-              Cancelar
-            </Button>
-            <ActionButton
-              onClick={handleSubmit}
-              disabled={!form.name.trim()}
-              loadingLabel={editingId ? 'Salvando...' : 'Criando...'}
-              successLabel={editingId ? 'Salvo!' : 'Criado!'}
-            >
-              {editingId ? 'Salvar' : 'Criar'}
-            </ActionButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Category Create/Edit Dialog */}
-      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+      {/* Category Dialog */}
+      <Dialog open={categoryDialogOpen} onOpenChange={(open) => {
+        setCategoryDialogOpen(open);
+        if (!open) { setCategoryError(''); setCategoryName(''); setEditingCategoryId(null); }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {categoryForm.editingOld ? 'Editar Categoria' : 'Nova Categoria'}
-            </DialogTitle>
+            <DialogTitle>{editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="category-name">Nome da categoria</Label>
-              <Input
-                id="category-name"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                placeholder="Ex: Premium, Básico, Combos"
-                autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveCategory(); }}
+              <Input id="category-name" value={categoryName}
+                onChange={(e) => { setCategoryName(e.target.value); setCategoryError(''); }}
+                placeholder="Ex: Premium, Básico, Combos" autoFocus maxLength={80}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !isCatCreating && !isCatUpdating) handleSaveCategory(); }}
               />
+              {categoryError && <p className="text-sm text-destructive">{categoryError}</p>}
             </div>
-            {!categoryForm.editingOld && (
+            {!editingCategoryId && (
               <p className="text-sm text-muted-foreground">
-                Após criar a categoria, vincule serviços a ela editando cada serviço.
+                Após criar, vincule serviços editando cada serviço e selecionando esta categoria.
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <ActionButton
-              onClick={handleSaveCategory}
-              disabled={!categoryForm.name.trim()}
-              loadingLabel="Salvando..."
-              successLabel="Salvo!"
-            >
-              {categoryForm.editingOld ? 'Renomear' : 'Criar'}
+            <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}
+              disabled={isCatCreating || isCatUpdating}>Cancelar</Button>
+            <ActionButton onClick={handleSaveCategory}
+              disabled={!categoryName.trim() || categoryName.trim().length < 2}
+              loadingLabel={editingCategoryId ? 'Salvando...' : 'Criando...'}
+              successLabel={editingCategoryId ? 'Salvo!' : 'Criada!'}>
+              {editingCategoryId ? 'Salvar' : 'Criar'}
             </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Service Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Service Dialog */}
+      <Dialog open={serviceDialogOpen} onOpenChange={(open) => {
+        setServiceDialogOpen(open);
+        if (!open) setEditingServiceId(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingServiceId ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4" onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !(e.target instanceof HTMLTextAreaElement) && !isCreating && !isUpdating)
+              handleSaveService();
+          }}>
+            <div className="space-y-2">
+              <Label htmlFor="svc-name">Nome *</Label>
+              <Input id="svc-name" value={serviceForm.name} autoFocus
+                onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                placeholder="Nome do serviço" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="svc-desc">Descrição</Label>
+              <Textarea id="svc-desc" value={serviceForm.description} rows={3}
+                onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                placeholder="Descrição opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={serviceForm.category_id || NONE_CATEGORY_VALUE}
+                onValueChange={(v) => setServiceForm({ ...serviceForm, category_id: v === NONE_CATEGORY_VALUE ? '' : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_CATEGORY_VALUE}>Sem categoria</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="svc-dur">Duração (min) *</Label>
+                <Input id="svc-dur" type="text" inputMode="numeric" value={serviceForm.duration_minutes}
+                  onChange={(e) => setServiceForm({ ...serviceForm, duration_minutes: e.target.value.replace(/\D/g, '') })}
+                  onFocus={(e) => e.target.select()} placeholder="30" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="svc-price">Preço (R$)</Label>
+                <Input id="svc-price" type="text" inputMode="decimal" value={serviceForm.price}
+                  onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value.replace(/[^0-9.,]/g, '') })}
+                  onFocus={(e) => e.target.select()} placeholder="0,00" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setServiceDialogOpen(false)} disabled={isCreating || isUpdating}>Cancelar</Button>
+            <ActionButton onClick={handleSaveService} disabled={!serviceForm.name.trim()}
+              loadingLabel={editingServiceId ? 'Salvando...' : 'Criando...'}
+              successLabel={editingServiceId ? 'Salvo!' : 'Criado!'}>
+              {editingServiceId ? 'Salvar' : 'Criar'}
+            </ActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Service */}
+      <AlertDialog open={!!deleteServiceId} onOpenChange={(open) => { if (!open) setDeleteServiceId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover Serviço?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O serviço será removido permanentemente.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Remover</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteService}>Remover</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Category Confirmation */}
-      <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+      {/* Delete Category */}
+      <AlertDialog open={!!deleteCategoryId} onOpenChange={(open) => { if (!open) { setDeleteCategoryId(null); setDeleteCategoryName(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Categoria "{deletingCategory}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Os serviços desta categoria serão movidos para "Sem categoria". Nenhum serviço será removido.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Excluir categoria "{deleteCategoryName}"?</AlertDialogTitle>
+            <AlertDialogDescription>Os serviços serão movidos para "Sem categoria". Nenhum serviço será removido.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCategory}>Excluir Categoria</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteCategory}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

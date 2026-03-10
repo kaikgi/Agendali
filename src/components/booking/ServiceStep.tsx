@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Service } from '@/hooks/useServices';
+import { useServiceCategories, type ServiceCategory } from '@/hooks/useServiceCategories';
 
 interface ServiceStepProps {
   services: Service[];
   selectedServiceId: string | null;
   onSelect: (service: Service) => void;
+  establishmentId?: string;
 }
 
 function formatPrice(cents: number | null): string {
@@ -17,34 +19,33 @@ function formatPrice(cents: number | null): string {
   }).format(cents / 100);
 }
 
-export function ServiceStep({ services, selectedServiceId, onSelect }: ServiceStepProps) {
-  // Group services by category, respecting sort_order
+export function ServiceStep({ services, selectedServiceId, onSelect, establishmentId }: ServiceStepProps) {
+  const { categories } = useServiceCategories(establishmentId);
+
   const groups = useMemo(() => {
-    const byCategory = new Map<string | null, Service[]>();
-    
-    // Services are already sorted by sort_order from the hook
+    const byCatId = new Map<string | null, Service[]>();
     services.forEach((s) => {
-      const key = (s as any).category || null;
-      if (!byCategory.has(key)) byCategory.set(key, []);
-      byCategory.get(key)!.push(s);
+      const key = (s as any).category_id || null;
+      if (!byCatId.has(key)) byCatId.set(key, []);
+      byCatId.get(key)!.push(s);
     });
 
-    // Build ordered groups: categories first (by first service's sort_order), then uncategorized
-    const result: { category: string | null; items: Service[] }[] = [];
-    const sortedKeys = Array.from(byCategory.keys()).sort((a, b) => {
-      if (a === null) return 1;
-      if (b === null) return -1;
-      const aOrder = byCategory.get(a)?.[0]?.sort_order ?? 999;
-      const bOrder = byCategory.get(b)?.[0]?.sort_order ?? 999;
-      return aOrder - bOrder;
+    const result: { category: ServiceCategory | null; items: Service[] }[] = [];
+
+    categories.forEach((cat) => {
+      const items = byCatId.get(cat.id);
+      if (items && items.length > 0) {
+        result.push({ category: cat, items });
+      }
     });
 
-    sortedKeys.forEach((key) => {
-      result.push({ category: key, items: byCategory.get(key)! });
-    });
+    const uncategorized = byCatId.get(null) ?? [];
+    if (uncategorized.length > 0) {
+      result.push({ category: null, items: uncategorized });
+    }
 
     return result;
-  }, [services]);
+  }, [services, categories]);
 
   if (services.length === 0) {
     return (
@@ -59,14 +60,14 @@ export function ServiceStep({ services, selectedServiceId, onSelect }: ServiceSt
   return (
     <div className="space-y-5">
       <h2 className="text-lg font-semibold">Escolha o serviço</h2>
-      
+
       {groups.map((group) => (
-        <div key={group.category ?? '__none'}>
-          {/* Category label */}
+        <div key={group.category?.id ?? '__none'}>
           {hasCategories && group.category && (
-            <div className="mb-2">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-primary" />
               <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">
-                {group.category}
+                {group.category.name}
               </h3>
             </div>
           )}
