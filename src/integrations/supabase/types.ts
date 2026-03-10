@@ -1209,6 +1209,7 @@ export type Database = {
         Args: { p_email: string }
         Returns: boolean
       }
+      check_signup_authorization: { Args: { p_email: string }; Returns: Json }
       get_admin_audit_logs: {
         Args: {
           p_action?: string
