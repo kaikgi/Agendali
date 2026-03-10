@@ -293,9 +293,9 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Unknown email type: ${emailType}`);
         }
 
-        const html = buildHtml(cfg, payload);
-        const subject = job.subject || cfg.subject(establishment.name);
-        const fromAddress = `${sanitizeName(establishment.name)} <${RESEND_FROM}>`;
+        const html = buildHtml(cfg, emailPayload);
+        const subject = job.subject || cfg.subject(establishmentName);
+        const fromAddress = `${sanitizeName(establishmentName)} <${RESEND_FROM}>`;
 
         const resendResult = await sendViaResend(job.customer_email, subject, html, fromAddress);
 
