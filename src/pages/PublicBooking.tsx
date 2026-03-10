@@ -354,9 +354,11 @@ export default function PublicBooking() {
         });
 
         if (jobErr) {
-          console.error('[booking] FAILED to create email jobs:', jobErr);
+          console.error('[booking] FAILED to create email jobs:', JSON.stringify(jobErr));
+        } else if (jobResult && typeof jobResult === 'object' && (jobResult as Record<string, unknown>).ok === false) {
+          console.error('[booking] Email job RPC returned failure:', JSON.stringify(jobResult));
         } else {
-          console.log('[booking] Email jobs created successfully:', jobResult);
+          console.log('[booking] Email jobs created successfully:', JSON.stringify(jobResult));
         }
       } else if (result?.appointment_id && !canonicalEmail) {
         console.log('[booking] No customer email available, skipping email job creation');
