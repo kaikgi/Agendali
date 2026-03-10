@@ -18,7 +18,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string }>;
+  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
