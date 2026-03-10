@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Copy, Check, Key, ShieldCheck } from 'lucide-react';
+import { Copy, Check, Key, ShieldCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,8 @@ import { ActionButton } from '@/components/ui/action-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength, isPasswordStrong } from '@/components/ui/password-strength';
 import { useSetProfessionalPassword } from '@/hooks/useProfessionalPortal';
 import { useToast } from '@/hooks/use-toast';
 import { getProfessionalPortalUrl } from '@/lib/publicUrl';
