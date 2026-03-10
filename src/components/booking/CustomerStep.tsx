@@ -45,6 +45,7 @@ interface CustomerStepProps {
 export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const hasAutoFilled = useRef(false);
 
   const {
     register,
@@ -52,7 +53,7 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     setValue,
     watch,
     control,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<CustomerFormData>({
     resolver: zodResolver(
       establishment.require_policy_acceptance
@@ -71,6 +72,23 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       reminderHours: 2,
     },
   });
+
+  // Auto-fill form when defaultValues change (e.g. after login/signup)
+  useEffect(() => {
+    if (!defaultValues) return;
+    // Always update email (readonly field)
+    if (defaultValues.email) {
+      setValue('email', defaultValues.email);
+    }
+    // Only auto-fill name/phone if they haven't been manually edited
+    if (defaultValues.name && !dirtyFields.name) {
+      setValue('name', defaultValues.name);
+    }
+    if (defaultValues.phone && !dirtyFields.phone) {
+      setValue('phone', defaultValues.phone);
+    }
+    hasAutoFilled.current = true;
+  }, [defaultValues?.name, defaultValues?.phone, defaultValues?.email]);
 
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
