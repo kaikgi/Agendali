@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { customerFormSchema, CustomerFormData } from '@/lib/validations/booking';
@@ -35,6 +35,7 @@ interface CustomerStepProps {
   establishment: Establishment;
   onSubmit: (data: CustomerFormData) => Promise<void>;
   isSubmitting: boolean;
+  /** Canonical auth data – treated as the single source of truth */
   defaultValues?: {
     name?: string;
     phone?: string;
@@ -45,7 +46,9 @@ interface CustomerStepProps {
 export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
-  const hasAutoFilled = useRef(false);
+
+  // Email is always canonical (readonly) – never part of the editable form state
+  const canonicalEmail = defaultValues?.email || '';
 
   const {
     register,
@@ -53,7 +56,7 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     setValue,
     watch,
     control,
-    formState: { errors, dirtyFields },
+    formState: { errors },
   } = useForm<CustomerFormData>({
     resolver: zodResolver(
       establishment.require_policy_acceptance
@@ -66,33 +69,18 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     defaultValues: {
       name: defaultValues?.name || '',
       phone: defaultValues?.phone || '',
-      email: defaultValues?.email || '',
+      email: canonicalEmail,
       notes: '',
       acceptPolicy: false,
       reminderHours: 2,
     },
   });
 
-  // Auto-fill form when defaultValues change (e.g. after login/signup)
-  useEffect(() => {
-    if (!defaultValues) return;
-    // Always update email (readonly field)
-    if (defaultValues.email) {
-      setValue('email', defaultValues.email);
-    }
-    // Only auto-fill name/phone if they haven't been manually edited
-    if (defaultValues.name && !dirtyFields.name) {
-      setValue('name', defaultValues.name);
-    }
-    if (defaultValues.phone && !dirtyFields.phone) {
-      setValue('phone', defaultValues.phone);
-    }
-    hasAutoFilled.current = true;
-  }, [defaultValues?.name, defaultValues?.phone, defaultValues?.email]);
-
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
-  const emailValue = watch('email');
+
+  // Always show reminder when we have a canonical email
+  const showReminderSection = !!canonicalEmail;
 
   const handlePolicyRead = () => {
     setPolicyRead(true);
@@ -123,16 +111,20 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
 
   const policyText = establishment.cancellation_policy_text || defaultPolicyText;
 
-  // Only show reminder section if email is provided (since reminders are sent via email)
-  const showReminderSection = establishment.ask_email && emailValue && emailValue.length > 3;
+  const onFormSubmit = async (data: CustomerFormData) => {
+    // Inject canonical email before submitting – never trust form state for email
+    const finalData: CustomerFormData = {
+      ...data,
+      email: canonicalEmail,
+    };
+    console.log('submit clicked (customer step)', finalData);
+    await onSubmit(finalData);
+  };
 
   return (
     <form
       onSubmit={handleSubmit(
-        async (data) => {
-          console.log('submit clicked (customer step)', data);
-          await onSubmit(data);
-        },
+        onFormSubmit,
         (formErrors) => {
           console.log('submit blocked by validation', formErrors);
           const firstErrorField = Object.keys(formErrors)[0];
@@ -171,23 +163,19 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
           {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
         </div>
 
-        {establishment.ask_email && (
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              {...register('email')}
-              readOnly={!!defaultValues?.email}
-              className={defaultValues?.email ? 'bg-muted cursor-not-allowed' : ''}
-            />
-            {defaultValues?.email && (
-              <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
-            )}
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-          </div>
-        )}
+        {/* Email – always readonly, canonical from auth */}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={canonicalEmail}
+            readOnly
+            className="bg-muted cursor-not-allowed"
+            tabIndex={-1}
+          />
+          <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+        </div>
 
         {establishment.ask_notes && (
           <div className="space-y-2">
