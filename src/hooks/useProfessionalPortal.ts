@@ -158,7 +158,7 @@ export function useSetProfessionalPassword() {
       professionalId: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.rpc('set_professional_portal_password', {
+      const { data, error } = await (supabase.rpc as any)('set_professional_portal_password', {
         p_professional_id: professionalId,
         p_password: password,
       });
