@@ -38,7 +38,7 @@ export function useProfessionalPortalAuth() {
     queryFn: async () => {
       if (!token) return null;
 
-      const { data, error } = await supabase.rpc('validate_professional_session', {
+      const { data, error } = await (supabase.rpc as any)('validate_professional_session', {
         p_token: token,
       });
 
@@ -74,7 +74,7 @@ export function useProfessionalPortalAuth() {
       professionalSlug: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.rpc('professional_portal_login', {
+      const { data, error } = await (supabase.rpc as any)('professional_portal_login', {
         p_establishment_slug: establishmentSlug,
         p_professional_slug: professionalSlug,
         p_password: password,
@@ -127,7 +127,7 @@ export function useProfessionalPortalAppointments(
     queryFn: async () => {
       if (!token) return [];
 
-      const { data, error } = await supabase.rpc('get_professional_appointments', {
+      const { data, error } = await (supabase.rpc as any)('get_professional_appointments', {
         p_token: token,
         p_start_date: startDate.toISOString().split('T')[0],
         p_end_date: endDate.toISOString().split('T')[0],
@@ -158,7 +158,7 @@ export function useSetProfessionalPassword() {
       professionalId: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.rpc('set_professional_portal_password', {
+      const { data, error } = await (supabase.rpc as any)('set_professional_portal_password', {
         p_professional_id: professionalId,
         p_password: password,
       });
