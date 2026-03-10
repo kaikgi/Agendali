@@ -84,6 +84,7 @@ export default function Horarios() {
       toast({ title: 'Horários salvos com sucesso!' });
     } catch (error) {
       toast({ title: 'Erro ao salvar horários', variant: 'destructive' });
+      throw error;
     }
   };
 

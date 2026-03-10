@@ -72,6 +72,7 @@ export function RatingDialog({
         title: 'Erro ao enviar avaliação',
         description: error instanceof Error ? error.message : 'Tente novamente.',
       });
+      throw error;
     }
   };
 

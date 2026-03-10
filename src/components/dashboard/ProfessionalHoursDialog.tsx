@@ -107,6 +107,7 @@ export function ProfessionalHoursDialog({ open, onOpenChange, professionalId, pr
       onOpenChange(false);
     } catch (error) {
       toast({ title: 'Erro ao salvar horários', variant: 'destructive' });
+      throw error;
     }
   };
 

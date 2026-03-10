@@ -166,8 +166,9 @@ export default function Bloqueios() {
       }
       setRecorrenteOpen(false);
       resetRecorrenteForm();
-    } catch {
+    } catch (err) {
       toast({ title: 'Erro ao salvar bloqueio recorrente', variant: 'destructive' });
+      throw err;
     }
   };
 

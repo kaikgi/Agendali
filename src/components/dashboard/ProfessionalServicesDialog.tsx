@@ -65,6 +65,7 @@ export function ProfessionalServicesDialog({
       onOpenChange(false);
     } catch (error) {
       toast({ title: 'Erro ao vincular serviços', variant: 'destructive' });
+      throw error;
     }
   };
 
