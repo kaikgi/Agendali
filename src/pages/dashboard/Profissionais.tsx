@@ -158,7 +158,7 @@ export default function Profissionais() {
     const capacityNum = parseInt(form.capacity);
     if (isNaN(capacityNum) || capacityNum < 1) {
       toast({ title: 'Capacidade deve ser pelo menos 1', variant: 'destructive' });
-      return;
+      throw new Error('validation');
     }
 
     try {
