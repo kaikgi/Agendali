@@ -23,7 +23,7 @@ import { usePublicPlanLimits } from '@/hooks/usePlanLimits';
 import { PlanLimitAlert } from '@/components/billing/PlanLimitAlert';
 import { EstablishmentRatingDisplay } from '@/components/ratings/EstablishmentRatingDisplay';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { sendConfirmationEmail } from '@/lib/emailNotifications';
+
 import {
   Dialog,
   DialogContent,
