@@ -207,7 +207,7 @@ export default function ProfessionalPortalAgenda() {
     return null;
   }
 
-  const photoUrl = professionalData?.photo_url;
+  const photoUrl = (session as any)?.professional_photo_url;
   const initials = session.professional_name?.charAt(0)?.toUpperCase() || '?';
 
   return (
