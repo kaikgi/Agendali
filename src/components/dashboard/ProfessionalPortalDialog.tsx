@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Copy, Check, Key } from 'lucide-react';
+import { Eye, EyeOff, Copy, Check, Key, ShieldCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ interface ProfessionalPortalDialogProps {
     name: string;
     slug: string | null;
     portal_enabled: boolean | null;
+    portal_password_hash: string | null;
   };
   establishmentSlug: string;
   onUpdate: (data: { id: string; slug?: string; portal_enabled?: boolean }) => Promise<void>;
@@ -55,6 +56,9 @@ export function ProfessionalPortalDialog({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [wantsChangePassword, setWantsChangePassword] = useState(false);
+
+  const hasExistingPassword = !!professional.portal_password_hash;
 
   // Reset state when dialog opens or professional changes
   useEffect(() => {
@@ -65,6 +69,7 @@ export function ProfessionalPortalDialog({
       setConfirmPassword('');
       setShowPassword(false);
       setCopied(false);
+      setWantsChangePassword(false);
     }
   }, [open, professional.id]);
 
@@ -90,6 +95,7 @@ export function ProfessionalPortalDialog({
     setPassword(generated);
     setConfirmPassword(generated);
     setShowPassword(true);
+    setWantsChangePassword(true);
   };
 
   const handleSave = async () => {
@@ -98,26 +104,36 @@ export function ProfessionalPortalDialog({
       throw new Error('slug required');
     }
 
-    if (password && password !== confirmPassword) {
+    // Only validate password if user is actively setting one
+    const isSettingPassword = wantsChangePassword && password.length > 0;
+
+    if (isSettingPassword && password !== confirmPassword) {
       toast({ title: 'As senhas não coincidem', variant: 'destructive' });
       throw new Error('password mismatch');
     }
 
-    if (password && password.length < 4) {
+    if (isSettingPassword && password.length < 4) {
       toast({ title: 'A senha deve ter pelo menos 4 caracteres', variant: 'destructive' });
       throw new Error('password too short');
     }
 
+    // First-time setup: password is required if no existing password
+    if (portalEnabled && !hasExistingPassword && !isSettingPassword) {
+      toast({ title: 'Defina uma senha para ativar o portal', variant: 'destructive' });
+      setWantsChangePassword(true);
+      throw new Error('password required');
+    }
+
     try {
-      // Update slug and portal_enabled
+      // Update slug and portal_enabled (never touches password)
       await onUpdate({
         id: professional.id,
         slug: slug.trim(),
         portal_enabled: portalEnabled,
       });
 
-      // Set password if provided
-      if (password) {
+      // Only set password if user explicitly changed it
+      if (isSettingPassword) {
         await setPasswordMutation.mutateAsync({
           professionalId: professional.id,
           password,
@@ -126,7 +142,6 @@ export function ProfessionalPortalDialog({
 
       toast({ title: 'Portal configurado com sucesso!' });
       
-      // Close after brief delay so user sees success feedback
       setTimeout(() => onOpenChange(false), 1200);
     } catch (error: any) {
       const msg = error?.message || '';
@@ -138,7 +153,7 @@ export function ProfessionalPortalDialog({
           : msg,
         variant: 'destructive',
       });
-      throw error; // Re-throw so ActionButton shows error state
+      throw error;
     }
   };
 
@@ -214,56 +229,103 @@ export function ProfessionalPortalDialog({
             </div>
           </div>
 
-          {/* Password */}
+          {/* Password Section */}
           <div className="space-y-4 border-t pt-4">
             <div className="flex items-center justify-between">
               <Label>Senha de acesso</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleGeneratePassword}
-              >
-                Gerar senha
-              </Button>
+              {hasExistingPassword && !wantsChangePassword && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Senha configurada</span>
+                </div>
+              )}
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Nova senha</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite uma nova senha"
-                />
+
+            {hasExistingPassword && !wantsChangePassword ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  A senha atual está ativa. Você pode alterar slug ou status sem precisar redefinir.
+                </p>
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full"
-                  onClick={() => setShowPassword(!showPassword)}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWantsChangePassword(true)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  Alterar senha
                 </Button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">
+                    {hasExistingPassword ? 'Nova senha' : 'Definir senha'}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGeneratePassword}
+                  >
+                    Gerar senha
+                  </Button>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirmar senha</Label>
-              <Input
-                id="confirm-password"
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirme a senha"
-              />
-            </div>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={hasExistingPassword ? 'Digite a nova senha' : 'Digite uma senha'}
+                      autoFocus={!hasExistingPassword}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
 
-            <p className="text-xs text-muted-foreground">
-              Deixe em branco para manter a senha atual. Mínimo de 4 caracteres.
-            </p>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirmar senha</Label>
+                  <Input
+                    id="confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirme a senha"
+                  />
+                </div>
+
+                {hasExistingPassword && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setWantsChangePassword(false);
+                      setPassword('');
+                      setConfirmPassword('');
+                    }}
+                  >
+                    Cancelar alteração de senha
+                  </Button>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  {hasExistingPassword
+                    ? 'Preencha apenas se quiser alterar a senha atual. Mínimo 4 caracteres.'
+                    : 'Mínimo de 4 caracteres. O profissional usará esta senha para acessar o portal.'}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
