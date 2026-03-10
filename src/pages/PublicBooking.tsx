@@ -468,6 +468,7 @@ export default function PublicBooking() {
             services={services}
             selectedServiceId={selectedService?.id ?? null}
             onSelect={handleServiceSelect}
+            establishmentId={establishment?.id}
           />
         )}
 
