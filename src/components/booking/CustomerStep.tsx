@@ -179,7 +179,12 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
               type="email"
               placeholder="seu@email.com"
               {...register('email')}
+              readOnly={!!defaultValues?.email}
+              className={defaultValues?.email ? 'bg-muted cursor-not-allowed' : ''}
             />
+            {defaultValues?.email && (
+              <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+            )}
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
         )}
