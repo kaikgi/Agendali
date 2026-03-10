@@ -221,6 +221,22 @@ serve(async (req) => {
 
     // Look up product/plan mapping
     const productMatch = await findAgendaliProduct(supabase, productId, productName)
+
+    if (!productMatch) {
+      console.error(`[KIWIFY] ❌ UNKNOWN_AGENDALI_PRODUCT_MAPPING: product="${productName}", id=${productId}, order=${orderId}`)
+      await supabase
+        .from('billing_webhook_events')
+        .update({
+          processed_at: new Date().toISOString(),
+          processing_error: `UNKNOWN_AGENDALI_PRODUCT_MAPPING: product="${productName}", id=${productId}`,
+        })
+        .eq('id', insertedEvent.id)
+      return new Response(
+        JSON.stringify({ ok: true, processed: false, error: 'UNKNOWN_AGENDALI_PRODUCT_MAPPING' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const planCode = productMatch.plan_code
     console.log(`[KIWIFY] ✅ Product resolved: plan=${planCode} (product="${productName}", id=${productId})`)
 
