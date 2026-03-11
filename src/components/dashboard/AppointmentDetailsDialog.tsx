@@ -35,19 +35,23 @@ interface AppointmentDetailsDialogProps {
 }
 
 const statusColors: Record<string, string> = {
+  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
   confirmed: 'bg-green-100 text-green-800 border-green-200',
   completed: 'bg-gray-100 text-gray-800 border-gray-200',
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
+  rejected: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const statusLabels: Record<AppointmentStatus, string> = {
+  pending_approval: 'Aguardando aprovação',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
   no_show: 'Não compareceu',
   canceled: 'Cancelado',
+  rejected: 'Recusado',
 };
 
 const statusOptions: AppointmentStatus[] = ['booked', 'confirmed', 'completed', 'no_show', 'canceled'];
