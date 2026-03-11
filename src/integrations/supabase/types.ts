@@ -1993,6 +1993,10 @@ export type Database = {
         Args: { p_date_from?: string; p_date_to?: string; p_token: string }
         Returns: Json
       }
+      get_professional_dashboard_stats: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
@@ -2003,6 +2007,14 @@ export type Database = {
           p_appointment_id: string
           p_new_status: string
           p_old_status?: string
+        }
+        Returns: Json
+      }
+      professional_change_password: {
+        Args: {
+          p_current_password: string
+          p_new_password: string
+          p_token: string
         }
         Returns: Json
       }
