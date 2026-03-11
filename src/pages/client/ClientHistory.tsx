@@ -47,11 +47,13 @@ const statusVariants: Record<
   string,
   'default' | 'secondary' | 'destructive' | 'outline'
 > = {
+  pending_approval: 'outline',
   booked: 'outline',
   confirmed: 'default',
   completed: 'secondary',
   canceled: 'destructive',
   no_show: 'destructive',
+  rejected: 'destructive',
 };
 
 export default function ClientHistory() {
