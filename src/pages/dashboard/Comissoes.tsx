@@ -412,6 +412,7 @@ function ComissoesContent() {
           <TabsTrigger value="entries">Comissões</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
           <TabsTrigger value="summary">Resumo por Profissional</TabsTrigger>
+          <TabsTrigger value="history">Histórico de Repasses</TabsTrigger>
         </TabsList>
 
         {/* ── Entries Tab ─────────────────────────────────── */}
