@@ -37,6 +37,14 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export default function Pagamentos() {
+  return (
+    <FeatureGate feature="online_payments">
+      <PagamentosContent />
+    </FeatureGate>
+  );
+}
+
+function PagamentosContent() {
   const { data: account, isLoading: accLoading } = usePaymentAccount();
   const { data: settings, isLoading: settLoading } = usePaymentSettings();
   const updateSettings = useUpdatePaymentSettings();
