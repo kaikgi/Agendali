@@ -162,7 +162,7 @@ const Contato = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">E-mail</h3>
-                  <p className="text-muted-foreground">contato@agendali.online</p>
+                  <p className="text-muted-foreground">agendaliapp@gmail.com</p>
                   <p className="text-body-sm text-muted-foreground mt-1">
                     Respondemos em até 24 horas úteis.
                   </p>
