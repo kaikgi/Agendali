@@ -311,6 +311,7 @@ function ComissoesContent() {
   const { professionals } = useManageProfessionals(establishment?.id);
   const { data: services = [] } = useServices(establishment?.id);
   const { data: rules = [], isLoading: rulesLoading } = useCommissionRules();
+  const { data: settlements = [], isLoading: settlementsLoading } = useCommissionSettlements();
 
   // Filters
   const [filters, setFilters] = useState<CommissionFilters>({});
