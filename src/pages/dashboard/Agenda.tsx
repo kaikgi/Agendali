@@ -68,6 +68,7 @@ const statusLabels: Record<string, string> = {
 
 // Unique legend entries (deduped by label) for the status bar
 const legendStatuses: { key: string; label: string }[] = [
+  { key: 'pending_approval', label: 'Aguardando aprovação' },
   { key: 'booked', label: 'Agendado' },
   { key: 'confirmed', label: 'Confirmado' },
   { key: 'arrived', label: 'Chegou' },
