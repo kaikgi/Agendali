@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { FeatureGate } from '@/components/dashboard/FeatureGate';
-import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, aggregateByProfessional, type CommissionFilters, type CommissionEntry } from '@/hooks/useCommissions';
+import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, useCommissionSettlements, aggregateByProfessional, type CommissionFilters, type CommissionEntry, type CommissionSettlement } from '@/hooks/useCommissions';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useServices } from '@/hooks/useServices';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,8 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { DollarSign, Users, TrendingUp, Calculator, Plus, Trash2, Lock, Search, Download, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { DollarSign, Users, TrendingUp, Calculator, Plus, Trash2, Lock, Search, Download, CheckCircle2, History } from 'lucide-react';
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 function formatCents(cents: number): string {
