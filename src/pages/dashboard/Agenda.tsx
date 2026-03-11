@@ -258,7 +258,7 @@ export default function Agenda() {
       </Card>
 
       {/* Pending Approvals */}
-      {appointments && <PendingApprovalsSection appointments={appointments} onAppointmentClick={handleAppointmentClick} />}
+      {appointments && <PendingApprovalsSection appointments={appointments as any} onAppointmentClick={handleAppointmentClick as any} professionals={professionals} />}
 
       <div className="text-center text-lg font-medium capitalize">{periodLabel}</div>
 
