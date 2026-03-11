@@ -41,6 +41,7 @@ import {
   useProfessionalPortalAppointments,
 } from '@/hooks/useProfessionalPortal';
 import { ProfessionalProfileSection } from '@/components/professional/ProfessionalProfileSection';
+import { ProfessionalCommissionsView } from '@/components/professional/ProfessionalCommissionsView';
 import { ProfessionalCalendarView } from '@/components/professional/ProfessionalCalendarView';
 import { ProfessionalSummaryCards } from '@/components/professional/ProfessionalSummaryCards';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
