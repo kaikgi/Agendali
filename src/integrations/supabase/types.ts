@@ -1388,6 +1388,11 @@ export type Database = {
           valid: boolean
         }[]
       }
+      cleanup_expired_portal_sessions: { Args: never; Returns: number }
+      client_cancel_appointment: {
+        Args: { p_appointment_id: string }
+        Returns: Json
+      }
       consume_signup_invitation: { Args: { p_token: string }; Returns: Json }
       consume_signup_token: {
         Args: { p_token: string }
