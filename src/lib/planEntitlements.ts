@@ -31,7 +31,7 @@ export function getPlanEntitlements(
   }
 
   // past_due, canceled, or unknown — fallback to most restrictive
-  return { planLabel: 'Sem plano', professionalLimit: 0, appointmentLimit: 0 };
+  return { planLabel: 'Sem plano', professionalLimit: 0, appointmentLimit: 0, hasCommissions: false };
 }
 
 /** Format limit for display: Infinity -> "Ilimitados", number -> number */
