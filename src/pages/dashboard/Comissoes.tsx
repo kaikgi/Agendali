@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useHasCommissions } from '@/hooks/useHasCommissions';
+import { FeatureGate } from '@/components/dashboard/FeatureGate';
 import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, aggregateByProfessional, type CommissionFilters, type CommissionEntry } from '@/hooks/useCommissions';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useServices } from '@/hooks/useServices';
@@ -23,28 +23,6 @@ import { ptBR } from 'date-fns/locale';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-// ── Upgrade Gate ───────────────────────────────────────
-
-function CommissionsLockedState({ planLabel }: { planLabel: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-6">
-      <div className="rounded-full bg-muted p-6">
-        <Lock className="h-12 w-12 text-muted-foreground" />
-      </div>
-      <div className="text-center max-w-md space-y-2">
-        <h2 className="text-2xl font-bold">Gestão de Comissões</h2>
-        <p className="text-muted-foreground">
-          O módulo de comissões está disponível nos planos <strong>Studio</strong> e <strong>Pro</strong>.
-          Seu plano atual é <strong>{planLabel}</strong>.
-        </p>
-      </div>
-      <Button asChild>
-        <a href="/dashboard/assinatura">Fazer upgrade</a>
-      </Button>
-    </div>
-  );
 }
 
 // ── Rule Form Dialog ───────────────────────────────────
@@ -253,7 +231,14 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
 // ── Main Page ──────────────────────────────────────────
 
 export default function Comissoes() {
-  const { hasAccess, isLoading: planLoading, planLabel } = useHasCommissions();
+  return (
+    <FeatureGate feature="commissions">
+      <ComissoesContent />
+    </FeatureGate>
+  );
+}
+
+function ComissoesContent() {
   const { data: establishment } = useUserEstablishment();
   const { professionals } = useManageProfessionals(establishment?.id);
   const { data: services = [] } = useServices(establishment?.id);
@@ -300,21 +285,6 @@ export default function Comissoes() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  if (planLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)}
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return <CommissionsLockedState planLabel={planLabel} />;
-  }
 
   return (
     <div className="space-y-6">
