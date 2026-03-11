@@ -24,7 +24,7 @@ import { AppointmentDetailsDialog } from '@/components/dashboard/AppointmentDeta
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 import { cn } from '@/lib/utils';
 
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';
 
 interface Appointment {
   id: string;
