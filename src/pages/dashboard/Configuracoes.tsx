@@ -572,7 +572,9 @@ export default function Configuracoes() {
             <div>
               <Label>Confirmação Automática</Label>
               <p className="text-sm text-muted-foreground">
-                Confirmar agendamentos automaticamente
+                {form.auto_confirm_bookings 
+                  ? 'Agendamentos são confirmados automaticamente'
+                  : 'Agendamentos ficam pendentes aguardando sua aprovação manual'}
               </p>
             </div>
             <Switch
