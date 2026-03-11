@@ -65,7 +65,7 @@ export function useAvailableSlots({
           .eq('professional_id', professionalId)
           .gte('start_at', dayStart.toISOString())
           .lt('start_at', dayEnd.toISOString())
-          .in('status', ['booked', 'confirmed']),
+          .in('status', ['booked', 'confirmed', 'pending_approval']),
         // Professional-specific time blocks
         supabase
           .from('time_blocks')
