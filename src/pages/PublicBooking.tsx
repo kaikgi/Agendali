@@ -350,14 +350,17 @@ export default function PublicBooking() {
   };
 
   const handleSubmit = async (customerData: CustomerFormData) => {
+    console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
     if (!session) {
+      console.log('[Booking] No session, showing login modal');
       setShowLoginModal(true);
       return;
     }
 
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
+      console.warn('[Booking] Missing fields', { establishment: !!establishment, selectedService: !!selectedService, selectedProfessional: !!selectedProfessional, selectedDate: !!selectedDate, selectedTime, slug });
       toast({ variant: 'destructive', title: 'Campos incompletos', description: 'Escolha serviço, profissional, data/hora e preencha seus dados.' });
       return;
     }
