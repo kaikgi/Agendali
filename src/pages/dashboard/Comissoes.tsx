@@ -296,6 +296,98 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
   );
 }
 
+// ── Settlement History ─────────────────────────────────
+
+function SettlementHistoryTab({
+  settlements,
+  professionals,
+  isLoading,
+}: {
+  settlements: CommissionSettlement[];
+  professionals: any[];
+  isLoading: boolean;
+}) {
+  const [filterProfessional, setFilterProfessional] = useState('all');
+
+  const filtered = useMemo(() => {
+    if (filterProfessional === 'all') return settlements;
+    return settlements.filter((s) => s.professional_id === filterProfessional);
+  }, [settlements, filterProfessional]);
+
+  if (isLoading) {
+    return <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <p className="text-sm text-muted-foreground">Histórico de todos os repasses realizados.</p>
+        <Select value={filterProfessional} onValueChange={setFilterProfessional}>
+          <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Profissional" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos profissionais</SelectItem>
+            {professionals.map((p: any) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            <History className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p>Nenhum repasse registrado</p>
+            <p className="text-sm mt-1">Os repasses aparecerão aqui após serem registrados na aba "Resumo por Profissional".</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Profissional</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-center">Atendimentos</TableHead>
+                <TableHead>Data do repasse</TableHead>
+                <TableHead>Observação</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((s) => {
+                const prof = professionals.find((p: any) => p.id === s.professional_id);
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{prof?.name || '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {format(new Date(s.period_start), 'dd/MM/yy')} – {format(new Date(s.period_end), 'dd/MM/yy')}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">{formatCents(s.total_amount_cents)}</TableCell>
+                    <TableCell className="text-center">{s.entries_count}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {s.paid_at ? format(new Date(s.paid_at), 'dd/MM/yy HH:mm', { locale: ptBR }) : '—'}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                      {s.notes || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={s.paid_at ? 'default' : 'secondary'}>
+                        {s.paid_at ? 'Pago' : 'Pendente'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────
 
 export default function Comissoes() {
@@ -653,6 +745,15 @@ function ComissoesContent() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* ── History Tab ─────────────────────────────────── */}
+        <TabsContent value="history" className="space-y-4">
+          <SettlementHistoryTab
+            settlements={settlements}
+            professionals={professionals}
+            isLoading={settlementsLoading}
+          />
         </TabsContent>
       </Tabs>
 

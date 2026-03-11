@@ -25,6 +25,7 @@ import {
   Loader2,
   Calendar as CalendarIcon,
   Search,
+  DollarSign,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import {
   useProfessionalPortalAppointments,
 } from '@/hooks/useProfessionalPortal';
 import { ProfessionalProfileSection } from '@/components/professional/ProfessionalProfileSection';
+import { ProfessionalCommissionsView } from '@/components/professional/ProfessionalCommissionsView';
 import { ProfessionalCalendarView } from '@/components/professional/ProfessionalCalendarView';
 import { ProfessionalSummaryCards } from '@/components/professional/ProfessionalSummaryCards';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
@@ -65,7 +67,7 @@ const statusLabels: Record<string, string> = {
 };
 
 type ViewMode = 'week' | 'list';
-type TabMode = 'agenda' | 'calendar' | 'profile';
+type TabMode = 'agenda' | 'calendar' | 'commissions' | 'profile';
 
 interface PortalAppointment {
   id: string;
@@ -273,6 +275,10 @@ export default function ProfessionalPortalAgenda() {
               <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <CalendarIcon className="h-4 w-4" />
                 <span>Calendário</span>
+              </TabsTrigger>
+              <TabsTrigger value="commissions" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
+                <DollarSign className="h-4 w-4" />
+                <span>Comissões</span>
               </TabsTrigger>
               <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <User className="h-4 w-4" />
@@ -493,6 +499,11 @@ export default function ProfessionalPortalAgenda() {
               onAppointmentClick={handleAppointmentClick}
               isLoading={appointmentsLoading}
             />
+          </TabsContent>
+
+          {/* ============ COMMISSIONS TAB ============ */}
+          <TabsContent value="commissions" className="space-y-6">
+            <ProfessionalCommissionsView token={token!} />
           </TabsContent>
 
           {/* ============ PROFILE TAB ============ */}

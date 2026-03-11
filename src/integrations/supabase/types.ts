@@ -1989,6 +1989,10 @@ export type Database = {
             Args: { p_end_date: string; p_start_date: string; p_token: string }
             Returns: Json
           }
+      get_professional_commissions: {
+        Args: { p_date_from?: string; p_date_to?: string; p_token: string }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
