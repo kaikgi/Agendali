@@ -1457,10 +1457,40 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_professional_appointments: {
-        Args: { p_end_date: string; p_start_date: string; p_token: string }
-        Returns: Json
-      }
+      get_professional_appointments:
+        | {
+            Args: { p_professional_id: string }
+            Returns: {
+              completed_at: string | null
+              completed_by: string | null
+              created_at: string
+              customer_email: string | null
+              customer_id: string
+              customer_notes: string | null
+              customer_phone: string | null
+              customer_reminder_hours: number | null
+              customer_user_id: string | null
+              end_at: string
+              establishment_id: string
+              id: string
+              internal_notes: string | null
+              professional_id: string
+              reminder_sent_at: string | null
+              service_id: string
+              start_at: string
+              status: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "appointments"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { p_end_date: string; p_start_date: string; p_token: string }
+            Returns: Json
+          }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
