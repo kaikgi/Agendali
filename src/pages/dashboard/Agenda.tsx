@@ -39,6 +39,7 @@ interface Appointment {
 }
 
 const statusColors: Record<string, string> = {
+  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
   confirmed: 'bg-green-100 text-green-800 border-green-200',
   arrived: 'bg-purple-100 text-purple-800 border-purple-200',
@@ -48,9 +49,11 @@ const statusColors: Record<string, string> = {
   canceled: 'bg-red-100 text-red-800 border-red-200',
   canceled_by_customer: 'bg-red-100 text-red-800 border-red-200',
   canceled_by_establishment: 'bg-orange-100 text-orange-800 border-orange-200',
+  rejected: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const statusLabels: Record<string, string> = {
+  pending_approval: 'Aguardando aprovação',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   arrived: 'Chegou',
@@ -60,6 +63,7 @@ const statusLabels: Record<string, string> = {
   canceled: 'Cancelado',
   canceled_by_customer: 'Cancelado pelo cliente',
   canceled_by_establishment: 'Cancelado pelo estabelecimento',
+  rejected: 'Recusado',
 };
 
 // Unique legend entries (deduped by label) for the status bar
