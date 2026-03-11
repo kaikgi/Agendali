@@ -9,7 +9,7 @@ import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const WHATSAPP_NUMBER = "5511937525469";
+const WHATSAPP_NUMBER = "5511943990345";
 const MAX_MESSAGE_LENGTH = 800;
 
 function generateFingerprint(): string {
