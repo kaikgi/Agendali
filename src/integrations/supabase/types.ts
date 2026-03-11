@@ -223,6 +223,84 @@ export type Database = {
           },
         ]
       }
+      appointment_payments: {
+        Row: {
+          amount_cents: number
+          appointment_id: string
+          created_at: string
+          establishment_id: string
+          fee_cents: number
+          id: string
+          metadata: Json
+          net_amount_cents: number
+          paid_at: string | null
+          payer_email: string | null
+          payment_type: string
+          payment_url: string | null
+          provider: string
+          provider_payment_id: string | null
+          provider_preference_id: string | null
+          refunded_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          appointment_id: string
+          created_at?: string
+          establishment_id: string
+          fee_cents?: number
+          id?: string
+          metadata?: Json
+          net_amount_cents?: number
+          paid_at?: string | null
+          payer_email?: string | null
+          payment_type?: string
+          payment_url?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_preference_id?: string | null
+          refunded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          appointment_id?: string
+          created_at?: string
+          establishment_id?: string
+          fee_cents?: number
+          id?: string
+          metadata?: Json
+          net_amount_cents?: number
+          paid_at?: string | null
+          payer_email?: string | null
+          payment_type?: string
+          payment_url?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_preference_id?: string | null
+          refunded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_payments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_payments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           completed_at: string | null
@@ -908,6 +986,148 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_accounts: {
+        Row: {
+          access_token: string
+          connected_at: string
+          created_at: string
+          establishment_id: string
+          expires_at: string | null
+          id: string
+          mp_public_key: string | null
+          mp_user_id: string | null
+          provider: string
+          refresh_token: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          created_at?: string
+          establishment_id: string
+          expires_at?: string | null
+          id?: string
+          mp_public_key?: string | null
+          mp_user_id?: string | null
+          provider?: string
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          created_at?: string
+          establishment_id?: string
+          expires_at?: string | null
+          id?: string
+          mp_public_key?: string | null
+          mp_user_id?: string | null
+          provider?: string
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_accounts_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_settings: {
+        Row: {
+          created_at: string
+          deposit_required: boolean
+          deposit_type: string
+          deposit_value: number
+          establishment_id: string
+          full_payment_online: boolean
+          id: string
+          online_payment_enabled: boolean
+          per_service_config: boolean
+          refund_deadline_hours: number
+          refund_on_cancellation: boolean
+          require_manual_confirmation: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deposit_required?: boolean
+          deposit_type?: string
+          deposit_value?: number
+          establishment_id: string
+          full_payment_online?: boolean
+          id?: string
+          online_payment_enabled?: boolean
+          per_service_config?: boolean
+          refund_deadline_hours?: number
+          refund_on_cancellation?: boolean
+          require_manual_confirmation?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deposit_required?: boolean
+          deposit_type?: string
+          deposit_value?: number
+          establishment_id?: string
+          full_payment_online?: boolean
+          id?: string
+          online_payment_enabled?: boolean
+          per_service_config?: boolean
+          refund_deadline_hours?: number
+          refund_on_cancellation?: boolean
+          require_manual_confirmation?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: true
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          processing_error: string | null
+          provider: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          provider?: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          provider?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       professional_hours: {
         Row: {
           closed: boolean
@@ -1231,6 +1451,54 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_payment_settings: {
+        Row: {
+          created_at: string
+          deposit_required: boolean
+          deposit_type: string
+          deposit_value: number
+          establishment_id: string
+          full_payment_online: boolean
+          id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          deposit_required?: boolean
+          deposit_type?: string
+          deposit_value?: number
+          establishment_id: string
+          full_payment_online?: boolean
+          id?: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          deposit_required?: boolean
+          deposit_type?: string
+          deposit_value?: number
+          establishment_id?: string
+          full_payment_online?: boolean
+          id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_payment_settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_payment_settings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -1682,6 +1950,10 @@ export type Database = {
           user_created_at: string
           user_id: string
         }[]
+      }
+      get_payment_config_for_booking: {
+        Args: { p_service_id: string; p_slug: string }
+        Returns: Json
       }
       get_professional_appointments:
         | {
