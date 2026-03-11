@@ -17,10 +17,13 @@ import {
   Star,
   Zap,
   Percent,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdmin';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
+import { usePlanFeatures } from '@/hooks/useFeatureAccess';
+import type { FeatureFlag } from '@/lib/planEntitlements';
 import {
   Sidebar,
   SidebarContent,
@@ -36,18 +39,26 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getPublicUrl, PUBLIC_BASE_URL } from '@/lib/publicUrl';
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<any>;
+  requiredFeature?: FeatureFlag;
+}
+
+const navItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Agenda', url: '/dashboard/agenda', icon: Calendar },
   { title: 'Clientes', url: '/dashboard/clientes', icon: UserCircle },
   { title: 'Profissionais', url: '/dashboard/profissionais', icon: Users },
   { title: 'Serviços', url: '/dashboard/servicos', icon: Scissors },
-  { title: 'Comissões', url: '/dashboard/comissoes', icon: Percent },
-  { title: 'Pagamentos', url: '/dashboard/pagamentos', icon: CreditCard },
+  { title: 'Comissões', url: '/dashboard/comissoes', icon: Percent, requiredFeature: 'commissions' },
+  { title: 'Pagamentos', url: '/dashboard/pagamentos', icon: CreditCard, requiredFeature: 'online_payments' },
   { title: 'Horários', url: '/dashboard/horarios', icon: Clock },
   { title: 'Bloqueios', url: '/dashboard/bloqueios', icon: CalendarOff },
   { title: 'Avaliações', url: '/dashboard/avaliacoes', icon: Star },
