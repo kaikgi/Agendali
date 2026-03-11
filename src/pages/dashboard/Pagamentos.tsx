@@ -242,145 +242,242 @@ function PagamentosContent() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings2 className="h-5 w-5" />
-                  Configurações de Pagamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Enable/disable */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Pagamento online ativo</Label>
-                    <p className="text-sm text-muted-foreground">Habilita cobrança durante o agendamento</p>
+            <>
+              {/* Active Rule Summary */}
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Regra ativa de cobrança</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {!s?.online_payment_enabled
+                          ? 'Pagamento online desativado — nenhuma cobrança será feita no agendamento.'
+                          : s?.full_payment_online
+                            ? 'Cobrança de 100% do valor do serviço no momento do agendamento.'
+                            : s?.deposit_required
+                              ? s?.deposit_type === 'percentage'
+                                ? `Cobrança de sinal de ${s?.deposit_value || 0}% sobre o valor do serviço.`
+                                : `Cobrança de sinal fixo de R$ ${(s?.deposit_value || 0).toFixed(2).replace('.', ',')}.`
+                              : 'Pagamento online ativado, mas nenhuma cobrança configurada.'}
+                        {s?.online_payment_enabled && s?.require_manual_confirmation && ' Confirmação manual ativada.'}
+                        {s?.online_payment_enabled && s?.per_service_config && ' Serviços podem ter regras individuais.'}
+                      </p>
+                    </div>
                   </div>
-                  <Switch
-                    checked={s?.online_payment_enabled || false}
-                    onCheckedChange={(v) => handleToggle('online_payment_enabled', v)}
-                  />
-                </div>
+                </CardContent>
+              </Card>
 
-                <Separator />
-
-                {/* Deposit settings */}
-                <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings2 className="h-5 w-5" />
+                    Configurações de Pagamento
+                  </CardTitle>
+                  <CardDescription>
+                    Defina como seu estabelecimento cobra os clientes no agendamento online.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Enable/disable */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-base">Exigir sinal</Label>
-                      <p className="text-sm text-muted-foreground">Cobra um sinal no momento do agendamento</p>
+                      <Label className="text-base font-semibold">Pagamento online ativo</Label>
+                      <p className="text-sm text-muted-foreground">Habilita cobrança durante o agendamento público</p>
                     </div>
                     <Switch
-                      checked={s?.deposit_required || false}
-                      onCheckedChange={(v) => handleToggle('deposit_required', v)}
+                      checked={s?.online_payment_enabled || false}
+                      onCheckedChange={(v) => handleToggle('online_payment_enabled', v)}
                     />
                   </div>
 
-                  {s?.deposit_required && (
-                    <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-primary/20">
-                      <div className="space-y-2">
-                        <Label>Tipo de sinal</Label>
-                        <Select value={s?.deposit_type || 'fixed'} onValueChange={(v) => handleToggle('deposit_type', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="fixed">Valor fixo (R$)</SelectItem>
-                            <SelectItem value="percentage">Porcentagem (%)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{s?.deposit_type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step={s?.deposit_type === 'percentage' ? '1' : '0.01'}
-                          max={s?.deposit_type === 'percentage' ? '100' : undefined}
-                          value={s?.deposit_value || ''}
-                          onChange={(e) => handleToggle('deposit_value', parseFloat(e.target.value) || 0)}
+                  {s?.online_payment_enabled && (
+                    <>
+                      <Separator />
+
+                      {/* Full payment */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Pagamento integral online</Label>
+                          <p className="text-sm text-muted-foreground">Cobra 100% do valor do serviço antes de confirmar</p>
+                        </div>
+                        <Switch
+                          checked={s?.full_payment_online || false}
+                          onCheckedChange={(v) => {
+                            const updated: any = { ...s, full_payment_online: v };
+                            if (v) {
+                              updated.deposit_required = false;
+                              updated.deposit_value = 0;
+                            }
+                            setLocalSettings(updated);
+                          }}
                         />
                       </div>
-                    </div>
+
+                      <Separator />
+
+                      {/* Deposit settings */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-base font-semibold">Exigir sinal</Label>
+                            <p className="text-sm text-muted-foreground">Cobra um sinal parcial no momento do agendamento</p>
+                          </div>
+                          <Switch
+                            checked={s?.deposit_required || false}
+                            disabled={s?.full_payment_online}
+                            onCheckedChange={(v) => {
+                              const updated: any = { ...s, deposit_required: v };
+                              if (v) {
+                                updated.full_payment_online = false;
+                              }
+                              setLocalSettings(updated);
+                            }}
+                          />
+                        </div>
+
+                        {s?.full_payment_online && (
+                          <p className="text-xs text-muted-foreground italic pl-1">
+                            Sinal desativado porque o pagamento integral está ativo.
+                          </p>
+                        )}
+
+                        {s?.deposit_required && !s?.full_payment_online && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-primary/20">
+                            <div className="space-y-2">
+                              <Label>Tipo de sinal</Label>
+                              <Select value={s?.deposit_type || 'fixed'} onValueChange={(v) => handleToggle('deposit_type', v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Valor fixo (R$)</SelectItem>
+                                  <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>{s?.deposit_type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step={s?.deposit_type === 'percentage' ? '1' : '0.01'}
+                                max={s?.deposit_type === 'percentage' ? '100' : undefined}
+                                value={s?.deposit_value ?? ''}
+                                onChange={(e) => {
+                                  let val = parseFloat(e.target.value);
+                                  if (isNaN(val) || val < 0) val = 0;
+                                  if (s?.deposit_type === 'percentage' && val > 100) val = 100;
+                                  handleToggle('deposit_value', val);
+                                }}
+                              />
+                              {s?.deposit_type === 'percentage' && (
+                                <p className="text-xs text-muted-foreground">De 1% a 100% do valor do serviço</p>
+                              )}
+                              {s?.deposit_type === 'fixed' && (
+                                <p className="text-xs text-muted-foreground">Valor em reais cobrado como sinal</p>
+                              )}
+                              {s?.deposit_required && (s?.deposit_value === 0 || !s?.deposit_value) && (
+                                <p className="text-xs text-destructive font-medium">Informe um valor maior que zero</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <Separator />
+
+                      {/* Per-service config */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Configuração por serviço</Label>
+                          <p className="text-sm text-muted-foreground">Permite definir regras de cobrança individuais por serviço</p>
+                        </div>
+                        <Switch
+                          checked={s?.per_service_config || false}
+                          onCheckedChange={(v) => handleToggle('per_service_config', v)}
+                        />
+                      </div>
+
+                      <Separator />
+
+                      {/* Manual confirmation */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-base font-semibold">Confirmação manual após pagamento</Label>
+                            <p className="text-sm text-muted-foreground">O agendamento ficará pendente até sua aprovação, mesmo após pagamento</p>
+                          </div>
+                          <Switch
+                            checked={s?.require_manual_confirmation || false}
+                            onCheckedChange={(v) => handleToggle('require_manual_confirmation', v)}
+                          />
+                        </div>
+                        {s?.require_manual_confirmation && (
+                          <p className="text-xs text-muted-foreground pl-1 italic">
+                            O cliente receberá aviso de que o agendamento está aguardando confirmação.
+                          </p>
+                        )}
+                      </div>
+
+                      <Separator />
+
+                      {/* Refund */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-base font-semibold">Reembolso em cancelamento</Label>
+                            <p className="text-sm text-muted-foreground">Reembolsa automaticamente se o cliente cancelar dentro do prazo</p>
+                          </div>
+                          <Switch
+                            checked={s?.refund_on_cancellation || false}
+                            onCheckedChange={(v) => handleToggle('refund_on_cancellation', v)}
+                          />
+                        </div>
+                        {s?.refund_on_cancellation && (
+                          <div className="pl-4 border-l-2 border-primary/20 space-y-2">
+                            <Label>Prazo mínimo para reembolso (horas antes do atendimento)</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="168"
+                              value={s?.refund_deadline_hours || 24}
+                              onChange={(e) => {
+                                let val = parseInt(e.target.value);
+                                if (isNaN(val) || val < 1) val = 1;
+                                if (val > 168) val = 168;
+                                handleToggle('refund_deadline_hours', val);
+                              }}
+                              className="w-32"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Cancelamentos com menos de {s?.refund_deadline_hours || 24}h de antecedência não serão reembolsados.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
-                </div>
 
-                <Separator />
+                  <Separator />
 
-                {/* Full payment */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Pagamento integral online</Label>
-                    <p className="text-sm text-muted-foreground">Cobra 100% do valor do serviço online</p>
+                  {/* Save */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <Button
+                      onClick={handleSaveSettings}
+                      disabled={updateSettings.isPending || (s?.deposit_required && !s?.full_payment_online && (!s?.deposit_value || s?.deposit_value <= 0))}
+                    >
+                      {updateSettings.isPending ? 'Salvando...' : 'Salvar configurações'}
+                    </Button>
+                    {localSettings && (
+                      <Button variant="ghost" onClick={() => setLocalSettings(null)}>
+                        Descartar alterações
+                      </Button>
+                    )}
                   </div>
-                  <Switch
-                    checked={s?.full_payment_online || false}
-                    onCheckedChange={(v) => handleToggle('full_payment_online', v)}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Per-service config */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Configuração por serviço</Label>
-                    <p className="text-sm text-muted-foreground">Permite regras diferentes para cada serviço</p>
-                  </div>
-                  <Switch
-                    checked={s?.per_service_config || false}
-                    onCheckedChange={(v) => handleToggle('per_service_config', v)}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Manual confirmation */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Confirmação manual</Label>
-                    <p className="text-sm text-muted-foreground">Requer aprovação do estabelecimento após pagamento</p>
-                  </div>
-                  <Switch
-                    checked={s?.require_manual_confirmation || false}
-                    onCheckedChange={(v) => handleToggle('require_manual_confirmation', v)}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Refund */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base">Reembolso em cancelamento</Label>
-                      <p className="text-sm text-muted-foreground">Reembolsa automaticamente ao cancelar</p>
-                    </div>
-                    <Switch
-                      checked={s?.refund_on_cancellation || false}
-                      onCheckedChange={(v) => handleToggle('refund_on_cancellation', v)}
-                    />
-                  </div>
-                  {s?.refund_on_cancellation && (
-                    <div className="pl-4 border-l-2 border-primary/20 space-y-2">
-                      <Label>Prazo para reembolso (horas antes do atendimento)</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={s?.refund_deadline_hours || 24}
-                        onChange={(e) => handleToggle('refund_deadline_hours', parseInt(e.target.value) || 24)}
-                        className="w-32"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4">
-                  <Button onClick={handleSaveSettings} disabled={updateSettings.isPending}>
-                    {updateSettings.isPending ? 'Salvando...' : 'Salvar configurações'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </>
           )}
         </TabsContent>
 
