@@ -54,7 +54,7 @@ const statusLabels: Record<AppointmentStatus, string> = {
   rejected: 'Recusado',
 };
 
-const statusOptions: AppointmentStatus[] = ['booked', 'confirmed', 'completed', 'no_show', 'canceled'];
+const statusOptions: AppointmentStatus[] = ['pending_approval', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
 
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();
