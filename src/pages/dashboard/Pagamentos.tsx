@@ -483,6 +483,20 @@ function PagamentosContent() {
           )}
         </TabsContent>
 
+        {/* ── Services Tab ─────────────────────────────── */}
+        <TabsContent value="services" className="space-y-4">
+          {isConnected && s?.per_service_config ? (
+            <ServicePaymentSettingsTab />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <ListChecks className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p>Ative "Configuração por serviço" na aba Configurações para personalizar regras por serviço.</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
         {/* ── Payments Tab ────────────────────────────── */}
         <TabsContent value="payments" className="space-y-4">
           <div className="flex gap-3">
