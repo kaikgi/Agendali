@@ -1166,6 +1166,7 @@ function ComissoesContent() {
           <SettlementHistoryTab
             settlements={settlements}
             professionals={professionals}
+            entries={entries}
             isLoading={settlementsLoading}
           />
         </TabsContent>
