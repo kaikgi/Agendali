@@ -33,11 +33,13 @@ import {
 import { ClientAppointmentDialog } from '@/components/client/ClientAppointmentDialog';
 
 const statusLabels: Record<string, string> = {
+  pending_approval: 'Aguardando aprovação',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
   canceled: 'Cancelado',
   no_show: 'Não compareceu',
+  rejected: 'Recusado',
 };
 
 const statusVariants: Record<
