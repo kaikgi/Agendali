@@ -57,6 +57,13 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
         <p className="text-muted-foreground">Visão geral do seu estabelecimento</p>
       </div>
 
+      {/* Pending Approvals */}
+      <PendingApprovalsSection
+        appointments={appointments as any}
+        onAppointmentClick={() => {}}
+        professionals={professionals}
+      />
+
       {/* Metrics Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <Card>
