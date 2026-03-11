@@ -5,6 +5,7 @@ import {
   Calendar,
   Users,
   UserCircle,
+  Scissors,
   BarChart3,
   Settings,
   LogOut,
