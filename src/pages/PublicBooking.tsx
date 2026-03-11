@@ -500,7 +500,7 @@ export default function PublicBooking() {
             time={selectedTime}
             establishmentName={establishment.name}
             manageUrl={manageUrl}
-            pendingApproval={!establishment.auto_confirm_bookings}
+            pendingApproval={!establishment.auto_confirm_bookings || (requiresPayment && paymentConfig?.require_manual_confirmation)}
           />
         </div>
       </div>
@@ -719,23 +719,48 @@ function PaymentReturnScreen({
   onRetry: () => void;
   onDone: () => void;
 }) {
+  // Check if establishment requires manual confirmation
+  const [requiresManualConfirmation, setRequiresManualConfirmation] = useState(false);
+
+  useEffect(() => {
+    if (status === 'success' && slug) {
+      // Fetch establishment to check manual confirmation
+      supabase.from('establishments').select('id').eq('slug', slug).single().then(({ data: est }) => {
+        if (est) {
+          supabase.from('payment_settings').select('require_manual_confirmation').eq('establishment_id', est.id).maybeSingle().then(({ data: ps }) => {
+            if (ps?.require_manual_confirmation) setRequiresManualConfirmation(true);
+          });
+        }
+      });
+    }
+  }, [status, slug]);
+
   if (status === 'success') {
     return (
       <div className="text-center space-y-6 py-12">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-primary" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${requiresManualConfirmation ? 'bg-amber-100' : 'bg-primary/10'}`}>
+            {requiresManualConfirmation ? (
+              <Clock className="w-10 h-10 text-amber-600" />
+            ) : (
+              <CheckCircle2 className="w-10 h-10 text-primary" />
+            )}
           </div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold">Pagamento aprovado!</h2>
+          <h2 className="text-2xl font-bold">
+            {requiresManualConfirmation ? 'Pagamento aprovado!' : 'Pagamento aprovado!'}
+          </h2>
           <p className="text-muted-foreground mt-2">
-            Seu pagamento foi processado com sucesso. Seu agendamento foi confirmado.
+            {requiresManualConfirmation
+              ? 'Seu pagamento foi processado com sucesso. Seu agendamento agora aguarda aprovação do estabelecimento. Você receberá uma notificação quando for confirmado.'
+              : 'Seu pagamento foi processado com sucesso. Seu agendamento foi confirmado.'
+            }
           </p>
         </div>
         <div className="space-y-3 max-w-sm mx-auto">
           <Button className="w-full" onClick={onDone}>
-            Ver detalhes do agendamento
+            {requiresManualConfirmation ? 'Ver meus agendamentos' : 'Ver detalhes do agendamento'}
           </Button>
           <Button asChild variant="outline" className="w-full">
             <Link to="/">Voltar ao início</Link>
