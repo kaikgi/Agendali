@@ -501,6 +501,11 @@ export default function ProfessionalPortalAgenda() {
             />
           </TabsContent>
 
+          {/* ============ COMMISSIONS TAB ============ */}
+          <TabsContent value="commissions" className="space-y-6">
+            <ProfessionalCommissionsView token={token!} />
+          </TabsContent>
+
           {/* ============ PROFILE TAB ============ */}
           <TabsContent value="profile">
             <ProfessionalProfileSection
