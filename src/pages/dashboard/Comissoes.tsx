@@ -353,18 +353,138 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
   );
 }
 
+// ── Settlement Detail Dialog ───────────────────────────
+
+function SettlementDetailDialog({
+  open,
+  onClose,
+  settlement,
+  entries,
+  professionalName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  settlement: CommissionSettlement;
+  entries: CommissionEntry[];
+  professionalName: string;
+}) {
+  const settlementEntries = useMemo(
+    () => entries.filter((e) => e.settlement_id === settlement.id).sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()),
+    [entries, settlement.id]
+  );
+
+  const handleExport = () => {
+    const headers = ['Data', 'Serviço', 'Cliente', 'Valor Serviço', 'Comissão', 'Tipo'];
+    const rows = settlementEntries.map((e) => [
+      format(new Date(e.appointment_date), 'dd/MM/yyyy HH:mm'),
+      e.service_name,
+      e.customer_name || '',
+      (e.service_price_cents / 100).toFixed(2),
+      (e.commission_amount_cents / 100).toFixed(2),
+      e.commission_type === 'percentage' ? `${e.commission_value}%` : `R$ ${e.commission_value}`,
+    ]);
+    downloadCSV([headers, ...rows], `repasse-${professionalName}-${format(new Date(settlement.paid_at || settlement.created_at), 'yyyy-MM-dd')}.csv`);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Detalhes do Repasse</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Profissional</p>
+              <p className="font-semibold">{professionalName}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Período</p>
+              <p className="font-semibold text-sm">
+                {format(new Date(settlement.period_start), 'dd/MM/yy')} – {format(new Date(settlement.period_end), 'dd/MM/yy')}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-xs text-muted-foreground">Valor total</p>
+              <p className="font-bold text-primary text-lg">{formatCents(settlement.total_amount_cents)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Data do repasse</p>
+              <p className="font-semibold text-sm">
+                {settlement.paid_at ? format(new Date(settlement.paid_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR }) : '—'}
+              </p>
+            </div>
+          </div>
+
+          {settlement.notes && (
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">Observação</p>
+              <p className="text-sm">{settlement.notes}</p>
+            </div>
+          )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Atendimentos incluídos ({settlementEntries.length})</p>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={!settlementEntries.length}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              CSV
+            </Button>
+          </div>
+
+          {settlementEntries.length > 0 ? (
+            <div className="border rounded-lg overflow-x-auto max-h-64 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Serviço</TableHead>
+                    <TableHead className="text-xs hidden sm:table-cell">Cliente</TableHead>
+                    <TableHead className="text-xs text-right">Valor</TableHead>
+                    <TableHead className="text-xs text-right">Comissão</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {settlementEntries.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell className="text-xs py-2">{format(new Date(e.appointment_date), 'dd/MM HH:mm')}</TableCell>
+                      <TableCell className="text-xs py-2">{e.service_name}</TableCell>
+                      <TableCell className="text-xs py-2 hidden sm:table-cell">{e.customer_name || '—'}</TableCell>
+                      <TableCell className="text-xs py-2 text-right">{formatCents(e.service_price_cents)}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-medium">{formatCents(e.commission_amount_cents)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Detalhes dos atendimentos indisponíveis para repasses antigos.</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Settlement History ─────────────────────────────────
 
 function SettlementHistoryTab({
   settlements,
   professionals,
+  entries,
   isLoading,
 }: {
   settlements: CommissionSettlement[];
   professionals: any[];
+  entries: CommissionEntry[];
   isLoading: boolean;
 }) {
   const [filterProfessional, setFilterProfessional] = useState('all');
+  const [selectedSettlement, setSelectedSettlement] = useState<CommissionSettlement | null>(null);
 
   const filtered = useMemo(() => {
     if (filterProfessional === 'all') return settlements;
@@ -396,7 +516,7 @@ function SettlementHistoryTab({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <p className="text-sm text-muted-foreground">Histórico de todos os repasses realizados.</p>
+        <p className="text-sm text-muted-foreground">Clique em um repasse para ver os atendimentos incluídos.</p>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select value={filterProfessional} onValueChange={setFilterProfessional}>
             <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Profissional" /></SelectTrigger>
@@ -438,7 +558,7 @@ function SettlementHistoryTab({
               {filtered.map((s) => {
                 const prof = professionals.find((p: any) => p.id === s.professional_id);
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} className="cursor-pointer hover:bg-muted/70" onClick={() => setSelectedSettlement(s)}>
                     <TableCell className="font-medium">{prof?.name || '—'}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
                       {format(new Date(s.period_start), 'dd/MM/yy')} – {format(new Date(s.period_end), 'dd/MM/yy')}
@@ -457,6 +577,16 @@ function SettlementHistoryTab({
             </TableBody>
           </Table>
         </Card>
+      )}
+
+      {selectedSettlement && (
+        <SettlementDetailDialog
+          open={!!selectedSettlement}
+          onClose={() => setSelectedSettlement(null)}
+          settlement={selectedSettlement}
+          entries={entries}
+          professionalName={professionals.find((p: any) => p.id === selectedSettlement.professional_id)?.name || '—'}
+        />
       )}
     </div>
   );
