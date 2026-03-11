@@ -40,19 +40,23 @@ interface PortalAppointment {
 }
 
 const statusColors: Record<string, string> = {
+  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
   confirmed: 'bg-green-100 text-green-800 border-green-200',
   completed: 'bg-muted text-muted-foreground border-border',
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
+  rejected: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const statusLabels: Record<string, string> = {
+  pending_approval: 'Aguardando aprovação',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
   no_show: 'Não compareceu',
   canceled: 'Cancelado',
+  rejected: 'Recusado',
 };
 
 interface ProfessionalAppointmentDialogProps {
@@ -75,8 +79,8 @@ export function ProfessionalAppointmentDialog({
 
   if (!appointment) return null;
 
-  const canAct = ['booked', 'confirmed'].includes(appointment.status);
-  const canConfirm = appointment.status === 'booked';
+  const canAct = ['booked', 'confirmed', 'pending_approval'].includes(appointment.status);
+  const canConfirm = appointment.status === 'booked' || appointment.status === 'pending_approval';
 
   const handleAction = async (newStatus: string) => {
     setLoading(newStatus);

@@ -93,6 +93,20 @@ const TYPE_MAP: Record<string, TypeConfig> = {
     subject: (n) => `📋 Registro de ausência - ${n}`,
     showCTA: true, showWarning: false, showFooterNote: false,
   },
+  appointment_pending_approval: {
+    icon: "⏳", title: "Agendamento Enviado",
+    accent: "#d97706", bg: "#fffbeb",
+    message: (n) => `Seu pedido de agendamento em <strong>${n}</strong> foi recebido e aguarda aprovação do estabelecimento. Você será notificado assim que houver uma resposta.`,
+    subject: (n) => `⏳ Agendamento enviado - ${n}`,
+    showCTA: false, showWarning: false, showFooterNote: true,
+  },
+  appointment_rejected: {
+    icon: "🚫", title: "Agendamento Não Aprovado",
+    accent: "#dc2626", bg: "#fef2f2",
+    message: (n) => `Infelizmente, seu pedido de agendamento em <strong>${n}</strong> não foi aprovado. Entre em contato com o estabelecimento para mais informações ou tente agendar outro horário.`,
+    subject: (n) => `🚫 Agendamento não aprovado - ${n}`,
+    showCTA: true, showWarning: false, showFooterNote: false,
+  },
 };
 
 function isReminderType(t: string): boolean {

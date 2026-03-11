@@ -446,6 +446,7 @@ export default function PublicBooking() {
             time={selectedTime}
             establishmentName={establishment.name}
             manageUrl={manageUrl}
+            pendingApproval={!establishment.auto_confirm_bookings}
           />
         </div>
       </div>

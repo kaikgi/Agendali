@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
 
 interface AppointmentWithDetails {
   id: string;

@@ -33,22 +33,26 @@ import {
 import { ClientAppointmentDialog } from '@/components/client/ClientAppointmentDialog';
 
 const statusLabels: Record<string, string> = {
+  pending_approval: 'Aguardando aprovação',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
   canceled: 'Cancelado',
   no_show: 'Não compareceu',
+  rejected: 'Recusado',
 };
 
 const statusVariants: Record<
   string,
   'default' | 'secondary' | 'destructive' | 'outline'
 > = {
+  pending_approval: 'outline',
   booked: 'outline',
   confirmed: 'default',
   completed: 'secondary',
   canceled: 'destructive',
   no_show: 'destructive',
+  rejected: 'destructive',
 };
 
 function AppointmentCard({
