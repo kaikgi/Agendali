@@ -255,8 +255,7 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
 export default function Comissoes() {
   const { hasAccess, isLoading: planLoading, planLabel } = useHasCommissions();
   const { data: establishment } = useUserEstablishment();
-  const manageProfessionals = useManageProfessionals(establishment?.id);
-  const professionals = manageProfessionals.listQuery?.data || [];
+  const { professionals } = useManageProfessionals(establishment?.id);
   const { data: services = [] } = useServices(establishment?.id);
   const { data: rules = [], isLoading: rulesLoading } = useCommissionRules();
 
