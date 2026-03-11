@@ -6,6 +6,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Generate a random code verifier for PKCE
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Generate code challenge from verifier (S256)
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +32,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state"); // establishment_id
+    const state = url.searchParams.get("state"); // establishment_id or JSON with est_id
     const action = url.searchParams.get("action"); // 'connect' or 'disconnect'
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -27,7 +45,6 @@ Deno.serve(async (req) => {
 
     // ── Disconnect ──
     if (action === "disconnect" && state) {
-      // Verify ownership via auth header
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -48,7 +65,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Verify user owns establishment
       const { data: est } = await supabase
         .from("establishments")
         .select("id")
@@ -74,11 +90,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Generate OAuth URL ──
+    // ── Generate OAuth URL (with PKCE) ──
     if (action === "connect" && state) {
       const redirectUri = `${supabaseUrl}/functions/v1/mercadopago-oauth`;
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+      // Store code_verifier temporarily keyed by establishment_id
+      // We use a simple approach: store in payment_accounts metadata or a temp record
+      // Using the state parameter to encode both establishment_id and verifier
+      // We'll store the verifier server-side in a temporary record
+      
+      // Store verifier in DB temporarily (upsert a pending record)
+      await supabase.from("payment_accounts").upsert(
+        {
+          establishment_id: state,
+          provider: "mercadopago",
+          access_token: `pkce_pending:${codeVerifier}`,
+          status: "pending_oauth",
+          connected_at: new Date().toISOString(),
+        },
+        { onConflict: "establishment_id,provider" }
+      );
+
       const authUrl =
-        `https://auth.mercadopago.com.br/authorization?client_id=${mpClientId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        `https://auth.mercadopago.com.br/authorization?client_id=${mpClientId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
       return new Response(JSON.stringify({ auth_url: authUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -92,17 +128,36 @@ Deno.serve(async (req) => {
 
     const redirectUri = `${supabaseUrl}/functions/v1/mercadopago-oauth`;
 
-    // Exchange code for tokens
+    // Retrieve stored code_verifier
+    const { data: pendingAccount } = await supabase
+      .from("payment_accounts")
+      .select("access_token")
+      .eq("establishment_id", state)
+      .eq("provider", "mercadopago")
+      .single();
+
+    let codeVerifier: string | undefined;
+    if (pendingAccount?.access_token?.startsWith("pkce_pending:")) {
+      codeVerifier = pendingAccount.access_token.replace("pkce_pending:", "");
+    }
+
+    // Exchange code for tokens (with code_verifier for PKCE)
+    const tokenBody: Record<string, string> = {
+      client_secret: mpClientSecret,
+      client_id: mpClientId,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri,
+    };
+
+    if (codeVerifier) {
+      tokenBody.code_verifier = codeVerifier;
+    }
+
     const tokenRes = await fetch("https://api.mercadopago.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_secret: mpClientSecret,
-        client_id: mpClientId,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-      }),
+      body: JSON.stringify(tokenBody),
     });
 
     const tokenData = await tokenRes.json();
@@ -115,7 +170,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Save tokens
+    // Save tokens (overwrite the pending record)
     await supabase.from("payment_accounts").upsert(
       {
         establishment_id: state,
