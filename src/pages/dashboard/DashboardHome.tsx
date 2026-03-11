@@ -11,6 +11,8 @@ import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 
 function DashboardContent({ establishmentId }: { establishmentId: string }) {
+  const { data: appointments = [] } = useAppointments(establishmentId);
+  const { professionals } = useManageProfessionals(establishmentId);
   const {
     today,
     week,
