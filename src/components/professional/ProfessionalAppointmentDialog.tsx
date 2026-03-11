@@ -79,8 +79,8 @@ export function ProfessionalAppointmentDialog({
 
   if (!appointment) return null;
 
-  const canAct = ['booked', 'confirmed'].includes(appointment.status);
-  const canConfirm = appointment.status === 'booked';
+  const canAct = ['booked', 'confirmed', 'pending_approval'].includes(appointment.status);
+  const canConfirm = appointment.status === 'booked' || appointment.status === 'pending_approval';
 
   const handleAction = async (newStatus: string) => {
     setLoading(newStatus);

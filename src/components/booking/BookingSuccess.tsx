@@ -40,14 +40,25 @@ export function BookingSuccess({
   return (
     <div className="text-center space-y-6 py-8">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${pendingApproval ? 'bg-amber-100' : 'bg-green-100'}`}>
+          {pendingApproval ? (
+            <Clock className="w-10 h-10 text-amber-600" />
+          ) : (
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          )}
         </div>
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold">Agendamento confirmado!</h2>
-        <p className="text-muted-foreground mt-2">Seu horário em {establishmentName} foi reservado.</p>
+        <h2 className="text-2xl font-bold">
+          {pendingApproval ? 'Agendamento enviado!' : 'Agendamento confirmado!'}
+        </h2>
+        <p className="text-muted-foreground mt-2">
+          {pendingApproval
+            ? `Seu pedido de agendamento em ${establishmentName} foi enviado e aguarda aprovação. Você receberá uma notificação quando for aprovado.`
+            : `Seu horário em ${establishmentName} foi reservado.`
+          }
+        </p>
       </div>
 
       <div className="bg-muted rounded-lg p-6 text-left space-y-4 max-w-sm mx-auto">
