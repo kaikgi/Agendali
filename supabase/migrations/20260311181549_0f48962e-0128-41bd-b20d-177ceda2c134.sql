@@ -1,0 +1,1 @@
+ALTER TABLE public.payment_accounts ADD CONSTRAINT uq_payment_accounts_establishment_provider UNIQUE (establishment_id, provider);

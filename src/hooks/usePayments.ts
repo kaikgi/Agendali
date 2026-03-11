@@ -55,6 +55,7 @@ export function usePaymentAccount() {
         .select('id, establishment_id, provider, mp_user_id, status, connected_at')
         .eq('establishment_id', est!.id)
         .eq('provider', 'mercadopago')
+        .neq('status', 'pending_oauth')
         .maybeSingle();
       if (error) throw error;
       return data as PaymentAccount | null;
