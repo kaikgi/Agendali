@@ -171,6 +171,7 @@ function PagamentosContent() {
         <TabsList>
           <TabsTrigger value="connection">Conexão</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
+          <TabsTrigger value="services" disabled={!isConnected || !s?.per_service_config}>Serviços</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
         </TabsList>
 
