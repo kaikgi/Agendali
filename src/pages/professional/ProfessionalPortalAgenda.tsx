@@ -66,7 +66,7 @@ const statusLabels: Record<string, string> = {
 };
 
 type ViewMode = 'week' | 'list';
-type TabMode = 'agenda' | 'calendar' | 'profile';
+type TabMode = 'agenda' | 'calendar' | 'commissions' | 'profile';
 
 interface PortalAppointment {
   id: string;
