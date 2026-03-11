@@ -1,0 +1,1 @@
+ALTER TABLE public.payment_accounts DROP CONSTRAINT IF EXISTS uq_payment_accounts_establishment_provider;
