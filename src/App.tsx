@@ -139,6 +139,7 @@ const App = () => (
                 <Route path="bloqueios" element={<Bloqueios />} />
                 <Route path="avaliacoes" element={<Avaliacoes />} />
                 <Route path="assinatura" element={<Assinatura />} />
+                <Route path="comissoes" element={<Comissoes />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
               </Route>
               
