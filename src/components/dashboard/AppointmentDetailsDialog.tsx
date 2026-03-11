@@ -262,6 +262,25 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
 
           {/* Quick Actions */}
           <div className="flex gap-2 pt-2">
+            {appointment.status === 'pending_approval' && (
+              <>
+                <Button 
+                  className="flex-1" 
+                  onClick={() => handleStatusChange('confirmed')}
+                  disabled={isPending}
+                >
+                  Aprovar
+                </Button>
+                <Button 
+                  variant="destructive"
+                  className="flex-1" 
+                  onClick={() => handleStatusChange('rejected')}
+                  disabled={isPending}
+                >
+                  Recusar
+                </Button>
+              </>
+            )}
             {appointment.status === 'booked' && (
               <Button 
                 className="flex-1" 
