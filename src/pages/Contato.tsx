@@ -149,7 +149,7 @@ const Contato = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">WhatsApp</h3>
-                  <p className="text-muted-foreground">+55 11 93752-5469</p>
+                  <p className="text-muted-foreground">(11) 94399-0345</p>
                   <p className="text-body-sm text-muted-foreground mt-1">
                     Canal oficial de atendimento.
                   </p>
