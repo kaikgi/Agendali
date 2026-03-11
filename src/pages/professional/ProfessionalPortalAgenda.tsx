@@ -275,6 +275,10 @@ export default function ProfessionalPortalAgenda() {
                 <CalendarIcon className="h-4 w-4" />
                 <span>Calendário</span>
               </TabsTrigger>
+              <TabsTrigger value="commissions" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
+                <DollarSign className="h-4 w-4" />
+                <span>Comissões</span>
+              </TabsTrigger>
               <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <User className="h-4 w-4" />
                 <span>Perfil</span>
