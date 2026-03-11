@@ -266,14 +266,14 @@ Deno.serve(async (req) => {
             };
 
             if (newStatus === "confirmed") {
-              // Payment approved + auto-confirm: send confirmation email
+              // Payment approved + auto-confirm: send payment+confirmation email
               const dedupeKey = `appointment_payment_confirmed:${appointmentId}`;
               await supabase.from("appointment_email_jobs").insert({
                 appointment_id: appointmentId,
                 establishment_id: estId,
                 customer_email: customerEmail.toLowerCase().trim(),
                 customer_name: (aptFull as any).customers?.name || "Cliente",
-                email_type: "appointment_confirmation",
+                email_type: "appointment_payment_confirmed_auto",
                 status: "pending",
                 payload,
                 scheduled_for: new Date().toISOString(),
@@ -283,6 +283,29 @@ Deno.serve(async (req) => {
                   console.error("Error creating confirmation email job:", error);
                 }
               });
+
+              // Also schedule reminder if applicable
+              const reminderHours = aptFull.customer_reminder_hours;
+              if (reminderHours && reminderHours > 0) {
+                const reminderTime = new Date(new Date(aptFull.start_at).getTime() - reminderHours * 60 * 60 * 1000);
+                if (reminderTime > new Date()) {
+                  await supabase.from("appointment_email_jobs").insert({
+                    appointment_id: appointmentId,
+                    establishment_id: estId,
+                    customer_email: customerEmail.toLowerCase().trim(),
+                    customer_name: (aptFull as any).customers?.name || "Cliente",
+                    email_type: `appointment_reminder_${reminderHours}h`,
+                    status: "pending",
+                    payload,
+                    scheduled_for: reminderTime.toISOString(),
+                    dedupe_key: `appointment_reminder:${appointmentId}`,
+                  }).then(({ error }) => {
+                    if (error && !error.message.includes("duplicate")) {
+                      console.error("Error creating reminder email job:", error);
+                    }
+                  });
+                }
+              }
             } else if (newStatus === "paid_pending_confirmation") {
               // Payment approved but manual confirmation required
               const dedupeKey = `appointment_paid_pending:${appointmentId}`;
@@ -291,14 +314,14 @@ Deno.serve(async (req) => {
                 establishment_id: estId,
                 customer_email: customerEmail.toLowerCase().trim(),
                 customer_name: (aptFull as any).customers?.name || "Cliente",
-                email_type: "appointment_pending_approval",
+                email_type: "appointment_payment_received",
                 status: "pending",
                 payload: { ...payload, paid: true },
                 scheduled_for: new Date().toISOString(),
                 dedupe_key: dedupeKey,
               }).then(({ error }) => {
                 if (error && !error.message.includes("duplicate")) {
-                  console.error("Error creating pending approval email job:", error);
+                  console.error("Error creating payment received email job:", error);
                 }
               });
             }
