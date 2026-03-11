@@ -355,7 +355,7 @@ export default function Comissoes() {
               <TrendingUp className="h-4 w-4" />
               Pendente
             </div>
-            <p className="text-xl font-bold text-amber-600">{formatCents(pendingTotal)}</p>
+            <p className="text-xl font-bold text-destructive">{formatCents(pendingTotal)}</p>
           </CardContent>
         </Card>
         <Card>
