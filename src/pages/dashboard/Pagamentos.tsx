@@ -12,6 +12,8 @@ import {
 } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -22,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search, ListChecks } from 'lucide-react';
+import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search, ListChecks, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ServicePaymentSettingsTab from '@/components/payments/ServicePaymentSettingsTab';
