@@ -26,6 +26,8 @@ Deno.serve(async (req) => {
     const dataId = body.data?.id || id;
     const eventId = body.id || `${eventType}-${dataId}-${Date.now()}`;
 
+    console.log("mercadopago-webhook: received", { eventType, dataId, eventId });
+
     // Idempotency check
     const { data: existing } = await supabase
       .from("payment_webhook_events")
@@ -35,6 +37,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
+      console.log("mercadopago-webhook: already processed", eventId);
       return new Response("Already processed", { status: 200 });
     }
 
@@ -48,6 +51,7 @@ Deno.serve(async (req) => {
 
     // Only process payment events
     if (eventType !== "payment" && !eventType.includes("payment")) {
+      console.log("mercadopago-webhook: ignoring non-payment event", eventType);
       await supabase
         .from("payment_webhook_events")
         .update({ processed_at: new Date().toISOString() })
@@ -57,12 +61,11 @@ Deno.serve(async (req) => {
     }
 
     if (!dataId) {
+      console.log("mercadopago-webhook: no payment ID");
       return new Response("No payment ID", { status: 200 });
     }
 
-    // Find the appointment payment by external_reference or provider_payment_id
-    // First, we need to fetch the payment from MP to get details
-    // We need the merchant's access token - find via appointment_payment
+    // Find the appointment payment
     const { data: existingPayment } = await supabase
       .from("appointment_payments")
       .select("*, establishment_id")
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
         .eq("establishment_id", establishmentId)
         .eq("provider", "mercadopago")
         .eq("status", "active")
-        .single();
+        .maybeSingle();
       accessToken = account?.access_token || null;
     }
 
@@ -106,7 +109,7 @@ Deno.serve(async (req) => {
     }
 
     if (!accessToken) {
-      console.error("No valid access token found for payment", dataId);
+      console.error("mercadopago-webhook: no valid access token for payment", dataId);
       await supabase
         .from("payment_webhook_events")
         .update({
@@ -125,13 +128,19 @@ Deno.serve(async (req) => {
     );
 
     if (!paymentRes.ok) {
-      console.error("Failed to fetch payment from MP:", await paymentRes.text());
+      console.error("mercadopago-webhook: failed to fetch payment from MP:", await paymentRes.text());
       return new Response("OK", { status: 200 });
     }
 
     const payment = await paymentRes.json();
     const appointmentId = payment.external_reference;
-    const mpStatus = payment.status; // approved, rejected, pending, in_process, cancelled, refunded
+    const mpStatus = payment.status;
+
+    console.log("mercadopago-webhook: payment details", {
+      appointmentId,
+      mpStatus,
+      statusDetail: payment.status_detail,
+    });
 
     // Map MP status to our status
     const statusMap: Record<string, string> = {
@@ -187,7 +196,7 @@ Deno.serve(async (req) => {
     if (ourStatus === "approved" && appointmentId) {
       const { data: apt } = await supabase
         .from("appointments")
-        .select("status, establishment_id")
+        .select("status, establishment_id, customer_email, customer_id")
         .eq("id", appointmentId)
         .single();
 
@@ -203,10 +212,98 @@ Deno.serve(async (req) => {
           ? "paid_pending_confirmation"
           : "confirmed";
 
+        console.log("mercadopago-webhook: updating appointment status", {
+          appointmentId,
+          from: apt.status,
+          to: newStatus,
+        });
+
         await supabase
           .from("appointments")
           .update({ status: newStatus })
           .eq("id", appointmentId);
+
+        // Create email notification for payment received
+        const estId = apt.establishment_id;
+        
+        // Get customer email
+        let customerEmail = apt.customer_email;
+        if (!customerEmail) {
+          const { data: customer } = await supabase
+            .from("customers")
+            .select("email, name")
+            .eq("id", apt.customer_id)
+            .single();
+          customerEmail = customer?.email;
+        }
+
+        if (customerEmail && customerEmail.length >= 4) {
+          // Get appointment details for email payload
+          const { data: aptFull } = await supabase
+            .from("appointments")
+            .select(`
+              *,
+              services:service_id(name, duration_minutes),
+              professionals:professional_id(name),
+              customers:customer_id(name),
+              establishments:establishment_id(name, slug, phone, address)
+            `)
+            .eq("id", appointmentId)
+            .single();
+
+          if (aptFull) {
+            const payload = {
+              customer_name: (aptFull as any).customers?.name || "Cliente",
+              professional_name: (aptFull as any).professionals?.name || "Profissional",
+              service_name: (aptFull as any).services?.name || "Serviço",
+              service_duration: (aptFull as any).services?.duration_minutes || 30,
+              establishment_name: (aptFull as any).establishments?.name || "Agendali",
+              establishment_slug: (aptFull as any).establishments?.slug || "",
+              establishment_phone: (aptFull as any).establishments?.phone,
+              establishment_address: (aptFull as any).establishments?.address,
+              start_at: aptFull.start_at,
+              payment_status: newStatus,
+            };
+
+            if (newStatus === "confirmed") {
+              // Payment approved + auto-confirm: send confirmation email
+              const dedupeKey = `appointment_payment_confirmed:${appointmentId}`;
+              await supabase.from("appointment_email_jobs").insert({
+                appointment_id: appointmentId,
+                establishment_id: estId,
+                customer_email: customerEmail.toLowerCase().trim(),
+                customer_name: (aptFull as any).customers?.name || "Cliente",
+                email_type: "appointment_confirmation",
+                status: "pending",
+                payload,
+                scheduled_for: new Date().toISOString(),
+                dedupe_key: dedupeKey,
+              }).then(({ error }) => {
+                if (error && !error.message.includes("duplicate")) {
+                  console.error("Error creating confirmation email job:", error);
+                }
+              });
+            } else if (newStatus === "paid_pending_confirmation") {
+              // Payment approved but manual confirmation required
+              const dedupeKey = `appointment_paid_pending:${appointmentId}`;
+              await supabase.from("appointment_email_jobs").insert({
+                appointment_id: appointmentId,
+                establishment_id: estId,
+                customer_email: customerEmail.toLowerCase().trim(),
+                customer_name: (aptFull as any).customers?.name || "Cliente",
+                email_type: "appointment_pending_approval",
+                status: "pending",
+                payload: { ...payload, paid: true },
+                scheduled_for: new Date().toISOString(),
+                dedupe_key: dedupeKey,
+              }).then(({ error }) => {
+                if (error && !error.message.includes("duplicate")) {
+                  console.error("Error creating pending approval email job:", error);
+                }
+              });
+            }
+          }
+        }
       }
     }
 
@@ -217,6 +314,7 @@ Deno.serve(async (req) => {
       .eq("event_id", eventId)
       .eq("provider", "mercadopago");
 
+    console.log("mercadopago-webhook: processed successfully", eventId);
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("mercadopago-webhook error:", err);

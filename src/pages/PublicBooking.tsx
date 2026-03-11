@@ -314,8 +314,14 @@ export default function PublicBooking() {
         setCreatedAppointmentId(result.appointment_id);
       }
 
-      // If payment is required, go to payment step
+      // If payment is required, update appointment to pending_payment and go to payment step
       if (requiresPayment && result?.appointment_id) {
+        // Update appointment status to pending_payment
+        await supabase
+          .from('appointments')
+          .update({ status: 'pending_payment' })
+          .eq('id', result.appointment_id);
+
         setCurrentStep(4); // Payment step
       } else {
         setIsSuccess(true);
