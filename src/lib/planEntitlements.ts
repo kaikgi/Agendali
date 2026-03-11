@@ -2,6 +2,7 @@ export interface PlanEntitlements {
   planLabel: string;
   professionalLimit: number;
   appointmentLimit: number;
+  hasCommissions: boolean;
 }
 
 /**
