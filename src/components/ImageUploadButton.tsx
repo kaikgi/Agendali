@@ -56,9 +56,10 @@ export function ImageUploadButton({
     setSelectedFile(null);
     setPreviewUrl(null);
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Selecione um arquivo de imagem válido (JPG, PNG, GIF, etc.)');
+    // Validate file type - only safe image formats
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Selecione um arquivo de imagem válido (JPG, PNG, GIF ou WebP)');
       setPreviewDialogOpen(true);
       return;
     }

@@ -97,9 +97,7 @@ export function useClientAppointments(filters?: UseClientAppointmentsFilters) {
           table: 'appointments',
           filter: `customer_user_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('Client appointment change detected:', payload);
-          
+        () => {
           // Invalidate queries to refetch data
           queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
           queryClient.invalidateQueries({ queryKey: ['client-appointments-month'] });
@@ -157,12 +155,16 @@ export function useCancelClientAppointment() {
 
   return useMutation({
     mutationFn: async (appointmentId: string) => {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'canceled' })
-        .eq('id', appointmentId);
+      const { data, error } = await (supabase.rpc as any)('client_cancel_appointment', {
+        p_appointment_id: appointmentId,
+      });
 
       if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao cancelar agendamento');
+      }
     },
     onSuccess: () => {
       // Invalidate all appointment-related queries to update all panels

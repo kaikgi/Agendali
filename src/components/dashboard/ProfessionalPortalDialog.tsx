@@ -92,16 +92,27 @@ export function ProfessionalPortalDialog({
     const digits = '0123456789';
     const special = '!@#$%&*';
     const all = upper + lower + digits + special;
+    // Use crypto.getRandomValues for secure random
+    const secureRandom = (max: number) => {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      return array[0] % max;
+    };
     // Guarantee at least one of each
-    let generated = upper[Math.floor(Math.random() * upper.length)]
-      + lower[Math.floor(Math.random() * lower.length)]
-      + digits[Math.floor(Math.random() * digits.length)]
-      + special[Math.floor(Math.random() * special.length)];
-    for (let i = 4; i < 10; i++) {
-      generated += all[Math.floor(Math.random() * all.length)];
+    let generated = upper[secureRandom(upper.length)]
+      + lower[secureRandom(lower.length)]
+      + digits[secureRandom(digits.length)]
+      + special[secureRandom(special.length)];
+    for (let i = 4; i < 12; i++) {
+      generated += all[secureRandom(all.length)];
     }
-    // Shuffle
-    generated = generated.split('').sort(() => Math.random() - 0.5).join('');
+    // Secure shuffle using Fisher-Yates with crypto
+    const arr = generated.split('');
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = secureRandom(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    generated = arr.join('');
     setPassword(generated);
     setConfirmPassword(generated);
     setWantsChangePassword(true);
