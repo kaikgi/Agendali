@@ -36,6 +36,7 @@ import Avaliacoes from "./pages/dashboard/Avaliacoes";
 import Configuracoes from "./pages/dashboard/Configuracoes";
 import Assinatura from "./pages/dashboard/Assinatura";
 import Comissoes from "./pages/dashboard/Comissoes";
+import Pagamentos from "./pages/dashboard/Pagamentos";
 import ClientLayout from "./pages/client/ClientLayout";
 import ClientDashboard from "./pages/client/ClientDashboard";
 import ClientAppointments from "./pages/client/ClientAppointments";
@@ -140,6 +141,7 @@ const App = () => (
                 <Route path="avaliacoes" element={<Avaliacoes />} />
                 <Route path="assinatura" element={<Assinatura />} />
                 <Route path="comissoes" element={<Comissoes />} />
+                <Route path="pagamentos" element={<Pagamentos />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
               </Route>
               
