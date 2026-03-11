@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { FeatureGate } from '@/components/dashboard/FeatureGate';
-import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, aggregateByProfessional, type CommissionFilters, type CommissionEntry } from '@/hooks/useCommissions';
+import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, useCommissionSettlements, aggregateByProfessional, type CommissionFilters, type CommissionEntry, type CommissionSettlement } from '@/hooks/useCommissions';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useServices } from '@/hooks/useServices';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,8 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { DollarSign, Users, TrendingUp, Calculator, Plus, Trash2, Lock, Search, Download, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { DollarSign, Users, TrendingUp, Calculator, Plus, Trash2, Lock, Search, Download, CheckCircle2, History } from 'lucide-react';
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 function formatCents(cents: number): string {
@@ -47,16 +49,16 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
   const handleSubmit = async () => {
     if (!professionalId) {
       toast.error('Selecione um profissional');
-      return;
+      throw new Error('validation');
     }
     const val = parseFloat(commissionValue);
     if (isNaN(val) || val < 0) {
       toast.error('Valor inválido');
-      return;
+      throw new Error('validation');
     }
     if (commissionType === 'percentage' && val > 100) {
       toast.error('Percentual não pode ser maior que 100%');
-      return;
+      throw new Error('validation');
     }
 
     try {
@@ -73,7 +75,10 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
       toast.success(editRule ? 'Regra atualizada' : 'Regra criada');
       onClose();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar regra');
+      if (err?.message !== 'validation') {
+        toast.error(err.message || 'Erro ao salvar regra');
+      }
+      throw err;
     }
   };
 
@@ -120,14 +125,11 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
             </div>
             <div className="space-y-2">
               <Label>{commissionType === 'percentage' ? 'Percentual (%)' : 'Valor (R$)'}</Label>
-              <Input
-                type="number"
-                step={commissionType === 'percentage' ? '1' : '0.01'}
-                min="0"
-                max={commissionType === 'percentage' ? '100' : undefined}
-                value={commissionValue}
-                onChange={(e) => setCommissionValue(e.target.value)}
-                placeholder={commissionType === 'percentage' ? 'Ex: 40' : 'Ex: 15.00'}
+              <MoneyInput
+                mode={commissionType === 'percentage' ? 'percentage' : 'currency'}
+                value={commissionValue ? parseFloat(commissionValue) : null}
+                onChange={(val) => setCommissionValue(val !== null ? String(val) : '')}
+                placeholder={commissionType === 'percentage' ? 'Ex: 40' : 'Ex: 15,00'}
               />
             </div>
           </div>
@@ -138,9 +140,9 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={upsert.isPending}>
-            {upsert.isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
+          <ActionButton onClick={handleSubmit} loadingLabel="Salvando..." successLabel="Salvo!">
+            Salvar
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -160,21 +162,36 @@ interface SettlementDialogProps {
 function SettlementDialog({ open, onClose, entries, professionalName, professionalId }: SettlementDialogProps) {
   const create = useCreateSettlement();
   const [notes, setNotes] = useState('');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
 
-  const pendingEntries = entries.filter((e) => e.status === 'pending');
+  const pendingEntries = useMemo(() => {
+    let filtered = entries.filter((e) => e.status === 'pending');
+    if (periodStart) {
+      filtered = filtered.filter((e) => e.appointment_date >= periodStart);
+    }
+    if (periodEnd) {
+      filtered = filtered.filter((e) => e.appointment_date <= periodEnd + 'T23:59:59');
+    }
+    return filtered;
+  }, [entries, periodStart, periodEnd]);
+
   const total = pendingEntries.reduce((s, e) => s + e.commission_amount_cents, 0);
 
-  const dates = pendingEntries.map((e) => new Date(e.appointment_date));
-  const periodStart = dates.length ? format(new Date(Math.min(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd') : '';
-  const periodEnd = dates.length ? format(new Date(Math.max(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd') : '';
-
   const handleSettle = async () => {
-    if (!pendingEntries.length) return;
+    if (!pendingEntries.length) {
+      toast.error('Nenhuma comissão pendente no período selecionado');
+      throw new Error('no entries');
+    }
+    const dates = pendingEntries.map((e) => new Date(e.appointment_date));
+    const pStart = periodStart || format(new Date(Math.min(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd');
+    const pEnd = periodEnd || format(new Date(Math.max(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd');
+
     try {
       await create.mutateAsync({
         professionalId,
-        periodStart,
-        periodEnd,
+        periodStart: pStart,
+        periodEnd: pEnd,
         entryIds: pendingEntries.map((e) => e.id),
         notes: notes.trim() || undefined,
       });
@@ -182,6 +199,34 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar repasse');
+      throw err;
+    }
+  };
+
+  const setPreset = (preset: string) => {
+    const now = new Date();
+    switch (preset) {
+      case 'today':
+        setPeriodStart(format(now, 'yyyy-MM-dd'));
+        setPeriodEnd(format(now, 'yyyy-MM-dd'));
+        break;
+      case 'week':
+        setPeriodStart(format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+        break;
+      case 'month':
+        setPeriodStart(format(startOfMonth(now), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfMonth(now), 'yyyy-MM-dd'));
+        break;
+      case 'last_month':
+        const lm = subMonths(now, 1);
+        setPeriodStart(format(startOfMonth(lm), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfMonth(lm), 'yyyy-MM-dd'));
+        break;
+      case 'all':
+        setPeriodStart('');
+        setPeriodEnd('');
+        break;
     }
   };
 
@@ -192,6 +237,34 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
           <DialogTitle>Registrar Repasse — {professionalName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Period presets */}
+          <div className="space-y-2">
+            <Label>Período do repasse</Label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'today', label: 'Hoje' },
+                { key: 'week', label: 'Esta semana' },
+                { key: 'month', label: 'Este mês' },
+                { key: 'last_month', label: 'Mês passado' },
+                { key: 'all', label: 'Todos pendentes' },
+              ].map((p) => (
+                <Button key={p.key} variant="outline" size="sm" type="button" onClick={() => setPreset(p.key)}>
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">De</Label>
+                <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Até</Label>
+                <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
@@ -206,11 +279,6 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
               </CardContent>
             </Card>
           </div>
-          {periodStart && (
-            <p className="text-sm text-muted-foreground">
-              Período: {format(new Date(periodStart), 'dd/MM/yyyy')} a {format(new Date(periodEnd), 'dd/MM/yyyy')}
-            </p>
-          )}
           <div className="space-y-2">
             <Label>Observações (opcional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Pagamento via Pix" />
@@ -218,10 +286,10 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSettle} disabled={create.isPending || !pendingEntries.length}>
+          <ActionButton onClick={handleSettle} disabled={!pendingEntries.length} loadingLabel="Registrando..." successLabel="Repasse registrado!">
             <CheckCircle2 className="h-4 w-4 mr-2" />
-            {create.isPending ? 'Registrando...' : 'Confirmar repasse'}
-          </Button>
+            Confirmar repasse
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -243,6 +311,7 @@ function ComissoesContent() {
   const { professionals } = useManageProfessionals(establishment?.id);
   const { data: services = [] } = useServices(establishment?.id);
   const { data: rules = [], isLoading: rulesLoading } = useCommissionRules();
+  const { data: settlements = [], isLoading: settlementsLoading } = useCommissionSettlements();
 
   // Filters
   const [filters, setFilters] = useState<CommissionFilters>({});
@@ -344,6 +413,7 @@ function ComissoesContent() {
           <TabsTrigger value="entries">Comissões</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
           <TabsTrigger value="summary">Resumo por Profissional</TabsTrigger>
+          <TabsTrigger value="history">Histórico de Repasses</TabsTrigger>
         </TabsList>
 
         {/* ── Entries Tab ─────────────────────────────────── */}

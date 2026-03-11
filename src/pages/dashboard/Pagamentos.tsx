@@ -12,6 +12,8 @@ import {
 } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -22,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search, ListChecks } from 'lucide-react';
+import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search, ListChecks, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ServicePaymentSettingsTab from '@/components/payments/ServicePaymentSettingsTab';
@@ -107,6 +109,7 @@ function PagamentosContent() {
       toast.success('Configurações salvas');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar');
+      throw err;
     }
   };
 
@@ -360,18 +363,10 @@ function PagamentosContent() {
                             </div>
                             <div className="space-y-2">
                               <Label>{s?.deposit_type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                step={s?.deposit_type === 'percentage' ? '1' : '0.01'}
-                                max={s?.deposit_type === 'percentage' ? '100' : undefined}
-                                value={s?.deposit_value ?? ''}
-                                onChange={(e) => {
-                                  let val = parseFloat(e.target.value);
-                                  if (isNaN(val) || val < 0) val = 0;
-                                  if (s?.deposit_type === 'percentage' && val > 100) val = 100;
-                                  handleToggle('deposit_value', val);
-                                }}
+                              <MoneyInput
+                                mode={s?.deposit_type === 'percentage' ? 'percentage' : 'currency'}
+                                value={s?.deposit_value || null}
+                                onChange={(val) => handleToggle('deposit_value', val ?? 0)}
                               />
                               {s?.deposit_type === 'percentage' && (
                                 <p className="text-xs text-muted-foreground">De 1% a 100% do valor do serviço</p>
@@ -465,12 +460,15 @@ function PagamentosContent() {
 
                   {/* Save */}
                   <div className="flex items-center gap-3 pt-2">
-                    <Button
+                    <ActionButton
                       onClick={handleSaveSettings}
-                      disabled={updateSettings.isPending || (s?.deposit_required && !s?.full_payment_online && (!s?.deposit_value || s?.deposit_value <= 0))}
+                      disabled={s?.deposit_required && !s?.full_payment_online && (!s?.deposit_value || s?.deposit_value <= 0)}
+                      icon={<Save className="h-4 w-4" />}
+                      loadingLabel="Salvando..."
+                      successLabel="Salvo!"
                     >
-                      {updateSettings.isPending ? 'Salvando...' : 'Salvar configurações'}
-                    </Button>
+                      Salvar configurações
+                    </ActionButton>
                     {localSettings && (
                       <Button variant="ghost" onClick={() => setLocalSettings(null)}>
                         Descartar alterações

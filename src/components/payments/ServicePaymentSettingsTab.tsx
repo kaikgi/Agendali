@@ -9,6 +9,8 @@ import {
 } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -248,18 +250,10 @@ export default function ServicePaymentSettingsTab() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">{editForm.deposit_type === 'percentage' ? '% do serviço' : 'Valor (R$)'}</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max={editForm.deposit_type === 'percentage' ? 100 : undefined}
-                        step={editForm.deposit_type === 'percentage' ? '1' : '0.01'}
-                        value={editForm.deposit_value ?? ''}
-                        onChange={(e) => {
-                          let val = parseFloat(e.target.value);
-                          if (isNaN(val) || val < 0) val = 0;
-                          if (editForm.deposit_type === 'percentage' && val > 100) val = 100;
-                          setEditForm((f) => ({ ...f, deposit_value: val }));
-                        }}
+                      <MoneyInput
+                        mode={editForm.deposit_type === 'percentage' ? 'percentage' : 'currency'}
+                        value={editForm.deposit_value || null}
+                        onChange={(val) => setEditForm((f) => ({ ...f, deposit_value: val ?? 0 }))}
                       />
                       {editForm.deposit_required && editForm.deposit_value <= 0 && (
                         <p className="text-xs text-destructive">Informe um valor maior que zero</p>
@@ -279,15 +273,14 @@ export default function ServicePaymentSettingsTab() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingService(null)}>Cancelar</Button>
-            <Button
+            <ActionButton
               onClick={handleSave}
-              disabled={
-                upsertSps.isPending ||
-                (editForm.deposit_required && !editForm.full_payment_online && editForm.deposit_value <= 0)
-              }
+              disabled={editForm.deposit_required && !editForm.full_payment_online && editForm.deposit_value <= 0}
+              loadingLabel="Salvando..."
+              successLabel="Salvo!"
             >
-              {upsertSps.isPending ? 'Salvando...' : 'Salvar regra'}
-            </Button>
+              Salvar regra
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
