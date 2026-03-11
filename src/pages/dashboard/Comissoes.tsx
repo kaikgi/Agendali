@@ -122,14 +122,11 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
             </div>
             <div className="space-y-2">
               <Label>{commissionType === 'percentage' ? 'Percentual (%)' : 'Valor (R$)'}</Label>
-              <Input
-                type="number"
-                step={commissionType === 'percentage' ? '1' : '0.01'}
-                min="0"
-                max={commissionType === 'percentage' ? '100' : undefined}
-                value={commissionValue}
-                onChange={(e) => setCommissionValue(e.target.value)}
-                placeholder={commissionType === 'percentage' ? 'Ex: 40' : 'Ex: 15.00'}
+              <MoneyInput
+                mode={commissionType === 'percentage' ? 'percentage' : 'currency'}
+                value={commissionValue ? parseFloat(commissionValue) : null}
+                onChange={(val) => setCommissionValue(val !== null ? String(val) : '')}
+                placeholder={commissionType === 'percentage' ? 'Ex: 40' : 'Ex: 15,00'}
               />
             </div>
           </div>
@@ -140,9 +137,9 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={upsert.isPending}>
-            {upsert.isPending ? 'Salvando...' : 'Salvar'}
-          </Button>
+          <ActionButton onClick={handleSubmit} loadingLabel="Salvando..." successLabel="Salvo!">
+            Salvar
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
