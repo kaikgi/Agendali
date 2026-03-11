@@ -71,6 +71,7 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const { data: establishment } = useUserEstablishment();
   const { data: adminAccess } = useAdminAccess();
+  const { features } = usePlanFeatures();
   const { state } = useSidebar();
   const { toast } = useToast();
   const collapsed = state === 'collapsed';
