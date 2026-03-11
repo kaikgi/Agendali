@@ -3,9 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 
 function DashboardContent({ establishmentId }: { establishmentId: string }) {
   const {
