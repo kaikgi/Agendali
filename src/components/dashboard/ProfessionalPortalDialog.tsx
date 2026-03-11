@@ -125,7 +125,7 @@ export function ProfessionalPortalDialog({
     }
 
     // Only validate password if user is actively setting one
-    const isSettingPassword = wantsChangePassword && password.length > 0;
+    const isSettingPassword = password.length > 0 && (wantsChangePassword || !hasExistingPassword);
 
     if (isSettingPassword && password !== confirmPassword) {
       toast({ title: 'As senhas não coincidem', variant: 'destructive' });
