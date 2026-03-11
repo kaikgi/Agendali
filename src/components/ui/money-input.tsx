@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-interface MoneyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
+interface MoneyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type' | 'prefix'> {
   /** Value in the unit (reais, not cents). null = empty */
   value: number | null | undefined;
   /** Called with the numeric value (reais) or null when empty */
