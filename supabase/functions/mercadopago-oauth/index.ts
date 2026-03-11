@@ -6,6 +6,29 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const STATE_MAX_AGE_MS = 20 * 60 * 1000;
+
+type OAuthStatePayload = {
+  e: string; // establishment_id
+  u: string; // user_id
+  t: number; // issued timestamp
+  cv: string; // PKCE code verifier
+};
+
+function encodeBase64Url(input: Uint8Array): string {
+  return btoa(String.fromCharCode(...input))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function decodeBase64Url(input: string): Uint8Array {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  return new Uint8Array([...binary].map((char) => char.charCodeAt(0)));
+}
+
 function generateCodeVerifier(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
@@ -16,10 +39,66 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
-  return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return encodeBase64Url(new Uint8Array(digest));
+}
+
+async function signText(text: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(text),
+  );
+
+  return encodeBase64Url(new Uint8Array(signature));
+}
+
+async function encodeState(payload: OAuthStatePayload, secret: string): Promise<string> {
+  const payloadJson = JSON.stringify(payload);
+  const payloadB64 = encodeBase64Url(new TextEncoder().encode(payloadJson));
+  const sig = await signText(payloadB64, secret);
+  return `${payloadB64}.${sig}`;
+}
+
+async function decodeAndVerifyState(
+  rawState: string,
+  secret: string,
+): Promise<OAuthStatePayload | null> {
+  const [payloadB64, sig] = rawState.split(".");
+  if (!payloadB64 || !sig) return null;
+
+  const expectedSig = await signText(payloadB64, secret);
+  if (sig !== expectedSig) return null;
+
+  const payloadText = new TextDecoder().decode(decodeBase64Url(payloadB64));
+  const payload = JSON.parse(payloadText) as OAuthStatePayload;
+
+  if (!payload?.e || !payload?.u || !payload?.cv || !payload?.t) return null;
+  if (Date.now() - payload.t > STATE_MAX_AGE_MS) return null;
+
+  return payload;
+}
+
+async function getAuthenticatedUserId(req: Request, supabaseUrl: string): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: claims, error } = await userClient.auth.getClaims(token);
+  if (error || !claims?.claims?.sub) return null;
+  return claims.claims.sub;
 }
 
 Deno.serve(async (req) => {
@@ -27,39 +106,27 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const mpClientId = Deno.env.get("MP_CLIENT_ID");
+  const mpClientSecret = Deno.env.get("MP_CLIENT_SECRET");
+  const appUrl = Deno.env.get("APP_URL") || "https://agendali.lovable.app";
+  const stateSecret = Deno.env.get("MP_OAUTH_STATE_SECRET") || serviceKey;
+
+  const supabase = createClient(supabaseUrl, serviceKey);
+
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const action = url.searchParams.get("action");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const mpClientId = Deno.env.get("MP_CLIENT_ID");
-    const mpClientSecret = Deno.env.get("MP_CLIENT_SECRET");
-    const appUrl = Deno.env.get("APP_URL") || "https://agendali.lovable.app";
-
-    const supabase = createClient(supabaseUrl, serviceKey);
-
     // ── Disconnect ──
     if (action === "disconnect" && state) {
-      console.log("[MP-OAuth] Disconnect requested for establishment:", state);
+      console.log("[MP-OAuth] disconnect:start", { establishment_id: state });
 
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const userClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claims, error: claimsErr } = await userClient.auth.getUser();
-      if (claimsErr || !claims?.user) {
-        console.error("[MP-OAuth] Disconnect auth failed:", claimsErr);
+      const userId = await getAuthenticatedUserId(req, supabaseUrl);
+      if (!userId) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,11 +137,14 @@ Deno.serve(async (req) => {
         .from("establishments")
         .select("id")
         .eq("id", state)
-        .eq("owner_user_id", claims.user.id)
+        .eq("owner_user_id", userId)
         .single();
 
       if (!est) {
-        console.error("[MP-OAuth] Disconnect forbidden: user doesn't own establishment");
+        console.error("[MP-OAuth] disconnect:forbidden", {
+          establishment_id: state,
+          user_id: userId,
+        });
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -83,14 +153,18 @@ Deno.serve(async (req) => {
 
       const { error: updateErr } = await supabase
         .from("payment_accounts")
-        .update({ status: "disconnected", updated_at: new Date().toISOString() })
+        .update({
+          status: "disconnected",
+          refresh_token: null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("establishment_id", state)
         .eq("provider", "mercadopago");
 
       if (updateErr) {
-        console.error("[MP-OAuth] Disconnect DB error:", updateErr);
+        console.error("[MP-OAuth] disconnect:update_failed", updateErr);
       } else {
-        console.log("[MP-OAuth] Disconnected successfully for:", state);
+        console.log("[MP-OAuth] disconnect:success", { establishment_id: state });
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -98,15 +172,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Generate OAuth URL (connect) ──
+    // ── Connect ──
     if (action === "connect" && state) {
-      console.log("[MP-OAuth] Connect requested for establishment:", state);
+      console.log("[MP-OAuth] connect:start", { establishment_id: state });
 
       if (!mpClientId || !mpClientSecret) {
-        console.error("[MP-OAuth] Missing MP_CLIENT_ID or MP_CLIENT_SECRET");
+        console.error("[MP-OAuth] connect:missing_credentials");
         return new Response(
-          JSON.stringify({ error: "Mercado Pago not configured. Contact support." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          JSON.stringify({ error: "Mercado Pago não configurado. Contate o suporte." }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const userId = await getAuthenticatedUserId(req, supabaseUrl);
+      if (!userId) {
+        console.error("[MP-OAuth] connect:unauthorized");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: est } = await supabase
+        .from("establishments")
+        .select("id")
+        .eq("id", state)
+        .eq("owner_user_id", userId)
+        .single();
+
+      if (!est) {
+        console.error("[MP-OAuth] connect:establishment_not_found_or_forbidden", {
+          establishment_id: state,
+          user_id: userId,
+        });
+        return new Response(
+          JSON.stringify({ error: "Estabelecimento inválido para este usuário" }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
 
@@ -114,108 +221,135 @@ Deno.serve(async (req) => {
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-      // Store code_verifier temporarily in a pending record
-      const { error: upsertErr } = await supabase.from("payment_accounts").upsert(
+      const secureState = await encodeState(
         {
-          establishment_id: state,
-          provider: "mercadopago",
-          access_token: `pkce_pending:${codeVerifier}`,
-          status: "pending_oauth",
-          connected_at: new Date().toISOString(),
+          e: state,
+          u: userId,
+          t: Date.now(),
+          cv: codeVerifier,
         },
-        { onConflict: "establishment_id,provider" },
+        stateSecret,
       );
 
-      if (upsertErr) {
-        console.error("[MP-OAuth] Failed to store PKCE verifier:", upsertErr);
-        return new Response(
-          JSON.stringify({ error: "Failed to initiate connection" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
       const authUrl =
-        `https://auth.mercadopago.com.br/authorization?client_id=${mpClientId}&response_type=code&platform_id=mp&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+        `https://auth.mercadopago.com.br/authorization?client_id=${mpClientId}&response_type=code&platform_id=mp&state=${encodeURIComponent(secureState)}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 
-      console.log("[MP-OAuth] Auth URL generated, redirecting user to MP");
+      console.log("[MP-OAuth] connect:url_generated", {
+        establishment_id: state,
+        user_id: userId,
+      });
 
       return new Response(JSON.stringify({ auth_url: authUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── OAuth Callback ──
+    // ── Callback ──
     if (code && state) {
-      console.log("[MP-OAuth] Callback received. state (establishment_id):", state, "code length:", code.length);
+      console.log("[MP-OAuth] callback:received", {
+        code_received: Boolean(code),
+        state_received: Boolean(state),
+      });
 
       if (!mpClientId || !mpClientSecret) {
-        console.error("[MP-OAuth] Missing MP_CLIENT_ID or MP_CLIENT_SECRET in callback");
+        console.error("[MP-OAuth] callback:missing_credentials");
         return Response.redirect(`${appUrl}/dashboard/pagamentos?mp_error=config_missing`, 302);
+      }
+
+      const decodedState = await decodeAndVerifyState(state, stateSecret);
+      if (!decodedState) {
+        console.error("[MP-OAuth] callback:invalid_state", { state });
+        return Response.redirect(`${appUrl}/dashboard/pagamentos?mp_error=invalid_state`, 302);
+      }
+
+      const establishmentId = decodedState.e;
+      const stateUserId = decodedState.u;
+      const codeVerifier = decodedState.cv;
+
+      console.log("[MP-OAuth] callback:state_resolved", {
+        establishment_id: establishmentId,
+        user_id: stateUserId,
+      });
+
+      const { data: est } = await supabase
+        .from("establishments")
+        .select("id")
+        .eq("id", establishmentId)
+        .eq("owner_user_id", stateUserId)
+        .single();
+
+      if (!est) {
+        console.error("[MP-OAuth] callback:establishment_not_found_or_forbidden", {
+          establishment_id: establishmentId,
+          user_id: stateUserId,
+        });
+        return Response.redirect(
+          `${appUrl}/dashboard/pagamentos?mp_error=establishment_invalid`,
+          302,
+        );
       }
 
       const redirectUri = `${supabaseUrl}/functions/v1/mercadopago-oauth`;
 
-      // Retrieve stored code_verifier
-      const { data: pendingAccount, error: fetchErr } = await supabase
-        .from("payment_accounts")
-        .select("access_token")
-        .eq("establishment_id", state)
-        .eq("provider", "mercadopago")
-        .single();
+      console.log("[MP-OAuth] callback:token_exchange_start", {
+        establishment_id: establishmentId,
+      });
 
-      if (fetchErr) {
-        console.error("[MP-OAuth] Failed to fetch pending account:", fetchErr);
-      }
-
-      let codeVerifier: string | undefined;
-      if (pendingAccount?.access_token?.startsWith("pkce_pending:")) {
-        codeVerifier = pendingAccount.access_token.replace("pkce_pending:", "");
-        console.log("[MP-OAuth] PKCE code_verifier retrieved successfully");
-      } else {
-        console.warn("[MP-OAuth] No PKCE verifier found, proceeding without it");
-      }
-
-      // Exchange code for tokens
-      const tokenBody: Record<string, string> = {
+      const tokenParams = new URLSearchParams({
         client_secret: mpClientSecret,
         client_id: mpClientId,
         grant_type: "authorization_code",
         code,
         redirect_uri: redirectUri,
-      };
-
-      if (codeVerifier) {
-        tokenBody.code_verifier = codeVerifier;
-      }
-
-      console.log("[MP-OAuth] Exchanging code for token...");
+        code_verifier: codeVerifier,
+      });
 
       const tokenRes = await fetch("https://api.mercadopago.com/oauth/token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(tokenBody),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: tokenParams.toString(),
       });
 
       const tokenData = await tokenRes.json();
 
       if (!tokenRes.ok || !tokenData.access_token) {
-        console.error("[MP-OAuth] Token exchange FAILED. Status:", tokenRes.status, "Response:", JSON.stringify(tokenData));
+        console.error("[MP-OAuth] callback:token_exchange_failed", {
+          status: tokenRes.status,
+          response: tokenData,
+        });
         return Response.redirect(
           `${appUrl}/dashboard/pagamentos?mp_error=token_exchange_failed`,
           302,
         );
       }
 
-      console.log("[MP-OAuth] Token exchange SUCCESS. user_id:", tokenData.user_id, "has refresh_token:", !!tokenData.refresh_token);
+      console.log("[MP-OAuth] callback:token_exchange_success", {
+        establishment_id: establishmentId,
+      });
 
-      // Save tokens - upsert by (establishment_id, provider) unique constraint
-      const { error: saveErr } = await supabase.from("payment_accounts").upsert(
+      let mpUserId = tokenData.user_id ? String(tokenData.user_id) : null;
+      if (!mpUserId) {
+        const meRes = await fetch("https://api.mercadopago.com/users/me", {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          mpUserId = meData?.id ? String(meData.id) : null;
+        }
+      }
+
+      if (!mpUserId) {
+        console.error("[MP-OAuth] callback:mp_user_id_missing");
+        return Response.redirect(`${appUrl}/dashboard/pagamentos?mp_error=token_no_user`, 302);
+      }
+
+      const { error: upsertErr } = await supabase.from("payment_accounts").upsert(
         {
-          establishment_id: state,
+          establishment_id: establishmentId,
           provider: "mercadopago",
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
-          mp_user_id: String(tokenData.user_id || ""),
+          mp_user_id: mpUserId,
           mp_public_key: tokenData.public_key || null,
           expires_at: tokenData.expires_in
             ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
@@ -227,41 +361,34 @@ Deno.serve(async (req) => {
         { onConflict: "establishment_id,provider" },
       );
 
-      if (saveErr) {
-        console.error("[MP-OAuth] Failed to save payment account:", saveErr);
-        return Response.redirect(
-          `${appUrl}/dashboard/pagamentos?mp_error=save_failed`,
-          302,
-        );
+      if (upsertErr) {
+        console.error("[MP-OAuth] callback:upsert_failed", upsertErr);
+        return Response.redirect(`${appUrl}/dashboard/pagamentos?mp_error=save_failed`, 302);
       }
 
-      console.log("[MP-OAuth] Payment account saved successfully for establishment:", state);
+      console.log("[MP-OAuth] callback:upsert_success", {
+        establishment_id: establishmentId,
+        mp_user_id: mpUserId,
+      });
 
-      // Ensure payment_settings row exists
       await supabase.from("payment_settings").upsert(
         {
-          establishment_id: state,
+          establishment_id: establishmentId,
           online_payment_enabled: false,
         },
         { onConflict: "establishment_id" },
       );
 
-      console.log("[MP-OAuth] Redirecting to dashboard/pagamentos with success");
-
-      return Response.redirect(
-        `${appUrl}/dashboard/pagamentos?mp_connected=true`,
-        302,
-      );
+      return Response.redirect(`${appUrl}/dashboard/pagamentos?mp_connected=true`, 302);
     }
 
-    // No valid action
-    console.warn("[MP-OAuth] No valid action. Params:", { action, code: !!code, state: !!state });
+    console.warn("[MP-OAuth] invalid_request", { action, code: Boolean(code), state: Boolean(state) });
     return new Response(JSON.stringify({ error: "Invalid request" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[MP-OAuth] Unhandled error:", err);
+    console.error("[MP-OAuth] unhandled_error", err);
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
