@@ -48,6 +48,8 @@ export default function Pagamentos() {
 }
 
 function PagamentosContent() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { data: account, isLoading: accLoading } = usePaymentAccount();
   const { data: settings, isLoading: settLoading } = usePaymentSettings();
   const updateSettings = useUpdatePaymentSettings();
@@ -56,6 +58,33 @@ function PagamentosContent() {
 
   const [paymentFilters, setPaymentFilters] = useState<{ status?: string }>({});
   const { data: payments = [], isLoading: paymentsLoading } = useAppointmentPayments(paymentFilters);
+
+  // Handle OAuth return
+  useEffect(() => {
+    const mpConnected = searchParams.get('mp_connected');
+    const mpError = searchParams.get('mp_error');
+
+    if (mpConnected === 'true') {
+      toast.success('Conta do Mercado Pago conectada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['payment-account'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-settings'] });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('mp_connected');
+      setSearchParams(newParams, { replace: true });
+    }
+
+    if (mpError) {
+      const errorMessages: Record<string, string> = {
+        token_exchange_failed: 'Falha ao conectar com o Mercado Pago. Tente novamente.',
+        save_failed: 'Erro ao salvar a conexão. Tente novamente.',
+        config_missing: 'Mercado Pago não está configurado. Contate o suporte.',
+      };
+      toast.error(errorMessages[mpError] || 'Erro ao conectar com o Mercado Pago.');
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('mp_error');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
 
   // Local settings state
   const [localSettings, setLocalSettings] = useState<any>(null);
