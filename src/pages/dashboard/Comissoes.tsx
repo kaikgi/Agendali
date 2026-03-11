@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useHasCommissions } from '@/hooks/useHasCommissions';
+import { FeatureGate } from '@/components/dashboard/FeatureGate';
 import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, aggregateByProfessional, type CommissionFilters, type CommissionEntry } from '@/hooks/useCommissions';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useServices } from '@/hooks/useServices';
@@ -23,28 +23,6 @@ import { ptBR } from 'date-fns/locale';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-// ── Upgrade Gate ───────────────────────────────────────
-
-function CommissionsLockedState({ planLabel }: { planLabel: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-6">
-      <div className="rounded-full bg-muted p-6">
-        <Lock className="h-12 w-12 text-muted-foreground" />
-      </div>
-      <div className="text-center max-w-md space-y-2">
-        <h2 className="text-2xl font-bold">Gestão de Comissões</h2>
-        <p className="text-muted-foreground">
-          O módulo de comissões está disponível nos planos <strong>Studio</strong> e <strong>Pro</strong>.
-          Seu plano atual é <strong>{planLabel}</strong>.
-        </p>
-      </div>
-      <Button asChild>
-        <a href="/dashboard/assinatura">Fazer upgrade</a>
-      </Button>
-    </div>
-  );
 }
 
 // ── Rule Form Dialog ───────────────────────────────────
