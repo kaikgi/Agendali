@@ -16,6 +16,7 @@ import {
   CreditCard,
   Star,
   Zap,
+  Percent,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdmin';
