@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes } from '@/hooks/useAppointments';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
 
 interface Appointment {
   id: string;
