@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, LogIn, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, LogIn, AlertCircle, CheckCircle2, CreditCard, Clock, XCircle } from 'lucide-react';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useServices, type Service } from '@/hooks/useServices';
 import { useProfessionalsByService, type Professional } from '@/hooks/useProfessionals';
 import { useAvailableSlots } from '@/hooks/useAvailableSlots';
+import { usePaymentConfigForBooking, useCreatePayment } from '@/hooks/usePayments';
 import { StepIndicator } from '@/components/booking/StepIndicator';
 import { ServiceStep } from '@/components/booking/ServiceStep';
 import { ProfessionalStep } from '@/components/booking/ProfessionalStep';
 import { DateTimeStep } from '@/components/booking/DateTimeStep';
 import { CustomerStep } from '@/components/booking/CustomerStep';
 import { BookingSuccess } from '@/components/booking/BookingSuccess';
+import { PaymentStep, calculatePaymentAmount, type PaymentConfig } from '@/components/booking/PaymentStep';
 import { Button } from '@/components/ui/button';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +39,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength, isPasswordStrong } from '@/components/ui/password-strength';
 
-const STEPS = ['Serviço', 'Profissional', 'Data/Hora', 'Dados'];
 const BOOKING_STORAGE_KEY = 'booking_state';
 
 type SupabaseLikeError = {
@@ -65,6 +66,7 @@ interface BookingState {
 export default function PublicBooking() {
   const { slug } = useParams<{ slug: string }>();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Auth state
   const { user, session, loading: isLoadingAuth } = useAuth();
@@ -89,6 +91,11 @@ export default function PublicBooking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [manageToken, setManageToken] = useState<string | null>(null);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
+
+  // Payment return state
+  const [paymentReturnStatus, setPaymentReturnStatus] = useState<'success' | 'failure' | 'pending' | null>(null);
 
   const {
     data: establishment,
@@ -109,7 +116,25 @@ export default function PublicBooking() {
     bufferMinutes: establishment?.buffer_minutes ?? 0,
   });
 
-  // Check if establishment is blocked due to payment status
+  // Payment config for selected service
+  const { data: paymentConfig } = usePaymentConfigForBooking(slug, selectedService?.id);
+
+  const createPayment = useCreatePayment();
+
+  const requiresPayment = useMemo(() => {
+    if (!paymentConfig?.enabled) return false;
+    if (!selectedService?.price_cents) return false;
+    return paymentConfig.deposit_required || paymentConfig.full_payment_online;
+  }, [paymentConfig, selectedService]);
+
+  // Dynamic steps based on payment requirement
+  const steps = useMemo(() => {
+    const base = ['Serviço', 'Profissional', 'Data/Hora', 'Dados'];
+    if (requiresPayment) base.push('Pagamento');
+    return base;
+  }, [requiresPayment]);
+
+  // Check if establishment is blocked
   const isEstablishmentBlocked = (() => {
     if (!establishment) return false;
     const est = establishment as any;
@@ -118,10 +143,25 @@ export default function PublicBooking() {
   })();
   const isAppointmentBlocked = isEstablishmentBlocked || (canAcceptBookings && !canAcceptBookings.canAccept);
 
+  // Handle payment return from Mercado Pago
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const aptId = searchParams.get('apt');
+
+    if (paymentStatus && aptId) {
+      setPaymentReturnStatus(paymentStatus as 'success' | 'failure' | 'pending');
+      setCreatedAppointmentId(aptId);
+      // Clean URL params
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('payment');
+      newParams.delete('apt');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
   // After successful login, proceed with pending booking
   useEffect(() => {
     if (session && pendingCustomerData && !isSubmitting) {
-      // User just logged in with pending booking data
       handleConfirmedSubmit(pendingCustomerData);
     }
   }, [session, pendingCustomerData]);
@@ -172,17 +212,10 @@ export default function PublicBooking() {
       
       setShowLoginModal(false);
       setAuthError(null);
-      toast({
-        title: 'Login realizado',
-        description: 'Você foi autenticado com sucesso.',
-      });
+      toast({ title: 'Login realizado', description: 'Você foi autenticado com sucesso.' });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Email ou senha incorretos.';
-      if (msg.includes('Invalid login')) {
-        setAuthError('Email ou senha incorretos.');
-      } else {
-        setAuthError(msg);
-      }
+      setAuthError(msg.includes('Invalid login') ? 'Email ou senha incorretos.' : msg);
     } finally {
       setIsAuthLoading(false);
     }
@@ -192,88 +225,52 @@ export default function PublicBooking() {
     e.preventDefault();
     setAuthError(null);
 
-    // Client-side validations
-    if (!signupName.trim()) {
-      setAuthError('Nome é obrigatório.');
-      return;
-    }
+    if (!signupName.trim()) { setAuthError('Nome é obrigatório.'); return; }
     const phoneDigits = signupPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-      setAuthError('Telefone deve ter DDD + 8 ou 9 dígitos.');
-      return;
-    }
-    if (!signupEmail.trim()) {
-      setAuthError('Email é obrigatório.');
-      return;
-    }
-    if (!isPasswordStrong(signupPassword)) {
-      setAuthError('Senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres).');
-      return;
-    }
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) { setAuthError('Telefone deve ter DDD + 8 ou 9 dígitos.'); return; }
+    if (!signupEmail.trim()) { setAuthError('Email é obrigatório.'); return; }
+    if (!isPasswordStrong(signupPassword)) { setAuthError('Senha deve conter maiúscula, minúscula, número e caractere especial (mín. 8 caracteres).'); return; }
 
     setIsAuthLoading(true);
     
     try {
-      // 1. Create user
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
           emailRedirectTo: buildPublicUrl(`/${slug}`),
-          data: {
-            full_name: signupName.trim(),
-            phone: phoneDigits,
-            account_type: 'customer',
-          },
+          data: { full_name: signupName.trim(), phone: phoneDigits, account_type: 'customer' },
         },
       });
       
       if (error) throw error;
       
-      // 2. If no session returned (email confirmation required), try auto-login
       if (!data.session) {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: signupEmail,
-          password: signupPassword,
+          email: signupEmail, password: signupPassword,
         });
         if (signInError) {
-          // Email confirmation might be required
           setShowLoginModal(false);
-          toast({
-            title: 'Conta criada!',
-            description: 'Verifique seu email para confirmar a conta e depois volte para agendar.',
-          });
+          toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar a conta e depois volte para agendar.' });
           return;
         }
       }
       
-      // Profile is auto-created by database trigger (handle_new_user)
       setShowLoginModal(false);
       setAuthError(null);
-      toast({
-        title: 'Conta criada',
-        description: 'Sua conta foi criada com sucesso. Continue para agendar.',
-      });
+      toast({ title: 'Conta criada', description: 'Sua conta foi criada com sucesso. Continue para agendar.' });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Não foi possível criar a conta.';
-      if (msg.includes('already registered') || msg.includes('already been registered')) {
-        setAuthError('Este email já possui uma conta. Faça login na aba "Entrar".');
-      } else {
-        setAuthError(msg);
-      }
+      setAuthError(msg.includes('already registered') || msg.includes('already been registered')
+        ? 'Este email já possui uma conta. Faça login na aba "Entrar".' : msg);
     } finally {
       setIsAuthLoading(false);
     }
   };
 
-
-  // Called after login to complete booking
-  // Uses canonical auth data as single source of truth
   const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
     if (isSubmitting) return;
-    if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
-      return;
-    }
+    if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) return;
 
     setIsSubmitting(true);
     setPendingCustomerData(null);
@@ -282,26 +279,15 @@ export default function PublicBooking() {
       const [hours, minutes] = selectedTime.split(':').map(Number);
       const startAt = new Date(selectedDate);
       startAt.setHours(hours, minutes, 0, 0);
-
       const endAt = new Date(startAt);
       endAt.setMinutes(endAt.getMinutes() + selectedService.duration_minutes);
 
-      // Canonical data: always from auth/profile, form is fallback for name/phone only
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const canonicalEmail = currentUser?.email || user?.email || '';
       const canonicalName = customerData.name || profile?.full_name || '';
       const canonicalPhone = customerData.phone || profile?.phone || '';
       const canonicalUserId = currentUser?.id || null;
 
-      console.log('[booking] Canonical submit data:', {
-        canonicalUserId,
-        canonicalEmail,
-        canonicalName,
-        canonicalPhone,
-      });
-
-      // RPC now handles: appointment creation, customer_email/phone persistence,
-      // customer_reminder_hours, AND email job creation — all atomically in the DB
       const { data, error } = await supabase.rpc('public_create_appointment', {
         p_slug: slug,
         p_service_id: selectedService.id,
@@ -316,32 +302,27 @@ export default function PublicBooking() {
         p_customer_reminder_hours: customerData.reminderHours ?? null,
       });
 
-      if (error) {
-        console.error('[booking] RPC error:', JSON.stringify(error));
-        throw new Error(error.message || 'Erro ao criar agendamento');
-      }
+      if (error) throw new Error(error.message || 'Erro ao criar agendamento');
 
       const result = data?.[0];
-      console.log('[booking] Appointment created successfully:', {
-        appointment_id: result?.appointment_id,
-        customer_email: canonicalEmail,
-        customer_name: canonicalName,
-        reminder_hours: customerData.reminderHours,
-      });
 
       if (result?.manage_token) {
         setManageToken(result.manage_token);
       }
 
-      setIsSuccess(true);
+      if (result?.appointment_id) {
+        setCreatedAppointmentId(result.appointment_id);
+      }
+
+      // If payment is required, go to payment step
+      if (requiresPayment && result?.appointment_id) {
+        setCurrentStep(4); // Payment step
+      } else {
+        setIsSuccess(true);
+      }
     } catch (error) {
-      console.log('Booking error (raw):', error);
       const errorMessage = error instanceof Error ? error.message : 'Não foi possível concluir o agendamento. Tente novamente.';
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao agendar',
-        description: errorMessage,
-      });
+      toast({ variant: 'destructive', title: 'Erro ao agendar', description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -356,17 +337,68 @@ export default function PublicBooking() {
     }
 
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos incompletos',
-        description: 'Escolha serviço, profissional, data/hora e preencha seus dados.',
-      });
+      toast({ variant: 'destructive', title: 'Campos incompletos', description: 'Escolha serviço, profissional, data/hora e preencha seus dados.' });
       return;
     }
 
     await handleConfirmedSubmit(customerData);
   };
 
+  const handlePayment = async () => {
+    if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) return;
+
+    setIsPaymentProcessing(true);
+    try {
+      const payment = calculatePaymentAmount(paymentConfig as PaymentConfig, selectedService.price_cents || 0);
+
+      const result = await createPayment.mutateAsync({
+        establishment_id: establishment.id,
+        appointment_id: createdAppointmentId,
+        amount_cents: payment.amount,
+        payment_type: payment.type,
+        payer_email: user?.email || undefined,
+        service_name: selectedService.name,
+        customer_name: profile?.full_name || user?.email?.split('@')[0] || 'Cliente',
+        slug: slug,
+      });
+
+      if (result.payment_url) {
+        // Redirect to Mercado Pago
+        window.location.href = result.payment_url;
+      }
+    } catch (err) {
+      setIsPaymentProcessing(false);
+      throw err; // Let PaymentStep handle the error display
+    }
+  };
+
+  // ── Payment Return Screen ──
+  if (paymentReturnStatus) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container max-w-lg mx-auto px-4 py-8">
+          <PaymentReturnScreen
+            status={paymentReturnStatus}
+            appointmentId={createdAppointmentId}
+            slug={slug}
+            onRetry={() => {
+              setPaymentReturnStatus(null);
+              // Re-enter payment step if possible
+              if (createdAppointmentId && selectedService && selectedProfessional && selectedDate && selectedTime) {
+                setCurrentStep(4);
+              }
+            }}
+            onDone={() => {
+              setPaymentReturnStatus(null);
+              setIsSuccess(true);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Loading ──
   if (isLoadingEstablishment || isLoadingAuth || isLoadingCanAccept) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -379,17 +411,12 @@ export default function PublicBooking() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
         <h1 className="text-2xl font-bold mb-2">Estabelecimento não encontrado</h1>
-        <p className="text-muted-foreground mb-6">
-          O link pode estar incorreto ou o agendamento está desativado.
-        </p>
-        <Button asChild variant="outline">
-          <Link to="/">Voltar ao início</Link>
-        </Button>
+        <p className="text-muted-foreground mb-6">O link pode estar incorreto ou o agendamento está desativado.</p>
+        <Button asChild variant="outline"><Link to="/">Voltar ao início</Link></Button>
       </div>
     );
   }
 
-  // Show friendly message if establishment is blocked
   if (isAppointmentBlocked) {
     const blockReason = isEstablishmentBlocked
       ? 'Estabelecimento temporariamente indisponível para novos agendamentos online.'
@@ -401,12 +428,7 @@ export default function PublicBooking() {
           <div className="container max-w-lg mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
               {establishment.logo_url && (
-                <img
-                  src={establishment.logo_url}
-                  alt={establishment.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                  loading="lazy"
-                />
+                <img src={establishment.logo_url} alt={establishment.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" />
               )}
               <div>
                 <h1 className="font-bold">{establishment.name}</h1>
@@ -422,15 +444,14 @@ export default function PublicBooking() {
             <AlertDescription>{blockReason}</AlertDescription>
           </Alert>
           <div className="text-center mt-4">
-            <Button asChild variant="outline">
-              <Link to="/">Voltar ao início</Link>
-            </Button>
+            <Button asChild variant="outline"><Link to="/">Voltar ao início</Link></Button>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Success Screen ──
   if (isSuccess && selectedService && selectedProfessional && selectedDate && selectedTime) {
     const manageUrl = manageToken && establishment.slug
       ? getManageAppointmentUrl(establishment.slug, manageToken)
@@ -460,12 +481,7 @@ export default function PublicBooking() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {establishment.logo_url && (
-                <img
-                  src={establishment.logo_url}
-                  alt={establishment.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                  loading="lazy"
-                />
+                <img src={establishment.logo_url} alt={establishment.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" />
               )}
               <div>
                 <h1 className="font-bold">{establishment.name}</h1>
@@ -495,9 +511,9 @@ export default function PublicBooking() {
       </header>
 
       <main className="container max-w-lg mx-auto px-4 py-6">
-        <StepIndicator currentStep={currentStep} steps={STEPS} />
+        <StepIndicator currentStep={currentStep} steps={steps} />
 
-        {currentStep > 0 && (
+        {currentStep > 0 && currentStep < 4 && (
           <Button variant="ghost" size="sm" className="mb-4" onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -569,6 +585,20 @@ export default function PublicBooking() {
             }}
           />
         )}
+
+        {currentStep === 4 && requiresPayment && selectedService && selectedProfessional && selectedDate && selectedTime && (
+          <PaymentStep
+            serviceName={selectedService.name}
+            servicePriceCents={selectedService.price_cents}
+            professionalName={selectedProfessional.name}
+            date={selectedDate}
+            time={selectedTime}
+            paymentConfig={paymentConfig as PaymentConfig}
+            onPay={handlePayment}
+            onSkip={() => setIsSuccess(true)}
+            isProcessing={isPaymentProcessing}
+          />
+        )}
       </main>
 
       {/* Login Modal */}
@@ -594,28 +624,13 @@ export default function PublicBooking() {
               <form onSubmit={(e) => { setAuthError(null); handleLogin(e); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    required
-                  />
+                  <Input id="login-email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
-                  <PasswordInput
-                    id="login-password"
-                    placeholder="••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                  />
+                  <PasswordInput id="login-password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
                 </div>
-                {authError && authTab === 'login' && (
-                  <p className="text-sm text-destructive">{authError}</p>
-                )}
+                {authError && authTab === 'login' && <p className="text-sm text-destructive">{authError}</p>}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isAuthLoading ? 'Entrando...' : 'Entrar'}
@@ -627,48 +642,22 @@ export default function PublicBooking() {
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Nome completo *</Label>
-                  <Input
-                    id="signup-name"
-                    placeholder="Seu nome"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    required
-                  />
+                  <Input id="signup-name" placeholder="Seu nome" value={signupName} onChange={(e) => setSignupName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-phone">Telefone *</Label>
-                  <PhoneInput
-                    id="signup-phone"
-                    placeholder="(11) 99999-9999"
-                    value={signupPhone}
-                    onChange={(val) => setSignupPhone(val)}
-                  />
+                  <PhoneInput id="signup-phone" placeholder="(11) 99999-9999" value={signupPhone} onChange={(val) => setSignupPhone(val)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email *</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    required
-                  />
+                  <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha *</Label>
-                  <PasswordInput
-                    id="signup-password"
-                    placeholder="Mínimo 8 caracteres"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    required
-                  />
+                  <PasswordInput id="signup-password" placeholder="Mínimo 8 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required />
                   {signupPassword && <PasswordStrength password={signupPassword} />}
                 </div>
-                {authError && authTab === 'signup' && (
-                  <p className="text-sm text-destructive">{authError}</p>
-                )}
+                {authError && authTab === 'signup' && <p className="text-sm text-destructive">{authError}</p>}
                 <Button type="submit" className="w-full" disabled={isAuthLoading}>
                   {isAuthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isAuthLoading ? 'Criando conta...' : 'Criar conta e agendar'}
@@ -678,6 +667,100 @@ export default function PublicBooking() {
           </Tabs>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Payment Return Screen ──────────────────────────────────
+
+function PaymentReturnScreen({
+  status,
+  appointmentId,
+  slug,
+  onRetry,
+  onDone,
+}: {
+  status: 'success' | 'failure' | 'pending';
+  appointmentId: string | null;
+  slug: string | undefined;
+  onRetry: () => void;
+  onDone: () => void;
+}) {
+  if (status === 'success') {
+    return (
+      <div className="text-center space-y-6 py-12">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          </div>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold">Pagamento aprovado!</h2>
+          <p className="text-muted-foreground mt-2">
+            Seu pagamento foi processado com sucesso. Seu agendamento foi confirmado.
+          </p>
+        </div>
+        <div className="space-y-3 max-w-sm mx-auto">
+          <Button className="w-full" onClick={onDone}>
+            Ver detalhes do agendamento
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/">Voltar ao início</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="text-center space-y-6 py-12">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+            <Clock className="w-10 h-10 text-amber-600" />
+          </div>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold">Pagamento pendente</h2>
+          <p className="text-muted-foreground mt-2">
+            Seu pagamento está sendo processado. Você receberá uma confirmação assim que for aprovado.
+          </p>
+        </div>
+        <div className="space-y-3 max-w-sm mx-auto">
+          <Button className="w-full" onClick={onDone}>
+            Ver meus agendamentos
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/">Voltar ao início</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // failure
+  return (
+    <div className="text-center space-y-6 py-12">
+      <div className="flex justify-center">
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+          <XCircle className="w-10 h-10 text-red-600" />
+        </div>
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold">Pagamento não aprovado</h2>
+        <p className="text-muted-foreground mt-2">
+          Houve um problema com o pagamento. Seu agendamento foi criado, mas ainda precisa de pagamento para ser confirmado.
+        </p>
+      </div>
+      <div className="space-y-3 max-w-sm mx-auto">
+        <Button className="w-full" onClick={onRetry}>
+          <CreditCard className="w-4 h-4 mr-2" />
+          Tentar novamente
+        </Button>
+        <Button asChild variant="outline" className="w-full">
+          <Link to="/">Voltar ao início</Link>
+        </Button>
+      </div>
     </div>
   );
 }
