@@ -12,6 +12,7 @@ interface BookingSuccessProps {
   time: string;
   establishmentName: string;
   manageUrl?: string | null;
+  pendingApproval?: boolean;
 }
 
 export function BookingSuccess({
