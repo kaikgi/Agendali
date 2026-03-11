@@ -162,21 +162,36 @@ interface SettlementDialogProps {
 function SettlementDialog({ open, onClose, entries, professionalName, professionalId }: SettlementDialogProps) {
   const create = useCreateSettlement();
   const [notes, setNotes] = useState('');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
 
-  const pendingEntries = entries.filter((e) => e.status === 'pending');
+  const pendingEntries = useMemo(() => {
+    let filtered = entries.filter((e) => e.status === 'pending');
+    if (periodStart) {
+      filtered = filtered.filter((e) => e.appointment_date >= periodStart);
+    }
+    if (periodEnd) {
+      filtered = filtered.filter((e) => e.appointment_date <= periodEnd + 'T23:59:59');
+    }
+    return filtered;
+  }, [entries, periodStart, periodEnd]);
+
   const total = pendingEntries.reduce((s, e) => s + e.commission_amount_cents, 0);
 
-  const dates = pendingEntries.map((e) => new Date(e.appointment_date));
-  const periodStart = dates.length ? format(new Date(Math.min(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd') : '';
-  const periodEnd = dates.length ? format(new Date(Math.max(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd') : '';
-
   const handleSettle = async () => {
-    if (!pendingEntries.length) return;
+    if (!pendingEntries.length) {
+      toast.error('Nenhuma comissão pendente no período selecionado');
+      throw new Error('no entries');
+    }
+    const dates = pendingEntries.map((e) => new Date(e.appointment_date));
+    const pStart = periodStart || format(new Date(Math.min(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd');
+    const pEnd = periodEnd || format(new Date(Math.max(...dates.map((d) => d.getTime()))), 'yyyy-MM-dd');
+
     try {
       await create.mutateAsync({
         professionalId,
-        periodStart,
-        periodEnd,
+        periodStart: pStart,
+        periodEnd: pEnd,
         entryIds: pendingEntries.map((e) => e.id),
         notes: notes.trim() || undefined,
       });
@@ -184,6 +199,34 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar repasse');
+      throw err;
+    }
+  };
+
+  const setPreset = (preset: string) => {
+    const now = new Date();
+    switch (preset) {
+      case 'today':
+        setPeriodStart(format(now, 'yyyy-MM-dd'));
+        setPeriodEnd(format(now, 'yyyy-MM-dd'));
+        break;
+      case 'week':
+        setPeriodStart(format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+        break;
+      case 'month':
+        setPeriodStart(format(startOfMonth(now), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfMonth(now), 'yyyy-MM-dd'));
+        break;
+      case 'last_month':
+        const lm = subMonths(now, 1);
+        setPeriodStart(format(startOfMonth(lm), 'yyyy-MM-dd'));
+        setPeriodEnd(format(endOfMonth(lm), 'yyyy-MM-dd'));
+        break;
+      case 'all':
+        setPeriodStart('');
+        setPeriodEnd('');
+        break;
     }
   };
 
@@ -194,6 +237,34 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
           <DialogTitle>Registrar Repasse — {professionalName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Period presets */}
+          <div className="space-y-2">
+            <Label>Período do repasse</Label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'today', label: 'Hoje' },
+                { key: 'week', label: 'Esta semana' },
+                { key: 'month', label: 'Este mês' },
+                { key: 'last_month', label: 'Mês passado' },
+                { key: 'all', label: 'Todos pendentes' },
+              ].map((p) => (
+                <Button key={p.key} variant="outline" size="sm" type="button" onClick={() => setPreset(p.key)}>
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">De</Label>
+                <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Até</Label>
+                <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
@@ -208,11 +279,6 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
               </CardContent>
             </Card>
           </div>
-          {periodStart && (
-            <p className="text-sm text-muted-foreground">
-              Período: {format(new Date(periodStart), 'dd/MM/yyyy')} a {format(new Date(periodEnd), 'dd/MM/yyyy')}
-            </p>
-          )}
           <div className="space-y-2">
             <Label>Observações (opcional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Pagamento via Pix" />
@@ -220,10 +286,10 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSettle} disabled={create.isPending || !pendingEntries.length}>
+          <ActionButton onClick={handleSettle} disabled={!pendingEntries.length} loadingLabel="Registrando..." successLabel="Repasse registrado!">
             <CheckCircle2 className="h-4 w-4 mr-2" />
-            {create.isPending ? 'Registrando...' : 'Confirmar repasse'}
-          </Button>
+            Confirmar repasse
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
