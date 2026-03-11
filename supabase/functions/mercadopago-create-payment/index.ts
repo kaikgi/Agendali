@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -28,6 +28,13 @@ Deno.serve(async (req) => {
       slug,
     } = body;
 
+    console.log("mercadopago-create-payment: received", {
+      establishment_id,
+      appointment_id,
+      amount_cents,
+      payment_type,
+    });
+
     if (!establishment_id || !appointment_id || !amount_cents) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -39,17 +46,22 @@ Deno.serve(async (req) => {
     }
 
     // Get merchant access token
-    const { data: account } = await supabase
+    const { data: account, error: accountError } = await supabase
       .from("payment_accounts")
-      .select("access_token")
+      .select("access_token, mp_public_key")
       .eq("establishment_id", establishment_id)
       .eq("provider", "mercadopago")
       .eq("status", "active")
-      .single();
+      .maybeSingle();
+
+    if (accountError) {
+      console.error("Error fetching payment account:", accountError);
+    }
 
     if (!account?.access_token) {
+      console.error("No active payment account for establishment", establishment_id);
       return new Response(
-        JSON.stringify({ error: "Payment account not configured" }),
+        JSON.stringify({ error: "Conta de pagamento não configurada. O estabelecimento precisa conectar o Mercado Pago." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,6 +71,16 @@ Deno.serve(async (req) => {
 
     const appUrl = Deno.env.get("APP_URL") || "https://agendali.lovable.app";
     const webhookUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
+
+    // Build back URLs
+    const backSlug = slug || "";
+    const backUrls = {
+      success: `${appUrl}/${backSlug}?payment=success&apt=${appointment_id}`,
+      failure: `${appUrl}/${backSlug}?payment=failure&apt=${appointment_id}`,
+      pending: `${appUrl}/${backSlug}?payment=pending&apt=${appointment_id}`,
+    };
+
+    console.log("mercadopago-create-payment: back_urls", backUrls);
 
     // Create MP preference
     const preference = {
@@ -72,18 +94,14 @@ Deno.serve(async (req) => {
         },
       ],
       payer: payer_email ? { email: payer_email } : undefined,
-      back_urls: {
-        success: `${appUrl}/${slug || ""}?payment=success&apt=${appointment_id}`,
-        failure: `${appUrl}/${slug || ""}?payment=failure&apt=${appointment_id}`,
-        pending: `${appUrl}/${slug || ""}?payment=pending&apt=${appointment_id}`,
-      },
+      back_urls: backUrls,
       auto_return: "approved",
       notification_url: webhookUrl,
       external_reference: appointment_id,
       statement_descriptor: "AGENDALI",
       expires: true,
       expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30min
+      expiration_date_to: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     };
 
     const mpRes = await fetch(
@@ -103,7 +121,7 @@ Deno.serve(async (req) => {
     if (!mpRes.ok) {
       console.error("MP create preference error:", mpData);
       return new Response(
-        JSON.stringify({ error: "Failed to create payment" }),
+        JSON.stringify({ error: "Falha ao criar pagamento no Mercado Pago" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,8 +129,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log("mercadopago-create-payment: preference created", mpData.id);
+
     // Save payment record
-    await supabase.from("appointment_payments").insert({
+    const { error: insertError } = await supabase.from("appointment_payments").insert({
       establishment_id,
       appointment_id,
       provider: "mercadopago",
@@ -123,6 +143,16 @@ Deno.serve(async (req) => {
       payment_url: mpData.init_point,
       payer_email: payer_email || null,
     });
+
+    if (insertError) {
+      console.error("Error saving appointment_payment:", insertError);
+    }
+
+    // Ensure appointment is in pending_payment status
+    await supabase
+      .from("appointments")
+      .update({ status: "pending_payment" })
+      .eq("id", appointment_id);
 
     return new Response(
       JSON.stringify({
@@ -135,7 +165,7 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("mercadopago-create-payment error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
+    return new Response(JSON.stringify({ error: "Erro interno ao processar pagamento" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

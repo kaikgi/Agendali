@@ -314,8 +314,14 @@ export default function PublicBooking() {
         setCreatedAppointmentId(result.appointment_id);
       }
 
-      // If payment is required, go to payment step
+      // If payment is required, update appointment to pending_payment and go to payment step
       if (requiresPayment && result?.appointment_id) {
+        // Update appointment status to pending_payment
+        await supabase
+          .from('appointments')
+          .update({ status: 'pending_payment' })
+          .eq('id', result.appointment_id);
+
         setCurrentStep(4); // Payment step
       } else {
         setIsSuccess(true);
@@ -690,8 +696,8 @@ function PaymentReturnScreen({
     return (
       <div className="text-center space-y-6 py-12">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-primary" />
           </div>
         </div>
         <div>
@@ -716,8 +722,8 @@ function PaymentReturnScreen({
     return (
       <div className="text-center space-y-6 py-12">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-            <Clock className="w-10 h-10 text-amber-600" />
+          <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
+            <Clock className="w-10 h-10 text-accent-foreground" />
           </div>
         </div>
         <div>
@@ -742,9 +748,9 @@ function PaymentReturnScreen({
   return (
     <div className="text-center space-y-6 py-12">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-          <XCircle className="w-10 h-10 text-red-600" />
-        </div>
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <XCircle className="w-10 h-10 text-destructive" />
+          </div>
       </div>
       <div>
         <h2 className="text-2xl font-bold">Pagamento não aprovado</h2>
