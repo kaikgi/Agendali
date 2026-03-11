@@ -369,12 +369,17 @@ export default function PublicBooking() {
   };
 
   const handlePayment = async () => {
-    if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) return;
+    if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) {
+      console.warn('[Booking] handlePayment: missing data', { createdAppointmentId, establishment: !!establishment, selectedService: !!selectedService, paymentConfig: !!paymentConfig });
+      return;
+    }
 
+    console.log('[Booking] handlePayment: starting');
     setIsPaymentProcessing(true);
     try {
       const payment = calculatePaymentAmount(paymentConfig as PaymentConfig, selectedService.price_cents || 0);
 
+      console.log('[Booking] Creating payment', { amount: payment.amount, type: payment.type });
       const result = await createPayment.mutateAsync({
         establishment_id: establishment.id,
         appointment_id: createdAppointmentId,
@@ -387,12 +392,16 @@ export default function PublicBooking() {
       });
 
       if (result.payment_url) {
-        // Redirect to Mercado Pago
+        console.log('[Booking] Redirecting to payment URL');
         window.location.href = result.payment_url;
+      } else {
+        console.error('[Booking] No payment_url in response');
+        throw new Error('URL de pagamento não recebida');
       }
     } catch (err) {
+      console.error('[Booking] handlePayment error:', err);
       setIsPaymentProcessing(false);
-      throw err; // Let PaymentStep handle the error display
+      throw err;
     }
   };
 

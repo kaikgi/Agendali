@@ -197,16 +197,27 @@ export function useCreatePayment() {
       slug?: string;
     }) => {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      console.log('[Payment] Creating payment preference', { appointment_id: params.appointment_id, amount_cents: params.amount_cents });
+
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/mercadopago-create-payment`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
           body: JSON.stringify(params),
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Payment creation failed');
+      if (!res.ok) {
+        console.error('[Payment] Create payment failed:', data);
+        throw new Error(data.error || 'Falha ao criar pagamento');
+      }
+      console.log('[Payment] Payment preference created:', data.preference_id);
       return data as { payment_url: string; preference_id: string };
     },
   });
