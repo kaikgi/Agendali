@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useHasCommissions } from '@/hooks/useHasCommissions';
 import { useCommissionRules, useCommissionEntries, useUpsertCommissionRule, useDeleteCommissionRule, useCreateSettlement, aggregateByProfessional, type CommissionFilters, type CommissionEntry } from '@/hooks/useCommissions';
-import { useProfessionals } from '@/hooks/useProfessionals';
+import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useServices } from '@/hooks/useServices';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
