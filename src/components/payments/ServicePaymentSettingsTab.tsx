@@ -273,15 +273,14 @@ export default function ServicePaymentSettingsTab() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingService(null)}>Cancelar</Button>
-            <Button
+            <ActionButton
               onClick={handleSave}
-              disabled={
-                upsertSps.isPending ||
-                (editForm.deposit_required && !editForm.full_payment_online && editForm.deposit_value <= 0)
-              }
+              disabled={editForm.deposit_required && !editForm.full_payment_online && editForm.deposit_value <= 0}
+              loadingLabel="Salvando..."
+              successLabel="Salvo!"
             >
-              {upsertSps.isPending ? 'Salvando...' : 'Salvar regra'}
-            </Button>
+              Salvar regra
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

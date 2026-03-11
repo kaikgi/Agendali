@@ -459,12 +459,15 @@ function PagamentosContent() {
 
                   {/* Save */}
                   <div className="flex items-center gap-3 pt-2">
-                    <Button
+                    <ActionButton
                       onClick={handleSaveSettings}
-                      disabled={updateSettings.isPending || (s?.deposit_required && !s?.full_payment_online && (!s?.deposit_value || s?.deposit_value <= 0))}
+                      disabled={s?.deposit_required && !s?.full_payment_online && (!s?.deposit_value || s?.deposit_value <= 0)}
+                      icon={<Save className="h-4 w-4" />}
+                      loadingLabel="Salvando..."
+                      successLabel="Salvo!"
                     >
-                      {updateSettings.isPending ? 'Salvando...' : 'Salvar configurações'}
-                    </Button>
+                      Salvar configurações
+                    </ActionButton>
                     {localSettings && (
                       <Button variant="ghost" onClick={() => setLocalSettings(null)}>
                         Descartar alterações
