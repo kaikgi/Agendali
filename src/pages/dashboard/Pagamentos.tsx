@@ -109,6 +109,7 @@ function PagamentosContent() {
       toast.success('Configurações salvas');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar');
+      throw err;
     }
   };
 
