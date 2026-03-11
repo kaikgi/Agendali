@@ -100,6 +100,27 @@ const TYPE_MAP: Record<string, TypeConfig> = {
     subject: (n) => `⏳ Agendamento enviado - ${n}`,
     showCTA: false, showWarning: false, showFooterNote: true,
   },
+  appointment_payment_received: {
+    icon: "💳", title: "Pagamento Confirmado",
+    accent: "#16a34a", bg: "#f0fdf4",
+    message: (n) => `Seu pagamento para o agendamento em <strong>${n}</strong> foi recebido com sucesso! O estabelecimento irá analisar e confirmar seu horário em breve. Você receberá um e-mail assim que houver uma resposta.`,
+    subject: (n) => `💳 Pagamento confirmado - ${n}`,
+    showCTA: false, showWarning: false, showFooterNote: true,
+  },
+  appointment_payment_confirmed_auto: {
+    icon: "✅", title: "Pagamento Confirmado e Agendamento Aprovado",
+    accent: "#16a34a", bg: "#f0fdf4",
+    message: (n) => `Seu pagamento foi recebido e seu agendamento em <strong>${n}</strong> foi confirmado automaticamente. Nos vemos em breve!`,
+    subject: (n) => `✅ Pagamento e agendamento confirmados - ${n}`,
+    showCTA: false, showWarning: false, showFooterNote: true,
+  },
+  appointment_payment_failed: {
+    icon: "⚠️", title: "Pagamento Não Aprovado",
+    accent: "#dc2626", bg: "#fef2f2",
+    message: (n) => `Infelizmente, seu pagamento para o agendamento em <strong>${n}</strong> não foi aprovado. Você pode tentar novamente com outro método de pagamento ou entrar em contato com o estabelecimento.`,
+    subject: (n) => `⚠️ Pagamento não aprovado - ${n}`,
+    showCTA: true, showWarning: false, showFooterNote: false,
+  },
   appointment_rejected: {
     icon: "🚫", title: "Agendamento Não Aprovado",
     accent: "#dc2626", bg: "#fef2f2",
