@@ -78,6 +78,9 @@ function PagamentosContent() {
         token_exchange_failed: 'Falha ao conectar com o Mercado Pago. Tente novamente.',
         save_failed: 'Erro ao salvar a conexão. Tente novamente.',
         config_missing: 'Mercado Pago não está configurado. Contate o suporte.',
+        invalid_state: 'A validação de segurança da conexão falhou. Tente conectar novamente.',
+        establishment_invalid: 'Não foi possível vincular a conta ao estabelecimento atual.',
+        token_no_user: 'Conta Mercado Pago inválida: usuário não identificado.',
       };
       toast.error(errorMessages[mpError] || 'Erro ao conectar com o Mercado Pago.');
       const newParams = new URLSearchParams(searchParams);

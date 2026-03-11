@@ -68,17 +68,33 @@ export function useConnectMercadoPago() {
   const { data: est } = useUserEstablishment();
   return useMutation({
     mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/mercadopago-oauth?action=connect&state=${est!.id}`,
-        { headers: { 'Content-Type': 'application/json' } }
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       );
+
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao iniciar conexão com Mercado Pago');
+      }
+
       if (data.auth_url) {
         window.location.href = data.auth_url;
-      } else {
-        throw new Error('Failed to get auth URL');
+        return;
       }
+
+      throw new Error('URL de autorização não retornada pelo servidor');
     },
   });
 }
