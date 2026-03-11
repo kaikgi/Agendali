@@ -26,6 +26,7 @@ import {
   Calendar as CalendarIcon,
   Search,
   DollarSign,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,7 @@ import {
 import { ProfessionalProfileSection } from '@/components/professional/ProfessionalProfileSection';
 import { ProfessionalCommissionsView } from '@/components/professional/ProfessionalCommissionsView';
 import { ProfessionalCalendarView } from '@/components/professional/ProfessionalCalendarView';
-import { ProfessionalSummaryCards } from '@/components/professional/ProfessionalSummaryCards';
+import { ProfessionalDashboardView } from '@/components/professional/ProfessionalDashboardView';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
@@ -67,7 +68,7 @@ const statusLabels: Record<string, string> = {
 };
 
 type ViewMode = 'week' | 'list';
-type TabMode = 'agenda' | 'calendar' | 'commissions' | 'profile';
+type TabMode = 'dashboard' | 'agenda' | 'calendar' | 'commissions' | 'profile';
 
 interface PortalAppointment {
   id: string;
@@ -94,7 +95,7 @@ export default function ProfessionalPortalAgenda() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [activeTab, setActiveTab] = useState<TabMode>('agenda');
+  const [activeTab, setActiveTab] = useState<TabMode>('dashboard');
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<PortalAppointment | null>(null);
@@ -105,7 +106,7 @@ export default function ProfessionalPortalAgenda() {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-  // Calendar date range (fetch full month +/- padding)
+  // Calendar date range
   const calMonthStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
   const calMonthEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
 
@@ -115,9 +116,6 @@ export default function ProfessionalPortalAgenda() {
     activeTab === 'calendar' ? calMonthEnd : weekEnd
   );
 
-  // Photo URL now comes from validate_professional_session RPC
-
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate(`/${establishmentSlug}/p/${professionalSlug}`, { replace: true });
@@ -132,10 +130,12 @@ export default function ProfessionalPortalAgenda() {
   const handleProfileUpdated = () => {
     queryClient.invalidateQueries({ queryKey: ['professional-portal-session'] });
     queryClient.invalidateQueries({ queryKey: ['professional-portal-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['professional-portal-dashboard'] });
   };
 
   const handleStatusChanged = () => {
     queryClient.invalidateQueries({ queryKey: ['professional-portal-appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['professional-portal-dashboard'] });
   };
 
   const handleAppointmentClick = (apt: PortalAppointment) => {
@@ -143,16 +143,13 @@ export default function ProfessionalPortalAgenda() {
     setDialogOpen(true);
   };
 
-  // Filtered appointments for list/week view
   const filteredAppointments = useMemo(() => {
     let filtered = appointments || [];
-
     if (statusFilter === 'active') {
       filtered = filtered.filter((a) => ['booked', 'confirmed'].includes(a.status));
     } else if (statusFilter !== 'all') {
       filtered = filtered.filter((a) => a.status === statusFilter);
     }
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -162,11 +159,9 @@ export default function ProfessionalPortalAgenda() {
           a.service_name.toLowerCase().includes(q)
       );
     }
-
     return filtered.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
   }, [appointments, statusFilter, searchQuery]);
 
-  // Today's next appointment
   const nextAppointment = useMemo(() => {
     const now = new Date();
     return (appointments || [])
@@ -196,7 +191,7 @@ export default function ProfessionalPortalAgenda() {
             </div>
             <h2 className="text-lg font-semibold text-center">Portal desativado</h2>
             <p className="text-sm text-muted-foreground text-center">
-              O acesso ao portal foi desativado pelo estabelecimento. Entre em contato com o administrador para reativar.
+              O acesso ao portal foi desativado pelo estabelecimento.
             </p>
             <Button variant="outline" onClick={handleLogout}>Voltar</Button>
           </CardContent>
@@ -205,17 +200,15 @@ export default function ProfessionalPortalAgenda() {
     );
   }
 
-  if (!isAuthenticated || !session) {
-    return null;
-  }
+  if (!isAuthenticated || !session) return null;
 
   const photoUrl = (session as any)?.professional_photo_url;
   const initials = session.professional_name?.charAt(0)?.toUpperCase() || '?';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-30">
+    <div className="min-h-screen bg-muted/30">
+      {/* Premium Header */}
+      <header className="border-b bg-card sticky top-0 z-30 shadow-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -228,7 +221,7 @@ export default function ProfessionalPortalAgenda() {
                 <p className="text-xs text-muted-foreground truncate">{session.establishment_name}</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Sair</span>
             </Button>
@@ -237,17 +230,17 @@ export default function ProfessionalPortalAgenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 sm:py-6 max-w-5xl">
+      <main className="container mx-auto px-4 py-4 sm:py-6 max-w-6xl">
         {/* Next appointment quick card */}
-        {nextAppointment && activeTab === 'agenda' && (
+        {nextAppointment && (activeTab === 'dashboard' || activeTab === 'agenda') && (
           <button
             type="button"
             onClick={() => handleAppointmentClick(nextAppointment)}
-            className="w-full mb-6 p-4 rounded-xl border bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors text-left"
+            className="w-full mb-6 p-4 rounded-xl border bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 hover:from-primary/10 hover:to-primary/15 transition-all text-left shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-primary uppercase tracking-wide">Próximo atendimento</p>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider">Próximo atendimento</p>
                 <p className="font-semibold mt-1">{nextAppointment.customer_name}</p>
                 <p className="text-sm text-muted-foreground">
                   {nextAppointment.service_name} • {format(parseISO(nextAppointment.start_at), "HH:mm 'de' EEEE", { locale: ptBR })}
@@ -266,32 +259,41 @@ export default function ProfessionalPortalAgenda() {
         )}
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabMode)}>
-          <div className="mb-6 overflow-x-auto">
-            <TabsList className="w-full sm:w-auto">
+          <div className="mb-6 overflow-x-auto -mx-4 px-4">
+            <TabsList className="w-full sm:w-auto bg-card border shadow-sm">
+              <TabsTrigger value="dashboard" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Painel</span>
+              </TabsTrigger>
               <TabsTrigger value="agenda" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <List className="h-4 w-4" />
-                <span>Agenda</span>
+                <span className="hidden sm:inline">Agenda</span>
               </TabsTrigger>
               <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <CalendarIcon className="h-4 w-4" />
-                <span>Calendário</span>
+                <span className="hidden sm:inline">Calendário</span>
               </TabsTrigger>
               <TabsTrigger value="commissions" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <DollarSign className="h-4 w-4" />
-                <span>Comissões</span>
+                <span className="hidden sm:inline">Comissões</span>
               </TabsTrigger>
               <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <User className="h-4 w-4" />
-                <span>Perfil</span>
+                <span className="hidden sm:inline">Perfil</span>
               </TabsTrigger>
             </TabsList>
           </div>
 
+          {/* ============ DASHBOARD TAB ============ */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <ProfessionalDashboardView
+              token={token!}
+              professionalName={session.professional_name!}
+            />
+          </TabsContent>
+
           {/* ============ AGENDA TAB ============ */}
           <TabsContent value="agenda" className="space-y-6">
-            {/* Summary Cards */}
-            <ProfessionalSummaryCards appointments={appointments || []} />
-
             {/* Filters */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -359,19 +361,16 @@ export default function ProfessionalPortalAgenda() {
                 <Skeleton className="h-64" />
               </div>
             ) : viewMode === 'week' ? (
-              /* ---- Week View ---- */
               <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-4 md:grid-cols-7">
                 {days.map((day) => {
                   const dayApts = getAppointmentsForDay(day);
                   return (
                     <Card
                       key={day.toISOString()}
-                      className={cn('min-h-[160px]', isToday(day) && 'ring-2 ring-primary')}
+                      className={cn('min-h-[160px]', isToday(day) && 'ring-2 ring-primary shadow-sm')}
                     >
                       <CardHeader className="pb-1 px-2 pt-2">
-                        <CardTitle
-                          className={cn('text-center text-xs', isToday(day) && 'text-primary')}
-                        >
+                        <CardTitle className={cn('text-center text-xs', isToday(day) && 'text-primary')}>
                           <span className="block text-[10px] text-muted-foreground uppercase">
                             {format(day, 'EEE', { locale: ptBR })}
                           </span>
@@ -408,9 +407,7 @@ export default function ProfessionalPortalAgenda() {
                           ))
                         )}
                         {dayApts.length > 4 && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            +{dayApts.length - 4}
-                          </p>
+                          <p className="text-[10px] text-muted-foreground text-center">+{dayApts.length - 4}</p>
                         )}
                       </CardContent>
                     </Card>
@@ -418,7 +415,6 @@ export default function ProfessionalPortalAgenda() {
                 })}
               </div>
             ) : (
-              /* ---- List View ---- */
               <Card>
                 <CardContent className="p-0">
                   <Table>
@@ -455,27 +451,21 @@ export default function ProfessionalPortalAgenda() {
                                     {format(parseISO(apt.start_at), 'dd/MM', { locale: ptBR })}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {format(parseISO(apt.start_at), 'HH:mm')} –{' '}
-                                    {format(parseISO(apt.end_at), 'HH:mm')}
+                                    {format(parseISO(apt.start_at), 'HH:mm')} – {format(parseISO(apt.end_at), 'HH:mm')}
                                   </p>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
                               <p className="font-medium text-sm">{apt.customer_name}</p>
-                              <p className="text-xs text-muted-foreground hidden sm:block">
-                                {apt.customer_phone}
-                              </p>
+                              <p className="text-xs text-muted-foreground hidden sm:block">{apt.customer_phone}</p>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell">
                               <p className="text-sm">{apt.service_name}</p>
                               <p className="text-xs text-muted-foreground">{apt.service_duration} min</p>
                             </TableCell>
                             <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={cn('text-[10px] sm:text-xs', statusColors[apt.status])}
-                              >
+                              <Badge variant="outline" className={cn('text-[10px] sm:text-xs', statusColors[apt.status])}>
                                 {statusLabels[apt.status]}
                               </Badge>
                             </TableCell>
@@ -491,7 +481,6 @@ export default function ProfessionalPortalAgenda() {
 
           {/* ============ CALENDAR TAB ============ */}
           <TabsContent value="calendar" className="space-y-6">
-            <ProfessionalSummaryCards appointments={appointments || []} />
             <ProfessionalCalendarView
               currentMonth={currentMonth}
               onMonthChange={setCurrentMonth}
@@ -530,7 +519,6 @@ export default function ProfessionalPortalAgenda() {
         token={token!}
         onStatusChanged={handleStatusChanged}
       />
-
     </div>
   );
 }
