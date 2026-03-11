@@ -362,18 +362,10 @@ function PagamentosContent() {
                             </div>
                             <div className="space-y-2">
                               <Label>{s?.deposit_type === 'percentage' ? 'Porcentagem (%)' : 'Valor (R$)'}</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                step={s?.deposit_type === 'percentage' ? '1' : '0.01'}
-                                max={s?.deposit_type === 'percentage' ? '100' : undefined}
-                                value={s?.deposit_value ?? ''}
-                                onChange={(e) => {
-                                  let val = parseFloat(e.target.value);
-                                  if (isNaN(val) || val < 0) val = 0;
-                                  if (s?.deposit_type === 'percentage' && val > 100) val = 100;
-                                  handleToggle('deposit_value', val);
-                                }}
+                              <MoneyInput
+                                mode={s?.deposit_type === 'percentage' ? 'percentage' : 'currency'}
+                                value={s?.deposit_value || null}
+                                onChange={(val) => handleToggle('deposit_value', val ?? 0)}
                               />
                               {s?.deposit_type === 'percentage' && (
                                 <p className="text-xs text-muted-foreground">De 1% a 100% do valor do serviço</p>
