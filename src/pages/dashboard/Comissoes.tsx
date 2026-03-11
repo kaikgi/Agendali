@@ -49,16 +49,16 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
   const handleSubmit = async () => {
     if (!professionalId) {
       toast.error('Selecione um profissional');
-      return;
+      throw new Error('validation');
     }
     const val = parseFloat(commissionValue);
     if (isNaN(val) || val < 0) {
       toast.error('Valor inválido');
-      return;
+      throw new Error('validation');
     }
     if (commissionType === 'percentage' && val > 100) {
       toast.error('Percentual não pode ser maior que 100%');
-      return;
+      throw new Error('validation');
     }
 
     try {
@@ -75,7 +75,10 @@ function RuleFormDialog({ open, onClose, professionals, services, editRule, esta
       toast.success(editRule ? 'Regra atualizada' : 'Regra criada');
       onClose();
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar regra');
+      if (err?.message !== 'validation') {
+        toast.error(err.message || 'Erro ao salvar regra');
+      }
+      throw err;
     }
   };
 
