@@ -157,12 +157,16 @@ export function useCancelClientAppointment() {
 
   return useMutation({
     mutationFn: async (appointmentId: string) => {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'canceled' })
-        .eq('id', appointmentId);
+      const { data, error } = await (supabase.rpc as any)('client_cancel_appointment', {
+        p_appointment_id: appointmentId,
+      });
 
       if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao cancelar agendamento');
+      }
     },
     onSuccess: () => {
       // Invalidate all appointment-related queries to update all panels
