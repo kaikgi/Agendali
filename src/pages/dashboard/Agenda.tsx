@@ -48,6 +48,8 @@ const statusColors: Record<string, string> = {
   completed: 'bg-muted text-muted-foreground border-border',
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
+  paid_pending_confirmation: 'bg-primary/10 text-primary border-primary/20',
+  pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
   canceled_by_customer: 'bg-red-100 text-red-800 border-red-200',
   canceled_by_establishment: 'bg-orange-100 text-orange-800 border-orange-200',
   rejected: 'bg-red-100 text-red-800 border-red-200',
