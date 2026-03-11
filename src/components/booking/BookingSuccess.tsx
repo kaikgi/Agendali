@@ -22,6 +22,7 @@ export function BookingSuccess({
   time,
   establishmentName,
   manageUrl,
+  pendingApproval = false,
 }: BookingSuccessProps) {
   const navigate = useNavigate();
   const { session } = useAuth();
