@@ -270,8 +270,16 @@ export default function PublicBooking() {
 
   const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
     if (isSubmitting) return;
-    if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) return;
+    if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
+      console.warn('[Booking] handleConfirmedSubmit: missing required data', {
+        establishment: !!establishment, selectedService: !!selectedService,
+        selectedProfessional: !!selectedProfessional, selectedDate: !!selectedDate,
+        selectedTime, slug,
+      });
+      return;
+    }
 
+    console.log('[Booking] handleConfirmedSubmit: starting', { requiresPayment, slug });
     setIsSubmitting(true);
     setPendingCustomerData(null);
 
@@ -288,6 +296,11 @@ export default function PublicBooking() {
       const canonicalPhone = customerData.phone || profile?.phone || '';
       const canonicalUserId = currentUser?.id || null;
 
+      console.log('[Booking] Calling RPC public_create_appointment', {
+        service: selectedService.id, professional: selectedProfessional.id,
+        startAt: startAt.toISOString(), requiresPayment,
+      });
+
       const { data, error } = await supabase.rpc('public_create_appointment', {
         p_slug: slug,
         p_service_id: selectedService.id,
@@ -300,10 +313,15 @@ export default function PublicBooking() {
         p_customer_notes: customerData.notes || null,
         p_customer_user_id: canonicalUserId,
         p_customer_reminder_hours: customerData.reminderHours ?? null,
+        p_requires_payment: requiresPayment,
       });
 
-      if (error) throw new Error(error.message || 'Erro ao criar agendamento');
+      if (error) {
+        console.error('[Booking] RPC error:', error);
+        throw new Error(error.message || 'Erro ao criar agendamento');
+      }
 
+      console.log('[Booking] RPC success:', data);
       const result = data?.[0];
 
       if (result?.manage_token) {
@@ -314,19 +332,16 @@ export default function PublicBooking() {
         setCreatedAppointmentId(result.appointment_id);
       }
 
-      // If payment is required, update appointment to pending_payment and go to payment step
+      // If payment is required, go to payment step (status already set server-side)
       if (requiresPayment && result?.appointment_id) {
-        // Update appointment status to pending_payment
-        await supabase
-          .from('appointments')
-          .update({ status: 'pending_payment' })
-          .eq('id', result.appointment_id);
-
-        setCurrentStep(4); // Payment step
+        console.log('[Booking] Payment required, moving to payment step');
+        setCurrentStep(4);
       } else {
+        console.log('[Booking] No payment, booking complete');
         setIsSuccess(true);
       }
     } catch (error) {
+      console.error('[Booking] handleConfirmedSubmit error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Não foi possível concluir o agendamento. Tente novamente.';
       toast({ variant: 'destructive', title: 'Erro ao agendar', description: errorMessage });
     } finally {
@@ -335,14 +350,17 @@ export default function PublicBooking() {
   };
 
   const handleSubmit = async (customerData: CustomerFormData) => {
+    console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
     if (!session) {
+      console.log('[Booking] No session, showing login modal');
       setShowLoginModal(true);
       return;
     }
 
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
+      console.warn('[Booking] Missing fields', { establishment: !!establishment, selectedService: !!selectedService, selectedProfessional: !!selectedProfessional, selectedDate: !!selectedDate, selectedTime, slug });
       toast({ variant: 'destructive', title: 'Campos incompletos', description: 'Escolha serviço, profissional, data/hora e preencha seus dados.' });
       return;
     }
@@ -351,12 +369,17 @@ export default function PublicBooking() {
   };
 
   const handlePayment = async () => {
-    if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) return;
+    if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) {
+      console.warn('[Booking] handlePayment: missing data', { createdAppointmentId, establishment: !!establishment, selectedService: !!selectedService, paymentConfig: !!paymentConfig });
+      return;
+    }
 
+    console.log('[Booking] handlePayment: starting');
     setIsPaymentProcessing(true);
     try {
       const payment = calculatePaymentAmount(paymentConfig as PaymentConfig, selectedService.price_cents || 0);
 
+      console.log('[Booking] Creating payment', { amount: payment.amount, type: payment.type });
       const result = await createPayment.mutateAsync({
         establishment_id: establishment.id,
         appointment_id: createdAppointmentId,
@@ -369,12 +392,16 @@ export default function PublicBooking() {
       });
 
       if (result.payment_url) {
-        // Redirect to Mercado Pago
+        console.log('[Booking] Redirecting to payment URL');
         window.location.href = result.payment_url;
+      } else {
+        console.error('[Booking] No payment_url in response');
+        throw new Error('URL de pagamento não recebida');
       }
     } catch (err) {
+      console.error('[Booking] handlePayment error:', err);
       setIsPaymentProcessing(false);
-      throw err; // Let PaymentStep handle the error display
+      throw err;
     }
   };
 
