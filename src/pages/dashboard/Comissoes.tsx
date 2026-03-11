@@ -231,7 +231,14 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
 // ── Main Page ──────────────────────────────────────────
 
 export default function Comissoes() {
-  const { hasAccess, isLoading: planLoading, planLabel } = useHasCommissions();
+  return (
+    <FeatureGate feature="commissions">
+      <ComissoesContent />
+    </FeatureGate>
+  );
+}
+
+function ComissoesContent() {
   const { data: establishment } = useUserEstablishment();
   const { professionals } = useManageProfessionals(establishment?.id);
   const { data: services = [] } = useServices(establishment?.id);
@@ -278,21 +285,6 @@ export default function Comissoes() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  if (planLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)}
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return <CommissionsLockedState planLabel={planLabel} />;
-  }
 
   return (
     <div className="space-y-6">
