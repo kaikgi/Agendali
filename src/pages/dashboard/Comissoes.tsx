@@ -654,6 +654,15 @@ function ComissoesContent() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── History Tab ─────────────────────────────────── */}
+        <TabsContent value="history" className="space-y-4">
+          <SettlementHistoryTab
+            settlements={settlements}
+            professionals={professionals}
+            isLoading={settlementsLoading}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Rule Dialog */}
