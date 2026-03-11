@@ -500,7 +500,7 @@ export default function PublicBooking() {
             time={selectedTime}
             establishmentName={establishment.name}
             manageUrl={manageUrl}
-            pendingApproval={!establishment.auto_confirm_bookings}
+            pendingApproval={!establishment.auto_confirm_bookings || (requiresPayment && paymentConfig?.require_manual_confirmation)}
           />
         </div>
       </div>
