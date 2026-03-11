@@ -748,9 +748,9 @@ function PaymentReturnScreen({
   return (
     <div className="text-center space-y-6 py-12">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-          <XCircle className="w-10 h-10 text-red-600" />
-        </div>
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <XCircle className="w-10 h-10 text-destructive" />
+          </div>
       </div>
       <div>
         <h2 className="text-2xl font-bold">Pagamento não aprovado</h2>
