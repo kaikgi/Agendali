@@ -392,6 +392,227 @@ export type Database = {
           },
         ]
       }
+      commission_entries: {
+        Row: {
+          appointment_date: string
+          appointment_id: string
+          commission_amount_cents: number
+          commission_type: string
+          commission_value: number
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          establishment_id: string
+          id: string
+          professional_id: string
+          professional_name: string
+          service_id: string | null
+          service_name: string
+          service_price_cents: number
+          settlement_id: string | null
+          status: string
+        }
+        Insert: {
+          appointment_date: string
+          appointment_id: string
+          commission_amount_cents: number
+          commission_type: string
+          commission_value: number
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          establishment_id: string
+          id?: string
+          professional_id: string
+          professional_name: string
+          service_id?: string | null
+          service_name: string
+          service_price_cents?: number
+          settlement_id?: string | null
+          status?: string
+        }
+        Update: {
+          appointment_date?: string
+          appointment_id?: string
+          commission_amount_cents?: number
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          establishment_id?: string
+          id?: string
+          professional_id?: string
+          professional_name?: string
+          service_id?: string | null
+          service_name?: string
+          service_price_cents?: number
+          settlement_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_entries_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_entries_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_entries_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_entries_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_entries_settlement_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "commission_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_rules: {
+        Row: {
+          active: boolean
+          commission_type: string
+          commission_value: number
+          created_at: string
+          effective_from: string
+          establishment_id: string
+          id: string
+          is_default: boolean
+          professional_id: string
+          service_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          effective_from?: string
+          establishment_id: string
+          id?: string
+          is_default?: boolean
+          professional_id: string
+          service_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          effective_from?: string
+          establishment_id?: string
+          id?: string
+          is_default?: boolean
+          professional_id?: string
+          service_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_rules_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_settlements: {
+        Row: {
+          created_at: string
+          entries_count: number
+          establishment_id: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          professional_id: string
+          total_amount_cents: number
+        }
+        Insert: {
+          created_at?: string
+          entries_count?: number
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          professional_id: string
+          total_amount_cents?: number
+        }
+        Update: {
+          created_at?: string
+          entries_count?: number
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          professional_id?: string
+          total_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_settlements_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_settlements_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string

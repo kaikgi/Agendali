@@ -35,6 +35,7 @@ import Bloqueios from "./pages/dashboard/Bloqueios";
 import Avaliacoes from "./pages/dashboard/Avaliacoes";
 import Configuracoes from "./pages/dashboard/Configuracoes";
 import Assinatura from "./pages/dashboard/Assinatura";
+import Comissoes from "./pages/dashboard/Comissoes";
 import ClientLayout from "./pages/client/ClientLayout";
 import ClientDashboard from "./pages/client/ClientDashboard";
 import ClientAppointments from "./pages/client/ClientAppointments";
@@ -138,6 +139,7 @@ const App = () => (
                 <Route path="bloqueios" element={<Bloqueios />} />
                 <Route path="avaliacoes" element={<Avaliacoes />} />
                 <Route path="assinatura" element={<Assinatura />} />
+                <Route path="comissoes" element={<Comissoes />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
               </Route>
               

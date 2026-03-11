@@ -16,6 +16,7 @@ import {
   CreditCard,
   Star,
   Zap,
+  Percent,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdmin';
@@ -45,6 +46,7 @@ const navItems = [
   { title: 'Clientes', url: '/dashboard/clientes', icon: UserCircle },
   { title: 'Profissionais', url: '/dashboard/profissionais', icon: Users },
   { title: 'Serviços', url: '/dashboard/servicos', icon: Scissors },
+  { title: 'Comissões', url: '/dashboard/comissoes', icon: Percent },
   { title: 'Horários', url: '/dashboard/horarios', icon: Clock },
   { title: 'Bloqueios', url: '/dashboard/bloqueios', icon: CalendarOff },
   { title: 'Avaliações', url: '/dashboard/avaliacoes', icon: Star },

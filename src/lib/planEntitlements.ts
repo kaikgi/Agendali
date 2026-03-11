@@ -2,6 +2,7 @@ export interface PlanEntitlements {
   planLabel: string;
   professionalLimit: number;
   appointmentLimit: number;
+  hasCommissions: boolean;
 }
 
 /**
@@ -20,17 +21,17 @@ export function getPlanEntitlements(
   if (normalizedStatus === 'active' || normalizedStatus === '') {
     switch (normalizedPlano) {
       case 'pro':
-        return { planLabel: 'Pro', professionalLimit: Infinity, appointmentLimit: Infinity };
+        return { planLabel: 'Pro', professionalLimit: Infinity, appointmentLimit: Infinity, hasCommissions: true };
       case 'studio':
-        return { planLabel: 'Studio', professionalLimit: 4, appointmentLimit: Infinity };
+        return { planLabel: 'Studio', professionalLimit: 4, appointmentLimit: Infinity, hasCommissions: true };
       case 'solo':
       default:
-        return { planLabel: 'Solo', professionalLimit: 1, appointmentLimit: Infinity };
+        return { planLabel: 'Solo', professionalLimit: 1, appointmentLimit: Infinity, hasCommissions: false };
     }
   }
 
   // past_due, canceled, or unknown — fallback to most restrictive
-  return { planLabel: 'Sem plano', professionalLimit: 0, appointmentLimit: 0 };
+  return { planLabel: 'Sem plano', professionalLimit: 0, appointmentLimit: 0, hasCommissions: false };
 }
 
 /** Format limit for display: Infinity -> "Ilimitados", number -> number */
