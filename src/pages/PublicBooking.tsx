@@ -696,8 +696,8 @@ function PaymentReturnScreen({
     return (
       <div className="text-center space-y-6 py-12">
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-primary" />
           </div>
         </div>
         <div>
