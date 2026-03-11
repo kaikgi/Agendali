@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FeatureGate } from '@/components/dashboard/FeatureGate';
@@ -22,9 +22,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
+import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCircle, Clock, Search, ListChecks } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import ServicePaymentSettingsTab from '@/components/payments/ServicePaymentSettingsTab';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -170,6 +171,7 @@ function PagamentosContent() {
         <TabsList>
           <TabsTrigger value="connection">Conexão</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
+          <TabsTrigger value="services" disabled={!isConnected || !s?.per_service_config}>Serviços</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
         </TabsList>
 
@@ -478,6 +480,20 @@ function PagamentosContent() {
                 </CardContent>
               </Card>
             </>
+          )}
+        </TabsContent>
+
+        {/* ── Services Tab ─────────────────────────────── */}
+        <TabsContent value="services" className="space-y-4">
+          {isConnected && s?.per_service_config ? (
+            <ServicePaymentSettingsTab />
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <ListChecks className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p>Ative "Configuração por serviço" na aba Configurações para personalizar regras por serviço.</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
