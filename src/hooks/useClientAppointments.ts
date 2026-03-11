@@ -97,9 +97,7 @@ export function useClientAppointments(filters?: UseClientAppointmentsFilters) {
           table: 'appointments',
           filter: `customer_user_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('Client appointment change detected:', payload);
-          
+        () => {
           // Invalidate queries to refetch data
           queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
           queryClient.invalidateQueries({ queryKey: ['client-appointments-month'] });

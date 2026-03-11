@@ -68,12 +68,13 @@ export function ProfessionalProfileSection({
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    // Validate file type - only allow safe image formats
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
       toast({
         variant: 'destructive',
         title: 'Tipo inválido',
-        description: 'Selecione uma imagem válida',
+        description: 'Selecione uma imagem válida (JPG, PNG, GIF ou WebP)',
       });
       return;
     }
