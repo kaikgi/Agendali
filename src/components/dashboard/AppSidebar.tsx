@@ -47,10 +47,11 @@ const navItems = [
   { title: 'Profissionais', url: '/dashboard/profissionais', icon: Users },
   { title: 'Serviços', url: '/dashboard/servicos', icon: Scissors },
   { title: 'Comissões', url: '/dashboard/comissoes', icon: Percent },
+  { title: 'Pagamentos', url: '/dashboard/pagamentos', icon: CreditCard },
   { title: 'Horários', url: '/dashboard/horarios', icon: Clock },
   { title: 'Bloqueios', url: '/dashboard/bloqueios', icon: CalendarOff },
   { title: 'Avaliações', url: '/dashboard/avaliacoes', icon: Star },
-  { title: 'Assinatura', url: '/dashboard/assinatura', icon: CreditCard },
+  { title: 'Assinatura', url: '/dashboard/assinatura', icon: Zap },
   { title: 'Configurações', url: '/dashboard/configuracoes', icon: Settings },
 ];
 
