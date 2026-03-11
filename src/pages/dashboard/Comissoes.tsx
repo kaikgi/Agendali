@@ -601,7 +601,7 @@ export default function Comissoes() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Pendente</p>
-                        <p className="text-lg font-semibold text-amber-600">{s.pendingCount}</p>
+                        <p className="text-lg font-semibold text-destructive">{s.pendingCount}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Ticket médio</p>
