@@ -3,11 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 
 function DashboardContent({ establishmentId }: { establishmentId: string }) {
+  const { data: appointments = [] } = useAppointments(establishmentId);
+  const { professionals } = useManageProfessionals(establishmentId);
   const {
     today,
     week,
@@ -51,6 +56,13 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Visão geral do seu estabelecimento</p>
       </div>
+
+      {/* Pending Approvals */}
+      <PendingApprovalsSection
+        appointments={appointments as any}
+        onAppointmentClick={() => {}}
+        professionals={professionals}
+      />
 
       {/* Metrics Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes } from '@/hooks/useAppointments';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';
 
 interface Appointment {
   id: string;
@@ -42,6 +42,8 @@ const statusColors: Record<string, string> = {
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
   rejected: 'bg-red-100 text-red-800 border-red-200',
+  paid_pending_confirmation: 'bg-primary/10 text-primary border-primary/20',
+  pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -52,9 +54,11 @@ const statusLabels: Record<AppointmentStatus, string> = {
   no_show: 'Não compareceu',
   canceled: 'Cancelado',
   rejected: 'Recusado',
+  paid_pending_confirmation: 'Pago — aguardando confirmação',
+  pending_payment: 'Aguardando pagamento',
 };
 
-const statusOptions: AppointmentStatus[] = ['pending_approval', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
+const statusOptions: AppointmentStatus[] = ['pending_approval', 'paid_pending_confirmation', 'pending_payment', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
 
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();

@@ -24,7 +24,7 @@ import { AppointmentDetailsDialog } from '@/components/dashboard/AppointmentDeta
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 import { cn } from '@/lib/utils';
 
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';
 
 interface Appointment {
   id: string;
@@ -48,6 +48,8 @@ const statusColors: Record<string, string> = {
   completed: 'bg-muted text-muted-foreground border-border',
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
+  paid_pending_confirmation: 'bg-primary/10 text-primary border-primary/20',
+  pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
   canceled_by_customer: 'bg-red-100 text-red-800 border-red-200',
   canceled_by_establishment: 'bg-orange-100 text-orange-800 border-orange-200',
   rejected: 'bg-red-100 text-red-800 border-red-200',
@@ -256,7 +258,7 @@ export default function Agenda() {
       </Card>
 
       {/* Pending Approvals */}
-      {appointments && <PendingApprovalsSection appointments={appointments} onAppointmentClick={handleAppointmentClick} />}
+      {appointments && <PendingApprovalsSection appointments={appointments as any} onAppointmentClick={handleAppointmentClick as any} professionals={professionals} />}
 
       <div className="text-center text-lg font-medium capitalize">{periodLabel}</div>
 
