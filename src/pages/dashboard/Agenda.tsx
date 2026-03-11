@@ -23,7 +23,7 @@ import { useTimeBlocks, useRecurringTimeBlocks } from '@/hooks/useTimeBlocks';
 import { AppointmentDetailsDialog } from '@/components/dashboard/AppointmentDetailsDialog';
 import { cn } from '@/lib/utils';
 
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled';
+type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected';
 
 interface Appointment {
   id: string;
