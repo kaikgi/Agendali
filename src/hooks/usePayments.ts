@@ -212,6 +212,68 @@ export function useCreatePayment() {
   });
 }
 
+// ── Service Payment Settings ───────────────────────────
+
+export interface ServicePaymentSetting {
+  id: string;
+  establishment_id: string;
+  service_id: string;
+  deposit_required: boolean;
+  deposit_type: 'fixed' | 'percentage';
+  deposit_value: number;
+  full_payment_online: boolean;
+}
+
+export function useServicePaymentSettings() {
+  const { data: est } = useUserEstablishment();
+  return useQuery({
+    queryKey: ['service-payment-settings', est?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('service_payment_settings')
+        .select('*')
+        .eq('establishment_id', est!.id);
+      if (error) throw error;
+      return data as ServicePaymentSetting[];
+    },
+    enabled: !!est?.id,
+  });
+}
+
+export function useUpsertServicePaymentSetting() {
+  const qc = useQueryClient();
+  const { data: est } = useUserEstablishment();
+  return useMutation({
+    mutationFn: async (setting: Omit<ServicePaymentSetting, 'id' | 'establishment_id'> & { service_id: string }) => {
+      const { data, error } = await (supabase as any)
+        .from('service_payment_settings')
+        .upsert(
+          { ...setting, establishment_id: est!.id },
+          { onConflict: 'establishment_id,service_id' }
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-payment-settings'] }),
+  });
+}
+
+export function useDeleteServicePaymentSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('service_payment_settings')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-payment-settings'] }),
+  });
+}
+
 // ── Get payment config for booking ─────────────────────
 
 export function usePaymentConfigForBooking(slug: string | undefined, serviceId: string | undefined) {
