@@ -125,7 +125,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: `Agendali <${Deno.env.get("RESEND_FROM") || "contato@agendali.online"}>`,
+            from: `Agendali <${Deno.env.get("RESEND_FROM") || "noreply@agendali.online"}>`,
             to: [message.email],
             subject: `Re: Sua mensagem para o Agendali`,
             html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>

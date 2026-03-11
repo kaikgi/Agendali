@@ -89,8 +89,8 @@ const Termos = () => {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">9. Contato</h2>
               <p className="text-muted-foreground">
-                Para questões sobre estes Termos de Uso, entre em contato através do e-mail: 
-                contato@agendali.online
+                Para questões sobre estes Termos de Uso, entre em contato através do e-mail:{" "}
+                <a href="mailto:agendaliapp@gmail.com" className="text-foreground underline underline-offset-4 hover:text-primary transition-colors">agendaliapp@gmail.com</a>
               </p>
             </section>
           </div>

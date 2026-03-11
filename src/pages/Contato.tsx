@@ -9,7 +9,7 @@ import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const WHATSAPP_NUMBER = "5511937525469";
+const WHATSAPP_NUMBER = "5511943990345";
 const MAX_MESSAGE_LENGTH = 800;
 
 function generateFingerprint(): string {
@@ -149,7 +149,7 @@ const Contato = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">WhatsApp</h3>
-                  <p className="text-muted-foreground">+55 11 93752-5469</p>
+                  <p className="text-muted-foreground">(11) 94399-0345</p>
                   <p className="text-body-sm text-muted-foreground mt-1">
                     Canal oficial de atendimento.
                   </p>
@@ -162,7 +162,7 @@ const Contato = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg mb-1">E-mail</h3>
-                  <p className="text-muted-foreground">contato@agendali.online</p>
+                  <p className="text-muted-foreground">agendaliapp@gmail.com</p>
                   <p className="text-body-sm text-muted-foreground mt-1">
                     Respondemos em até 24 horas úteis.
                   </p>

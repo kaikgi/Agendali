@@ -98,8 +98,8 @@ const Privacidade = () => {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">10. Contato</h2>
               <p className="text-muted-foreground">
-                Para questões sobre privacidade ou para exercer seus direitos, entre em contato: 
-                privacidade@agendali.online
+                Para questões sobre privacidade ou para exercer seus direitos, entre em contato:{" "}
+                <a href="mailto:agendaliapp@gmail.com" className="text-foreground underline underline-offset-4 hover:text-primary transition-colors">agendaliapp@gmail.com</a>
               </p>
             </section>
           </div>

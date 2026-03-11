@@ -78,7 +78,7 @@ serve(async (req: Request) => {
           },
           body: JSON.stringify({
             from: `Agendali <${Deno.env.get("RESEND_FROM") || "noreply@agendali.online"}>`,
-            to: ["contato@agendali.online"],
+            to: ["agendaliapp@gmail.com"],
             subject: `[Agendali] Nova mensagem de contato: ${name}`,
             html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
