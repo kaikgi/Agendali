@@ -395,20 +395,30 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Unknown email type: ${emailType}`);
         }
 
-        // Build manage URL for rating CTA if manage_token_hash is in payload
+        // Build manage URL for rating CTA (completed emails)
         let manageUrl: string | undefined;
-        const jobPayloadData = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
-        const manageToken = (jobPayloadData.manage_token as string) || null;
-        const manageTokenHash = (jobPayloadData.manage_token_hash as string) || null;
-        if (manageToken && emailPayload.establishment_slug) {
-          manageUrl = `https://www.agendali.online/${emailPayload.establishment_slug}/gerenciar/${manageToken}`;
-        } else if (manageTokenHash && emailPayload.establishment_slug) {
-          // For completed emails triggered by status change, we store the hash
-          // We need the original token, but we only have the hash. 
-          // The manage_token is stored in the original email payload from booking creation.
-          // Let's try to find it from existing email jobs for this appointment
-          // Actually, we can't reverse a hash. We need to look up the original token.
-          // For now, link to the client area instead.
+        if (cfg.showRatingCTA && emailPayload.establishment_slug) {
+          // Try to get manage_token from this job's payload first
+          const jobPld = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
+          let token = jobPld.manage_token as string | null;
+          
+          // If not in this payload, look up from the original booking email job
+          if (!token) {
+            const { data: origJob } = await supabase
+              .from("appointment_email_jobs")
+              .select("payload")
+              .eq("appointment_id", job.appointment_id)
+              .in("email_type", ["appointment_confirmation", "appointment_pending_approval"])
+              .limit(1)
+              .maybeSingle();
+            if (origJob?.payload && typeof origJob.payload === "object") {
+              token = (origJob.payload as Record<string, unknown>).manage_token as string | null;
+            }
+          }
+          
+          if (token) {
+            manageUrl = `https://www.agendali.online/${emailPayload.establishment_slug}/gerenciar/${token}`;
+          }
         }
 
         const html = buildHtml(cfg, emailPayload, manageUrl);
