@@ -2083,8 +2083,13 @@ export type Database = {
             Args: { p_end_date: string; p_start_date: string; p_token: string }
             Returns: Json
           }
+      get_professional_client_tags: { Args: { p_token: string }; Returns: Json }
       get_professional_commissions: {
         Args: { p_date_from?: string; p_date_to?: string; p_token: string }
+        Returns: Json
+      }
+      get_professional_customer_tags: {
+        Args: { p_customer_id: string; p_token: string }
         Returns: Json
       }
       get_professional_dashboard_stats: {
@@ -2136,6 +2141,10 @@ export type Database = {
           p_password: string
           p_professional_slug: string
         }
+        Returns: Json
+      }
+      professional_toggle_customer_tag: {
+        Args: { p_customer_id: string; p_tag_id: string; p_token: string }
         Returns: Json
       }
       professional_update_appointment_status: {
