@@ -366,14 +366,20 @@ export default function ManageAppointment() {
             <CardContent className="pt-6 text-center">
               {appointment.status === 'completed' ? (
                 <div className="flex flex-col items-center gap-2">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <CheckCircle className="h-8 w-8 text-emerald-600" />
                   <p className="font-medium">Agendamento concluído</p>
                   <p className="text-sm text-muted-foreground">Obrigado pela visita!</p>
+                </div>
+              ) : appointment.status === 'rejected' ? (
+                <div className="flex flex-col items-center gap-2">
+                  <XCircle className="h-8 w-8 text-destructive" />
+                  <p className="font-medium">Agendamento recusado</p>
+                  <p className="text-sm text-muted-foreground">Este agendamento foi recusado pelo estabelecimento.</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <XCircle className="h-8 w-8 text-destructive" />
-                  <p className="font-medium">Agendamento cancelado</p>
+                  <p className="font-medium">{getStatusLabel(appointment.status)}</p>
                 </div>
               )}
               <Link to={`/${slug}`} className="block mt-4">
