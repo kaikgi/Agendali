@@ -698,11 +698,13 @@ function ComissoesContent() {
 
   // Aggregated data
   const summary = useMemo(() => aggregateByProfessional(entries), [entries]);
-  const totalCommission = entries.reduce((s, e) => s + e.commission_amount_cents, 0);
-  const totalRevenue = entries.reduce((s, e) => s + e.service_price_cents, 0);
-  const pendingTotal = entries.filter((e) => e.status === 'pending').reduce((s, e) => s + e.commission_amount_cents, 0);
-  const settledTotal = entries.filter((e) => e.status === 'settled').reduce((s, e) => s + e.commission_amount_cents, 0);
-  const avgTicket = entries.length ? Math.round(totalRevenue / entries.length) : 0;
+  // Revenue metrics: only count non-voided entries (completed appointments only)
+  const activeEntries = useMemo(() => entries.filter((e) => e.status !== 'voided'), [entries]);
+  const totalCommission = activeEntries.reduce((s, e) => s + e.commission_amount_cents, 0);
+  const totalRevenue = activeEntries.reduce((s, e) => s + e.service_price_cents, 0);
+  const pendingTotal = activeEntries.filter((e) => e.status === 'pending').reduce((s, e) => s + e.commission_amount_cents, 0);
+  const settledTotal = activeEntries.filter((e) => e.status === 'settled').reduce((s, e) => s + e.commission_amount_cents, 0);
+  const avgTicket = activeEntries.length ? Math.round(totalRevenue / activeEntries.length) : 0;
 
   // Rankings
   const topProfessionals = useMemo(() => {
