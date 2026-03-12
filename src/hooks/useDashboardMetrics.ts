@@ -124,7 +124,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('service_id')
           .eq('establishment_id', establishmentId!)
           .gte('start_at', thirtyDaysAgo)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
 
         if (aptError) throw aptError;
         if (!appointments || appointments.length === 0) return [];
