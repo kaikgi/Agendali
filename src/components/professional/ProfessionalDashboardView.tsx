@@ -13,6 +13,7 @@ import {
   Clock,
   Wallet,
   BarChart3,
+  Bell,
 } from 'lucide-react';
 
 function formatCents(cents: number): string {
@@ -23,6 +24,7 @@ interface DashboardStats {
   success: boolean;
   today_count: number;
   next7_count: number;
+  pending_approval: number;
   completed_month: number;
   canceled_month: number;
   noshow_month: number;
@@ -56,8 +58,8 @@ export function ProfessionalDashboardView({ token, professionalName }: Professio
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {Array.from({ length: 10 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 11 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
@@ -91,6 +93,18 @@ export function ProfessionalDashboardView({ token, professionalName }: Professio
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
+    ...(data.pending_approval > 0
+      ? [
+          {
+            label: 'Aguardando aprovação',
+            value: String(data.pending_approval),
+            icon: Bell,
+            color: 'text-amber-600',
+            bgColor: 'bg-amber-50',
+            highlight: true,
+          },
+        ]
+      : []),
     {
       label: 'Concluídos (mês)',
       value: String(data.completed_month),
@@ -160,9 +174,14 @@ export function ProfessionalDashboardView({ token, professionalName }: Professio
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {kpiCards.map((card) => (
-          <Card key={card.label} className="hover:shadow-md transition-shadow">
+          <Card
+            key={card.label}
+            className={`hover:shadow-md transition-shadow ${
+              (card as any).highlight ? 'ring-2 ring-amber-300 shadow-amber-100' : ''
+            }`}
+          >
             <CardContent className="p-4 flex flex-col items-start gap-3">
               <div className={`p-2 rounded-lg ${card.bgColor}`}>
                 <card.icon className={`h-5 w-5 ${card.color}`} />

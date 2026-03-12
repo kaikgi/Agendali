@@ -2001,6 +2001,7 @@ export type Database = {
         Args: { p_settlement_id: string; p_token: string }
         Returns: Json
       }
+      get_professional_time_blocks: { Args: { p_token: string }; Returns: Json }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
@@ -2020,6 +2021,19 @@ export type Database = {
           p_new_password: string
           p_token: string
         }
+        Returns: Json
+      }
+      professional_create_time_block: {
+        Args: {
+          p_end_at: string
+          p_reason?: string
+          p_start_at: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      professional_delete_time_block: {
+        Args: { p_block_id: string; p_token: string }
         Returns: Json
       }
       professional_portal_login: {
