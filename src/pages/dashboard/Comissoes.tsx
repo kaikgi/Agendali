@@ -1090,13 +1090,13 @@ function ComissoesContent() {
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Comissão total</p>
                           <p className="text-base font-semibold">{formatCents(s.totalCommission)}</p>
                         </div>
-                        <div className="p-3 rounded-lg bg-orange-50">
+                        <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Pendente</p>
-                          <p className="text-base font-semibold text-orange-600">{formatCents(pendingAmt)}</p>
+                          <p className="text-base font-semibold text-orange-600 dark:text-orange-400">{formatCents(s.pendingAmount)}</p>
                         </div>
-                        <div className="p-3 rounded-lg bg-teal-50">
+                        <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-950/30">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Repassado</p>
-                          <p className="text-base font-semibold text-teal-600">{formatCents(settledAmt)}</p>
+                          <p className="text-base font-semibold text-teal-600 dark:text-teal-400">{formatCents(s.settledAmount)}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-muted/50">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Ticket médio</p>
