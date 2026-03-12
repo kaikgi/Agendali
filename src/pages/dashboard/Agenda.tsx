@@ -22,6 +22,7 @@ import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useTimeBlocks, useRecurringTimeBlocks } from '@/hooks/useTimeBlocks';
 import { AppointmentDetailsDialog } from '@/components/dashboard/AppointmentDetailsDialog';
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
+import { statusColors, statusLabels, legendStatuses, dotColors } from '@/lib/appointmentStatus';
 import { cn } from '@/lib/utils';
 
 type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';

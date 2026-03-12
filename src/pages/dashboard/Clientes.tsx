@@ -24,22 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const statusLabels: Record<string, string> = {
-  booked: 'Agendado',
-  confirmed: 'Confirmado',
-  completed: 'Concluído',
-  canceled: 'Cancelado',
-  no_show: 'Não compareceu',
-};
-
-const statusColors: Record<string, string> = {
-  booked: 'bg-blue-500',
-  confirmed: 'bg-green-500',
-  completed: 'bg-gray-500',
-  canceled: 'bg-red-500',
-  no_show: 'bg-orange-500',
-};
+import { getStatusLabel, getStatusBadgeClasses } from '@/lib/appointmentStatus';
 
 export default function Clientes() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
