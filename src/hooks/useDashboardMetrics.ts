@@ -16,7 +16,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('id', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!)
           .gte('start_at', todayStart)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
       } catch {
@@ -37,7 +37,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('id', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!)
           .gte('start_at', weekStart)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
       } catch {
@@ -58,7 +58,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('id', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!)
           .gte('start_at', weekStart)
-          .eq('status', 'canceled');
+          .in('status', ['canceled', 'canceled_by_customer', 'canceled_by_establishment']);
         if (error) throw error;
         return count ?? 0;
       } catch {
@@ -91,7 +91,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('professional_id')
           .eq('establishment_id', establishmentId!)
           .gte('start_at', thirtyDaysAgo)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
 
         if (aptError) throw aptError;
 
@@ -124,7 +124,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('service_id')
           .eq('establishment_id', establishmentId!)
           .gte('start_at', thirtyDaysAgo)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
 
         if (aptError) throw aptError;
         if (!appointments || appointments.length === 0) return [];
@@ -229,7 +229,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
         
         if (data) {
           data.forEach((apt) => {
-            if (apt.status !== 'canceled') {
+            if (!['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'rejected'].includes(apt.status)) {
               const dayKey = format(startOfDay(parseISO(apt.start_at)), 'yyyy-MM-dd');
               if (dayMap[dayKey]) {
                 dayMap[dayKey].count += 1;
