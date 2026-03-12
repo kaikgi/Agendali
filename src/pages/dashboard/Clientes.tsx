@@ -1,59 +1,114 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, User, Phone, Mail, Calendar, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, User, Phone, Mail, Calendar, ChevronRight, RefreshCw, Tag, Settings } from 'lucide-react';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useCustomers, useCustomerWithAppointments } from '@/hooks/useCustomers';
+import { useAllCustomerTags, useClientTags, useCustomerTags } from '@/hooks/useClientTags';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getStatusLabel, getStatusBadgeClasses } from '@/lib/appointmentStatus';
+import { TagManagerDialog } from '@/components/dashboard/TagManagerDialog';
+import { CustomerTagsDialog } from '@/components/dashboard/CustomerTagsDialog';
 
 export default function Clientes() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { data: customers, isLoading, error, refetch } = useCustomers(establishment?.id);
+  const { data: allCustomerTags = [] } = useAllCustomerTags(establishment?.id);
+  const { data: allTags = [] } = useClientTags(establishment?.id);
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [tagFilter, setTagFilter] = useState<string>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [customerTagsOpen, setCustomerTagsOpen] = useState(false);
+  const [customerTagsTarget, setCustomerTagsTarget] = useState<{ id: string; name: string } | null>(null);
+
   const { data: selectedCustomer } = useCustomerWithAppointments(selectedCustomerId ?? undefined);
+  const { data: selectedCustomerTags = [] } = useCustomerTags(
+    selectedCustomerId ?? undefined,
+    establishment?.id
+  );
 
   const handleRetry = () => {
     if (estError) refetchEst();
     else refetch();
   };
 
-  const filteredCustomers = customers?.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Build customer → tags lookup
+  const customerTagsMap = useMemo(() => {
+    const map = new Map<string, typeof allCustomerTags>();
+    for (const ct of allCustomerTags) {
+      const list = map.get(ct.customer_id) ?? [];
+      list.push(ct);
+      map.set(ct.customer_id, list);
+    }
+    return map;
+  }, [allCustomerTags]);
+
+  const filteredCustomers = useMemo(() => {
+    let result = customers ?? [];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.name.toLowerCase().includes(term) ||
+          c.phone.includes(term) ||
+          c.email?.toLowerCase().includes(term)
+      );
+    }
+
+    if (tagFilter !== 'all') {
+      result = result.filter((c) => {
+        const tags = customerTagsMap.get(c.id);
+        return tags?.some((t) => t.tag_id === tagFilter);
+      });
+    }
+
+    return result;
+  }, [customers, searchTerm, tagFilter, customerTagsMap]);
 
   const formatPrice = (cents: number | null) => {
     if (cents === null) return '-';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(cents / 100);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
   };
 
-  // Loading state - only show skeleton while establishment is loading
+  const openCustomerTags = (e: React.MouseEvent, customer: { id: string; name: string }) => {
+    e.stopPropagation();
+    setCustomerTagsTarget(customer);
+    setCustomerTagsOpen(true);
+  };
+
+  const renderCustomerTags = (customerId: string) => {
+    const tags = customerTagsMap.get(customerId);
+    if (!tags?.length) return null;
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {tags.map((ct) => (
+          <span
+            key={ct.tag_id}
+            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white"
+            style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+          >
+            {ct.tag?.name}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   if (estLoading) {
     return (
       <div className="space-y-6">
@@ -64,7 +119,6 @@ export default function Clientes() {
     );
   }
 
-  // Error state
   if (estError || error) {
     return (
       <div className="text-center py-12">
@@ -79,21 +133,48 @@ export default function Clientes() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <p className="text-muted-foreground">
-          Visualize seus clientes e histórico de agendamentos
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Clientes</h1>
+          <p className="text-muted-foreground">
+            Visualize seus clientes, tags e histórico de agendamentos
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setTagManagerOpen(true)}>
+          <Settings className="h-4 w-4 mr-2" />
+          Gerenciar Tags
+        </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome, telefone ou email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex gap-3 flex-col sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, telefone ou email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {allTags.length > 0 && (
+          <Select value={tagFilter} onValueChange={setTagFilter}>
+            <SelectTrigger className="w-[180px]">
+              <Tag className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar por tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as tags</SelectItem>
+              {allTags.filter((t) => t.is_active).map((tag) => (
+                <SelectItem key={tag.id} value={tag.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
+                    {tag.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {isLoading ? (
@@ -109,13 +190,13 @@ export default function Clientes() {
         <Card>
           <CardContent className="py-10">
             <p className="text-center text-muted-foreground">
-              {searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+              {searchTerm || tagFilter !== 'all' ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
-          {/* Mobile: card layout */}
+          {/* Mobile */}
           <div className="block md:hidden">
             <div className="divide-y divide-border">
               {filteredCustomers.map((customer) => (
@@ -130,28 +211,33 @@ export default function Clientes() {
                         <User className="h-4 w-4 text-muted-foreground shrink-0" />
                         {customer.name}
                       </p>
-                      <p className="text-sm text-muted-foreground truncate mt-1">
-                        {customer.phone}
-                      </p>
-                      {customer.email && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {customer.email}
-                        </p>
-                      )}
+                      {renderCustomerTags(customer.id)}
+                      <p className="text-sm text-muted-foreground truncate mt-1">{customer.phone}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => openCustomerTags(e, customer)}
+                      >
+                        <Tag className="h-3.5 w-3.5" />
+                      </Button>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Desktop: table layout */}
+          {/* Desktop */}
           <div className="hidden md:block table-responsive">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Tags</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Desde</TableHead>
@@ -170,6 +256,28 @@ export default function Clientes() {
                         <User className="h-4 w-4 text-muted-foreground" />
                         {customer.name}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {customerTagsMap.get(customer.id)?.map((ct) => (
+                          <span
+                            key={ct.tag_id}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white"
+                            style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+                          >
+                            {ct.tag?.name}
+                          </span>
+                        )) || <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1.5 mt-1 text-xs text-muted-foreground"
+                        onClick={(e) => openCustomerTags(e, customer)}
+                      >
+                        <Tag className="h-3 w-3 mr-1" />
+                        Editar
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -201,6 +309,7 @@ export default function Clientes() {
         </Card>
       )}
 
+      {/* Customer detail dialog */}
       <Dialog open={!!selectedCustomerId} onOpenChange={(open) => !open && setSelectedCustomerId(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -228,6 +337,41 @@ export default function Clientes() {
                   <span>
                     Cliente desde {format(new Date(selectedCustomer.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </span>
+                </div>
+              </div>
+
+              {/* Tags section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Tags
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={(e) =>
+                      openCustomerTags(e, { id: selectedCustomer.id, name: selectedCustomer.name })
+                    }
+                  >
+                    Editar Tags
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedCustomerTags.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">Nenhuma tag aplicada</span>
+                  ) : (
+                    selectedCustomerTags.map((ct) => (
+                      <span
+                        key={ct.tag_id}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                        style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+                      >
+                        {ct.tag?.name}
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -284,6 +428,26 @@ export default function Clientes() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Tag manager dialog */}
+      {establishment && (
+        <TagManagerDialog
+          open={tagManagerOpen}
+          onOpenChange={setTagManagerOpen}
+          establishmentId={establishment.id}
+        />
+      )}
+
+      {/* Customer tags assignment dialog */}
+      {customerTagsTarget && establishment && (
+        <CustomerTagsDialog
+          open={customerTagsOpen}
+          onOpenChange={setCustomerTagsOpen}
+          customerId={customerTagsTarget.id}
+          customerName={customerTagsTarget.name}
+          establishmentId={establishment.id}
+        />
+      )}
     </div>
   );
 }
