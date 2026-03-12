@@ -220,40 +220,22 @@ export function useCreateSettlement() {
       entryIds: string[];
       notes?: string;
     }) => {
-      // 1. Calculate total
-      const { data: entries, error: entriesErr } = await (supabase as any)
-        .from('commission_entries')
-        .select('commission_amount_cents')
-        .in('id', params.entryIds);
-      if (entriesErr) throw entriesErr;
+      // Use atomic RPC instead of multi-step client-side mutation
+      const { data, error } = await (supabase.rpc as any)('create_commission_settlement', {
+        p_establishment_id: establishment?.id,
+        p_professional_id: params.professionalId,
+        p_period_start: params.periodStart,
+        p_period_end: params.periodEnd,
+        p_entry_ids: params.entryIds,
+        p_notes: params.notes || null,
+      });
 
-      const total = (entries as any[]).reduce((sum: number, e: any) => sum + e.commission_amount_cents, 0);
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro ao registrar repasse');
+      }
 
-      // 2. Create settlement
-      const { data: settlement, error: settErr } = await (supabase as any)
-        .from('commission_settlements')
-        .insert({
-          establishment_id: establishment?.id,
-          professional_id: params.professionalId,
-          period_start: params.periodStart,
-          period_end: params.periodEnd,
-          total_amount_cents: total,
-          entries_count: params.entryIds.length,
-          notes: params.notes || null,
-          paid_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (settErr) throw settErr;
-
-      // 3. Update entries
-      const { error: updateErr } = await (supabase as any)
-        .from('commission_entries')
-        .update({ settlement_id: settlement.id, status: 'settled' })
-        .in('id', params.entryIds);
-      if (updateErr) throw updateErr;
-
-      return settlement;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['commission-entries'] });
@@ -264,7 +246,9 @@ export function useCreateSettlement() {
 
 // ── Aggregation helpers ────────────────────────────────
 
+/** Only count non-voided entries for revenue/commission metrics */
 export function aggregateByProfessional(entries: CommissionEntry[]) {
+  const activeEntries = entries.filter((e) => e.status !== 'voided');
   const map = new Map<string, {
     professionalId: string;
     professionalName: string;
@@ -272,10 +256,12 @@ export function aggregateByProfessional(entries: CommissionEntry[]) {
     totalRevenue: number;
     count: number;
     pendingCount: number;
+    pendingAmount: number;
     settledCount: number;
+    settledAmount: number;
   }>();
 
-  for (const e of entries) {
+  for (const e of activeEntries) {
     const existing = map.get(e.professional_id) || {
       professionalId: e.professional_id,
       professionalName: e.professional_name,
@@ -283,13 +269,21 @@ export function aggregateByProfessional(entries: CommissionEntry[]) {
       totalRevenue: 0,
       count: 0,
       pendingCount: 0,
+      pendingAmount: 0,
       settledCount: 0,
+      settledAmount: 0,
     };
     existing.totalCommission += e.commission_amount_cents;
     existing.totalRevenue += e.service_price_cents;
     existing.count += 1;
-    if (e.status === 'pending') existing.pendingCount += 1;
-    if (e.status === 'settled') existing.settledCount += 1;
+    if (e.status === 'pending') {
+      existing.pendingCount += 1;
+      existing.pendingAmount += e.commission_amount_cents;
+    }
+    if (e.status === 'settled') {
+      existing.settledCount += 1;
+      existing.settledAmount += e.commission_amount_cents;
+    }
     map.set(e.professional_id, existing);
   }
 

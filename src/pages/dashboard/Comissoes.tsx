@@ -173,6 +173,7 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [showEntries, setShowEntries] = useState(false);
+  const [step, setStep] = useState<'select' | 'confirm'>('select');
 
   const pendingEntries = useMemo(() => {
     let filtered = entries.filter((e) => e.status === 'pending');
@@ -241,112 +242,198 @@ function SettlementDialog({ open, onClose, entries, professionalName, profession
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setStep('select'); } }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar Repasse — {professionalName}</DialogTitle>
+          <DialogTitle>
+            {step === 'select' ? 'Registrar Repasse' : 'Confirmar Repasse'} — {professionalName}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          {/* Period presets */}
-          <div className="space-y-2">
-            <Label>Período do repasse</Label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'today', label: 'Hoje' },
-                { key: 'week', label: 'Esta semana' },
-                { key: 'month', label: 'Este mês' },
-                { key: 'last_month', label: 'Mês passado' },
-                { key: 'all', label: 'Todos pendentes' },
-              ].map((p) => (
-                <Button key={p.key} variant="outline" size="sm" type="button" onClick={() => setPreset(p.key)}>
-                  {p.label}
-                </Button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">De</Label>
-                <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Até</Label>
-                <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-              </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Card>
-              <CardContent className="p-3 text-center">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Atendimentos</p>
-                <p className="text-lg font-bold">{pendingEntries.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 text-center">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Receita</p>
-                <p className="text-lg font-bold">{formatCents(totalRevenue)}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="p-3 text-center">
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Total a pagar</p>
-                <p className="text-lg font-bold text-primary">{formatCents(total)}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Preview entries toggle */}
-          {pendingEntries.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowEntries(!showEntries)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showEntries ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                {showEntries ? 'Ocultar' : 'Ver'} atendimentos incluídos ({pendingEntries.length})
-              </button>
-              {showEntries && (
-                <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Data</TableHead>
-                        <TableHead className="text-xs">Serviço</TableHead>
-                        <TableHead className="text-xs text-right">Comissão</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingEntries.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell className="text-xs py-1.5">
-                            {format(new Date(e.appointment_date), 'dd/MM HH:mm')}
-                          </TableCell>
-                          <TableCell className="text-xs py-1.5">{e.service_name}</TableCell>
-                          <TableCell className="text-xs py-1.5 text-right font-medium">
-                            {formatCents(e.commission_amount_cents)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+        {step === 'select' ? (
+          <div className="space-y-4 py-2">
+            {/* Period presets */}
+            <div className="space-y-2">
+              <Label>Período do repasse</Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'today', label: 'Hoje' },
+                  { key: 'week', label: 'Esta semana' },
+                  { key: 'month', label: 'Este mês' },
+                  { key: 'last_month', label: 'Mês passado' },
+                  { key: 'all', label: 'Todos pendentes' },
+                ].map((p) => (
+                  <Button key={p.key} variant="outline" size="sm" type="button" onClick={() => setPreset(p.key)}>
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">De</Label>
+                  <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Até</Label>
+                  <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Atendimentos</p>
+                  <p className="text-lg font-bold">{pendingEntries.length}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Receita</p>
+                  <p className="text-lg font-bold">{formatCents(totalRevenue)}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-3 text-center">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Total a pagar</p>
+                  <p className="text-lg font-bold text-primary">{formatCents(total)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Preview entries toggle */}
+            {pendingEntries.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowEntries(!showEntries)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showEntries ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  {showEntries ? 'Ocultar' : 'Ver'} atendimentos incluídos ({pendingEntries.length})
+                </button>
+                {showEntries && (
+                  <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Data</TableHead>
+                          <TableHead className="text-xs">Serviço</TableHead>
+                          <TableHead className="text-xs hidden sm:table-cell">Cliente</TableHead>
+                          <TableHead className="text-xs text-right">Comissão</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingEntries.map((e) => (
+                          <TableRow key={e.id}>
+                            <TableCell className="text-xs py-1.5">
+                              {format(new Date(e.appointment_date), 'dd/MM HH:mm')}
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5">{e.service_name}</TableCell>
+                            <TableCell className="text-xs py-1.5 hidden sm:table-cell">{e.customer_name || '—'}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right font-medium">
+                              {formatCents(e.commission_amount_cents)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Observações (opcional)</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Pagamento via Pix" />
+            </div>
+          </div>
+        ) : (
+          /* ── Confirmation Step ── */
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <p className="text-sm font-medium text-center">Resumo do Repasse</p>
+              <Separator />
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Profissional</p>
+                  <p className="font-semibold">{professionalName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Período</p>
+                  <p className="font-semibold">
+                    {periodStart ? format(new Date(periodStart + 'T12:00:00'), 'dd/MM/yy') : 'Início'} – {periodEnd ? format(new Date(periodEnd + 'T12:00:00'), 'dd/MM/yy') : 'Todos'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Atendimentos</p>
+                  <p className="font-semibold">{pendingEntries.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Receita dos atendimentos</p>
+                  <p className="font-semibold">{formatCents(totalRevenue)}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Valor total do repasse</p>
+                <p className="text-2xl font-bold text-primary">{formatCents(total)}</p>
+              </div>
+              {notes.trim() && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Observação</p>
+                    <p className="text-sm">{notes}</p>
+                  </div>
+                </>
               )}
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label>Observações (opcional)</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Pagamento via Pix" />
+            <div className="max-h-40 overflow-y-auto border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Serviço</TableHead>
+                    <TableHead className="text-xs text-right">Comissão</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingEntries.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell className="text-xs py-1.5">{format(new Date(e.appointment_date), 'dd/MM HH:mm')}</TableCell>
+                      <TableCell className="text-xs py-1.5">{e.service_name}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right font-medium">{formatCents(e.commission_amount_cents)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Ao confirmar, as {pendingEntries.length} comissões serão marcadas como repassadas. Esta ação não pode ser desfeita.
+            </p>
           </div>
-        </div>
+        )}
+
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <ActionButton onClick={handleSettle} disabled={!pendingEntries.length} loadingLabel="Registrando..." successLabel="Repasse registrado!">
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Confirmar repasse
-          </ActionButton>
+          {step === 'select' ? (
+            <>
+              <Button variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button onClick={() => setStep('confirm')} disabled={!pendingEntries.length}>
+                Revisar e confirmar ({pendingEntries.length})
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setStep('select')}>Voltar</Button>
+              <ActionButton onClick={handleSettle} loadingLabel="Registrando..." successLabel="Repasse registrado!">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Confirmar repasse
+              </ActionButton>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -698,11 +785,13 @@ function ComissoesContent() {
 
   // Aggregated data
   const summary = useMemo(() => aggregateByProfessional(entries), [entries]);
-  const totalCommission = entries.reduce((s, e) => s + e.commission_amount_cents, 0);
-  const totalRevenue = entries.reduce((s, e) => s + e.service_price_cents, 0);
-  const pendingTotal = entries.filter((e) => e.status === 'pending').reduce((s, e) => s + e.commission_amount_cents, 0);
-  const settledTotal = entries.filter((e) => e.status === 'settled').reduce((s, e) => s + e.commission_amount_cents, 0);
-  const avgTicket = entries.length ? Math.round(totalRevenue / entries.length) : 0;
+  // Revenue metrics: only count non-voided entries (completed appointments only)
+  const activeEntries = useMemo(() => entries.filter((e) => e.status !== 'voided'), [entries]);
+  const totalCommission = activeEntries.reduce((s, e) => s + e.commission_amount_cents, 0);
+  const totalRevenue = activeEntries.reduce((s, e) => s + e.service_price_cents, 0);
+  const pendingTotal = activeEntries.filter((e) => e.status === 'pending').reduce((s, e) => s + e.commission_amount_cents, 0);
+  const settledTotal = activeEntries.filter((e) => e.status === 'settled').reduce((s, e) => s + e.commission_amount_cents, 0);
+  const avgTicket = activeEntries.length ? Math.round(totalRevenue / activeEntries.length) : 0;
 
   // Rankings
   const topProfessionals = useMemo(() => {
@@ -741,21 +830,15 @@ function ComissoesContent() {
 
   const handleExportSummary = () => {
     if (!summary.length) return;
-    const headers = ['Profissional', 'Atendimentos', 'Receita Bruta', 'Comissão Total', 'Pendente', 'Repassado', 'Ticket Médio'];
+    const headers = ['Profissional', 'Atendimentos', 'Receita Realizada', 'Comissão Total', 'Pendente', 'Repassado', 'Ticket Médio'];
     const rows = summary.map((s) => {
-      const pendingAmt = entries
-        .filter((e) => e.professional_id === s.professionalId && e.status === 'pending')
-        .reduce((sum, e) => sum + e.commission_amount_cents, 0);
-      const settledAmt = entries
-        .filter((e) => e.professional_id === s.professionalId && e.status === 'settled')
-        .reduce((sum, e) => sum + e.commission_amount_cents, 0);
       return [
         s.professionalName,
         String(s.count),
         (s.totalRevenue / 100).toFixed(2),
         (s.totalCommission / 100).toFixed(2),
-        (pendingAmt / 100).toFixed(2),
-        (settledAmt / 100).toFixed(2),
+        (s.pendingAmount / 100).toFixed(2),
+        (s.settledAmount / 100).toFixed(2),
         s.count ? (s.totalRevenue / s.count / 100).toFixed(2) : '0',
       ];
     });
@@ -779,12 +862,12 @@ function ComissoesContent() {
 
       {/* ── KPI Dashboard ───────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard icon={DollarSign} label="Receita Total" value={formatCents(totalRevenue)} color="text-emerald-600" bgColor="bg-emerald-50" />
+        <KpiCard icon={DollarSign} label="Receita Realizada" value={formatCents(totalRevenue)} subValue="Somente concluídos" color="text-emerald-600" bgColor="bg-emerald-50" />
         <KpiCard icon={Calculator} label="Comissão Total" value={formatCents(totalCommission)} color="text-violet-600" bgColor="bg-violet-50" />
         <KpiCard icon={Clock} label="Pendente" value={formatCents(pendingTotal)} color="text-orange-600" bgColor="bg-orange-50" />
         <KpiCard icon={Wallet} label="Já Repassado" value={formatCents(settledTotal)} color="text-teal-600" bgColor="bg-teal-50" />
-        <KpiCard icon={BarChart3} label="Ticket Médio" value={formatCents(avgTicket)} color="text-indigo-600" bgColor="bg-indigo-50" />
-        <KpiCard icon={Users} label="Atendimentos" value={String(entries.length)} color="text-blue-600" bgColor="bg-blue-50" />
+        <KpiCard icon={BarChart3} label="Ticket Médio" value={formatCents(avgTicket)} subValue="Por atendimento concluído" color="text-indigo-600" bgColor="bg-indigo-50" />
+        <KpiCard icon={Users} label="Atendimentos" value={String(activeEntries.length)} color="text-blue-600" bgColor="bg-blue-50" />
       </div>
 
       {/* ── Rankings ────────────────────────────────────── */}
@@ -1048,14 +1131,11 @@ function ComissoesContent() {
           ) : (
             <div className="grid gap-4">
               {summary.map((s) => {
-                const pendingAmt = entries
-                  .filter((e) => e.professional_id === s.professionalId && e.status === 'pending')
-                  .reduce((sum, e) => sum + e.commission_amount_cents, 0);
-                const settledAmt = entries
-                  .filter((e) => e.professional_id === s.professionalId && e.status === 'settled')
-                  .reduce((sum, e) => sum + e.commission_amount_cents, 0);
                 const isExpanded = expandedProfessional === s.professionalId;
                 const profEntries = entries.filter((e) => e.professional_id === s.professionalId);
+                const lastSettlement = settlements
+                  .filter((st) => st.professional_id === s.professionalId)
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
                 return (
                   <Card key={s.professionalId} className="overflow-hidden">
@@ -1082,22 +1162,22 @@ function ComissoesContent() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 text-sm">
                         <div className="p-3 rounded-lg bg-muted/50">
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">Receita bruta</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Receita realizada</p>
                           <p className="text-base font-semibold">{formatCents(s.totalRevenue)}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-muted/50">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Comissão total</p>
                           <p className="text-base font-semibold">{formatCents(s.totalCommission)}</p>
                         </div>
-                        <div className="p-3 rounded-lg bg-orange-50">
+                        <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Pendente</p>
-                          <p className="text-base font-semibold text-orange-600">{formatCents(pendingAmt)}</p>
+                          <p className="text-base font-semibold text-orange-600 dark:text-orange-400">{formatCents(s.pendingAmount)}</p>
                         </div>
-                        <div className="p-3 rounded-lg bg-teal-50">
+                        <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-950/30">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Repassado</p>
-                          <p className="text-base font-semibold text-teal-600">{formatCents(settledAmt)}</p>
+                          <p className="text-base font-semibold text-teal-600 dark:text-teal-400">{formatCents(s.settledAmount)}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-muted/50">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Ticket médio</p>
@@ -1106,6 +1186,16 @@ function ComissoesContent() {
                         <div className="p-3 rounded-lg bg-muted/50">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Atendimentos</p>
                           <p className="text-base font-semibold">{s.count}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Pendentes repasse</p>
+                          <p className="text-base font-semibold">{s.pendingCount}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Último repasse</p>
+                          <p className="text-base font-semibold text-sm">
+                            {lastSettlement ? format(new Date(lastSettlement.paid_at || lastSettlement.created_at), 'dd/MM/yy') : '—'}
+                          </p>
                         </div>
                       </div>
 

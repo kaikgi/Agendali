@@ -2003,6 +2003,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_commission_settlement: {
+        Args: {
+          p_entry_ids: string[]
+          p_establishment_id: string
+          p_notes?: string
+          p_period_end: string
+          p_period_start: string
+          p_professional_id: string
+        }
+        Returns: Json
+      }
       customer_has_bypass_approval: {
         Args: { p_customer_id: string; p_establishment_id: string }
         Returns: boolean
