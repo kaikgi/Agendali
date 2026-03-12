@@ -55,6 +55,7 @@ interface TypeConfig {
   showCTA: boolean;
   showWarning: boolean;
   showFooterNote: boolean;
+  showRatingCTA?: boolean;
 }
 
 const TYPE_MAP: Record<string, TypeConfig> = {
