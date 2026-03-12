@@ -46,7 +46,7 @@ export default function ManageAppointment() {
   const availableSlots = slotResult?.slots ?? [];
 
   const canModify = appointment && 
-    ['booked', 'confirmed'].includes(appointment.status) &&
+    ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) &&
     isBefore(new Date(), addHours(new Date(appointment.start_at), -(appointment.establishment?.reschedule_min_hours || 2)));
 
   const handleCancel = async () => {

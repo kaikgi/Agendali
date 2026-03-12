@@ -119,40 +119,20 @@ export function useCancelAppointment() {
 
   return useMutation({
     mutationFn: async ({ appointmentId, token }: { appointmentId: string; token: string }) => {
-      const tokenHash = await hashToken(token);
+      // Use secure RPC that validates token and cancels server-side
+      const { data, error } = await (supabase.rpc as any)('public_cancel_appointment_by_token', {
+        p_token: token,
+        p_appointment_id: appointmentId,
+      });
 
-      // Verify token is valid
-      const { data: tokenRecord, error: tokenError } = await (supabase as any)
-        .from('appointment_manage_tokens')
-        .select('appointment_id, expires_at')
-        .eq('token_hash', tokenHash)
-        .eq('appointment_id', appointmentId)
-        .single();
+      if (error) throw error;
 
-      if (tokenError || !tokenRecord) {
-        throw new Error('Token inválido');
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao cancelar agendamento');
       }
-
-      if (new Date(tokenRecord.expires_at) < new Date()) {
-        throw new Error('Este link expirou');
-      }
-
-      // Update appointment status
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({ status: 'canceled' } as any)
-        .eq('id', appointmentId);
-
-      if (updateError) throw updateError;
-
-      // Mark token as used
-      await (supabase as any)
-        .from('appointment_manage_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('token_hash', tokenHash);
     },
     onSuccess: () => {
-      // Invalidate all relevant queries for consistency
       invalidateAppointmentQueries(queryClient);
     },
   });

@@ -30,6 +30,7 @@ import { ImageUploadButton } from '@/components/ImageUploadButton';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { usePlanFeatures } from '@/hooks/useFeatureAccess';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ProfessionalHoursDialog } from '@/components/dashboard/ProfessionalHoursDialog';

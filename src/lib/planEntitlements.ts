@@ -1,6 +1,7 @@
 export type FeatureFlag =
   | 'commissions'
-  | 'advanced_reports';
+  | 'advanced_reports'
+  | 'professional_portal';
 
 export interface PlanEntitlements {
   planLabel: string;
@@ -13,16 +14,19 @@ export interface PlanEntitlements {
 const SOLO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: false,
   advanced_reports: false,
+  professional_portal: false,
 };
 
 const STUDIO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: true,
   advanced_reports: true,
+  professional_portal: true,
 };
 
 const PRO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: true,
   advanced_reports: true,
+  professional_portal: true,
 };
 
 /** Human-readable labels for feature flags */
@@ -35,6 +39,11 @@ export const FEATURE_LABELS: Record<FeatureFlag, { title: string; description: s
   advanced_reports: {
     title: 'Relatórios de Desempenho',
     description: 'Acesse relatórios detalhados de desempenho e financeiro do seu estabelecimento.',
+    minPlan: 'Studio',
+  },
+  professional_portal: {
+    title: 'Portal do Profissional',
+    description: 'Permita que seus profissionais acessem a agenda individual com login próprio.',
     minPlan: 'Studio',
   },
 };
