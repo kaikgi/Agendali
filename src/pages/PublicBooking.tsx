@@ -269,7 +269,10 @@ export default function PublicBooking() {
   };
 
   const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      console.warn('[Booking] handleConfirmedSubmit: already submitting, skipping');
+      return;
+    }
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
       console.warn('[Booking] handleConfirmedSubmit: missing required data', {
         establishment: !!establishment, selectedService: !!selectedService,
@@ -279,7 +282,13 @@ export default function PublicBooking() {
       return;
     }
 
-    console.log('[Booking] handleConfirmedSubmit: starting', { requiresPayment, slug });
+    console.log('[Booking] handleConfirmedSubmit: starting', {
+      requiresPayment,
+      paymentConfigEnabled: paymentConfig?.enabled,
+      depositRequired: paymentConfig?.deposit_required,
+      fullPaymentOnline: paymentConfig?.full_payment_online,
+      slug,
+    });
     setIsSubmitting(true);
     setPendingCustomerData(null);
 
@@ -321,8 +330,13 @@ export default function PublicBooking() {
         throw new Error(error.message || 'Erro ao criar agendamento');
       }
 
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        console.error('[Booking] RPC returned empty data:', data);
+        throw new Error('Resposta vazia do servidor. Tente novamente.');
+      }
+
       console.log('[Booking] RPC success:', data);
-      const result = data?.[0];
+      const result = Array.isArray(data) ? data[0] : data;
 
       if (result?.manage_token) {
         setManageToken(result.manage_token);
@@ -337,7 +351,7 @@ export default function PublicBooking() {
         console.log('[Booking] Payment required, moving to payment step');
         setCurrentStep(4);
       } else {
-        console.log('[Booking] No payment, booking complete');
+        console.log('[Booking] No payment required, booking complete');
         setIsSuccess(true);
       }
     } catch (error) {
@@ -345,6 +359,7 @@ export default function PublicBooking() {
       const errorMessage = error instanceof Error ? error.message : 'Não foi possível concluir o agendamento. Tente novamente.';
       toast({ variant: 'destructive', title: 'Erro ao agendar', description: errorMessage });
     } finally {
+      console.log('[Booking] handleConfirmedSubmit: finished, setting isSubmitting=false');
       setIsSubmitting(false);
     }
   };
