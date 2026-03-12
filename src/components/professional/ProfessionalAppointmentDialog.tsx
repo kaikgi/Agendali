@@ -1,31 +1,13 @@
 import { useState } from 'react';
-// PortalAppointment is exported from this file for use by other components
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Clock,
-  User,
-  Scissors,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
-  ThumbsUp,
-  ThumbsDown,
-  Phone,
-  Mail,
-  DollarSign,
-  CreditCard,
-  Receipt,
-  MessageSquare,
+  Clock, User, Scissors, FileText, CheckCircle2, XCircle, AlertTriangle,
+  Loader2, ThumbsUp, ThumbsDown, Phone, Mail, DollarSign, CreditCard,
+  Receipt, MessageSquare, UserCheck, Play, Tag,
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +25,7 @@ export interface PortalAppointment {
   customer_name: string;
   customer_phone: string;
   customer_email?: string | null;
+  customer_id?: string;
   service_name: string;
   service_duration: number;
   service_price_cents?: number | null;
@@ -68,14 +51,11 @@ interface ProfessionalAppointmentDialogProps {
   onOpenChange: (open: boolean) => void;
   token: string;
   onStatusChanged: () => void;
+  onOpenTags?: (customerId: string, customerName: string) => void;
 }
 
 export function ProfessionalAppointmentDialog({
-  appointment,
-  open,
-  onOpenChange,
-  token,
-  onStatusChanged,
+  appointment, open, onOpenChange, token, onStatusChanged, onOpenTags,
 }: ProfessionalAppointmentDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState<string | null>(null);
@@ -83,9 +63,12 @@ export function ProfessionalAppointmentDialog({
   if (!appointment) return null;
 
   const isPending = ['pending_approval', 'paid_pending_confirmation'].includes(appointment.status);
-  const isActive = ['booked', 'confirmed', 'pending_approval', 'paid_pending_confirmation'].includes(appointment.status);
+  const isActive = ['booked', 'confirmed', 'pending_approval', 'paid_pending_confirmation', 'arrived', 'in_service'].includes(appointment.status);
   const canConfirm = isPending || appointment.status === 'booked';
   const canReject = isPending;
+  const canMarkArrived = ['booked', 'confirmed'].includes(appointment.status);
+  const canStartService = ['confirmed', 'arrived'].includes(appointment.status);
+  const canComplete = ['booked', 'confirmed', 'arrived', 'in_service'].includes(appointment.status);
   const isFinalized = ['completed', 'canceled', 'no_show', 'rejected'].includes(appointment.status);
 
   const handleAction = async (newStatus: string) => {
@@ -96,12 +79,9 @@ export function ProfessionalAppointmentDialog({
         p_appointment_id: appointment.id,
         p_new_status: newStatus,
       });
-
       if (error) throw error;
-
       const result = data as unknown as { success: boolean; message?: string; error?: string };
       if (!result.success) throw new Error(result.error);
-
       toast({ title: result.message || 'Status atualizado' });
       onStatusChanged();
       onOpenChange(false);
@@ -153,57 +133,50 @@ export function ProfessionalAppointmentDialog({
           {/* Pending approval highlight */}
           {isPending && (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <p className="text-sm font-medium text-amber-800">
-                ⏳ Este agendamento precisa da sua aprovação
-              </p>
-              <p className="text-xs text-amber-700 mt-1">
-                Confirme ou recuse este atendimento.
-              </p>
+              <p className="text-sm font-medium text-amber-800">⏳ Este agendamento precisa da sua aprovação</p>
+              <p className="text-xs text-amber-700 mt-1">Confirme ou recuse este atendimento.</p>
             </div>
           )}
 
           {/* Main details */}
           <div className="space-y-3">
-            {/* Time */}
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <div>
-                <p className="font-medium">
-                  {format(parseISO(appointment.start_at), 'HH:mm')} – {format(parseISO(appointment.end_at), 'HH:mm')}
-                </p>
+                <p className="font-medium">{format(parseISO(appointment.start_at), 'HH:mm')} – {format(parseISO(appointment.end_at), 'HH:mm')}</p>
                 <p className="text-sm text-muted-foreground">{appointment.service_duration} minutos</p>
               </div>
             </div>
 
-            {/* Customer */}
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium">{appointment.customer_name}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                  <button
-                    type="button"
-                    onClick={handleWhatsApp}
-                    className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline"
-                  >
-                    <Phone className="h-3 w-3" />
-                    {appointment.customer_phone}
-                  </button>
-                  {appointment.customer_email && (
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{appointment.customer_name}</p>
+                  {onOpenTags && appointment.customer_id && (
                     <button
                       type="button"
-                      onClick={handleEmail}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                      onClick={() => onOpenTags(appointment.customer_id!, appointment.customer_name)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
                     >
-                      <Mail className="h-3 w-3" />
-                      {appointment.customer_email}
+                      <Tag className="h-3 w-3" />
+                      Tags
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                  <button type="button" onClick={handleWhatsApp} className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline">
+                    <Phone className="h-3 w-3" />{appointment.customer_phone}
+                  </button>
+                  {appointment.customer_email && (
+                    <button type="button" onClick={handleEmail} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline">
+                      <Mail className="h-3 w-3" />{appointment.customer_email}
                     </button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Service */}
             <div className="flex items-center gap-3">
               <Scissors className="h-4 w-4 text-muted-foreground shrink-0" />
               <div>
@@ -214,42 +187,30 @@ export function ProfessionalAppointmentDialog({
               </div>
             </div>
 
-            {/* Payment info */}
             {hasPayment && (
               <div className="flex items-center gap-3">
                 <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">
-                    Pagamento: {formatCents(appointment.payment_amount_cents)}
-                  </p>
+                  <p className="text-sm font-medium">Pagamento: {formatCents(appointment.payment_amount_cents)}</p>
                   <Badge variant="outline" className="text-[10px] mt-0.5">
-                    {appointment.payment_status === 'approved' ? 'Pago' :
-                     appointment.payment_status === 'pending' ? 'Pendente' :
-                     appointment.payment_status === 'refunded' ? 'Reembolsado' :
-                     appointment.payment_status}
+                    {appointment.payment_status === 'approved' ? 'Pago' : appointment.payment_status === 'pending' ? 'Pendente' : appointment.payment_status === 'refunded' ? 'Reembolsado' : appointment.payment_status}
                   </Badge>
                 </div>
               </div>
             )}
 
-            {/* Commission info */}
             {hasCommission && (
               <div className="flex items-center gap-3">
                 <Receipt className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">
-                    Comissão: {formatCents(appointment.commission_amount_cents)}
-                  </p>
+                  <p className="text-sm font-medium">Comissão: {formatCents(appointment.commission_amount_cents)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {appointment.commission_type === 'percentage'
-                      ? `${appointment.commission_value}% do serviço`
-                      : 'Valor fixo'}
+                    {appointment.commission_type === 'percentage' ? `${appointment.commission_value}% do serviço` : 'Valor fixo'}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Notes */}
             {appointment.customer_notes && (
               <>
                 <Separator />
@@ -273,7 +234,6 @@ export function ProfessionalAppointmentDialog({
               </div>
             )}
 
-            {/* Completed info */}
             {appointment.status === 'completed' && appointment.completed_at && (
               <div className="p-2 rounded bg-muted/50 text-xs text-muted-foreground">
                 Concluído em {format(parseISO(appointment.completed_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
@@ -285,94 +245,60 @@ export function ProfessionalAppointmentDialog({
         {/* Actions */}
         {isActive && (
           <div className="space-y-3 pt-4 border-t">
-            {/* Primary: Confirm / Reject for pending */}
+            {/* Approve / Reject for pending */}
             {isPending && (
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => handleAction('confirmed')}
-                  disabled={!!loading}
-                >
-                  {loading === 'confirmed' ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <ThumbsUp className="h-4 w-4 mr-2" />
-                  )}
+                <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction('confirmed')} disabled={!!loading}>
+                  {loading === 'confirmed' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
                   Aprovar
                 </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
-                  onClick={() => handleAction('rejected')}
-                  disabled={!!loading}
-                >
-                  {loading === 'rejected' ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <ThumbsDown className="h-4 w-4 mr-2" />
-                  )}
+                <Button variant="outline" className="flex-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleAction('rejected')} disabled={!!loading}>
+                  {loading === 'rejected' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-2" />}
                   Recusar
                 </Button>
               </div>
             )}
 
-            {/* Confirm for booked (non-pending) */}
-            {!isPending && canConfirm && (
-              <Button
-                variant="outline"
-                className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
-                onClick={() => handleAction('confirmed')}
-                disabled={!!loading}
-              >
-                {loading === 'confirmed' ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <ThumbsUp className="h-4 w-4 mr-2" />
-                )}
+            {/* Confirm for booked */}
+            {!isPending && appointment.status === 'booked' && (
+              <Button variant="outline" className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200" onClick={() => handleAction('confirmed')} disabled={!!loading}>
+                {loading === 'confirmed' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
                 Confirmar
+              </Button>
+            )}
+
+            {/* Arrived */}
+            {canMarkArrived && (
+              <Button variant="outline" className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200" onClick={() => handleAction('arrived')} disabled={!!loading}>
+                {loading === 'arrived' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserCheck className="h-4 w-4 mr-2" />}
+                Marcar como Chegou
+              </Button>
+            )}
+
+            {/* In Service */}
+            {canStartService && (
+              <Button variant="outline" className="w-full text-sky-600 hover:text-sky-700 hover:bg-sky-50 border-sky-200" onClick={() => handleAction('in_service')} disabled={!!loading}>
+                {loading === 'in_service' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                Iniciar Atendimento
               </Button>
             )}
 
             {/* Complete / No-show / Cancel */}
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                className="flex-1"
-                onClick={() => handleAction('completed')}
-                disabled={!!loading}
-              >
-                {loading === 'completed' ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                )}
-                Concluir
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => handleAction('no_show')}
-                disabled={!!loading}
-              >
-                {loading === 'no_show' ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                )}
+              {canComplete && (
+                <Button className="flex-1" onClick={() => handleAction('completed')} disabled={!!loading}>
+                  {loading === 'completed' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                  Concluir
+                </Button>
+              )}
+              <Button variant="outline" className="flex-1" onClick={() => handleAction('no_show')} disabled={!!loading}>
+                {loading === 'no_show' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
                 Não compareceu
               </Button>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full text-destructive hover:text-destructive"
-              onClick={() => handleAction('canceled')}
-              disabled={!!loading}
-            >
-              {loading === 'canceled' ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
+            <Button variant="outline" className="w-full text-destructive hover:text-destructive" onClick={() => handleAction('canceled')} disabled={!!loading}>
+              {loading === 'canceled' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
               Cancelar agendamento
             </Button>
           </div>
