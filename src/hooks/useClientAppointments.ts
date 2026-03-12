@@ -7,7 +7,7 @@ export interface ClientAppointment {
   id: string;
   start_at: string;
   end_at: string;
-  status: 'booked' | 'confirmed' | 'completed' | 'canceled' | 'no_show';
+  status: string;
   customer_notes: string | null;
   service: {
     id: string;
