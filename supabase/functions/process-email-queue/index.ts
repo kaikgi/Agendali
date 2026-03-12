@@ -157,6 +157,7 @@ interface EmailPayload {
   establishment_phone?: string | null;
   establishment_address?: string | null;
   start_at: string;
+  manage_token_hash?: string | null;
 }
 
 // ─── Build payload from job data + optional DB enrichment ────
