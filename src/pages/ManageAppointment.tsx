@@ -346,7 +346,7 @@ export default function ManageAppointment() {
         )}
 
         {/* Cannot Modify Message */}
-        {!canModify && ['booked', 'confirmed'].includes(appointment.status) && (
+        {!canModify && ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 text-muted-foreground">

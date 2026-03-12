@@ -354,23 +354,25 @@ export default function Profissionais() {
                     <span className="text-sm text-muted-foreground">Ativo</span>
                   </div>
                   <div className="flex gap-1 flex-wrap">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Portal"
-                      onClick={() => {
-                        setSelectedProfessional({ 
-                          id: prof.id, 
-                          name: prof.name, 
-                          slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false,
-                          portal_password_hash: (prof as any).portal_password_hash || null,
-                        });
-                        setPortalDialogOpen(true);
-                      }}
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
+                    {hasPortalAccess && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Portal"
+                        onClick={() => {
+                          setSelectedProfessional({ 
+                            id: prof.id, 
+                            name: prof.name, 
+                            slug: (prof as any).slug || null,
+                            portal_enabled: (prof as any).portal_enabled ?? false,
+                            portal_password_hash: (prof as any).portal_password_hash || null,
+                          });
+                          setPortalDialogOpen(true);
+                        }}
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
