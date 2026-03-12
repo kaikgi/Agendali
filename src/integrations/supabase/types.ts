@@ -2095,10 +2095,15 @@ export type Database = {
             Returns: Json
           }
       get_professional_client_tags: { Args: { p_token: string }; Returns: Json }
-      get_professional_commissions: {
-        Args: { p_date_from?: string; p_date_to?: string; p_token: string }
-        Returns: Json
-      }
+      get_professional_commissions:
+        | {
+            Args: { p_date_from?: string; p_date_to?: string; p_token: string }
+            Returns: Json
+          }
+        | {
+            Args: { p_date_from?: string; p_date_to?: string; p_token: string }
+            Returns: Json
+          }
       get_professional_customer_tags: {
         Args: { p_customer_id: string; p_token: string }
         Returns: Json
