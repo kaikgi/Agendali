@@ -775,12 +775,12 @@ function ComissoesContent() {
 
       {/* ── KPI Dashboard ───────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard icon={DollarSign} label="Receita Total" value={formatCents(totalRevenue)} color="text-emerald-600" bgColor="bg-emerald-50" />
+        <KpiCard icon={DollarSign} label="Receita Realizada" value={formatCents(totalRevenue)} subValue="Somente concluídos" color="text-emerald-600" bgColor="bg-emerald-50" />
         <KpiCard icon={Calculator} label="Comissão Total" value={formatCents(totalCommission)} color="text-violet-600" bgColor="bg-violet-50" />
         <KpiCard icon={Clock} label="Pendente" value={formatCents(pendingTotal)} color="text-orange-600" bgColor="bg-orange-50" />
         <KpiCard icon={Wallet} label="Já Repassado" value={formatCents(settledTotal)} color="text-teal-600" bgColor="bg-teal-50" />
-        <KpiCard icon={BarChart3} label="Ticket Médio" value={formatCents(avgTicket)} color="text-indigo-600" bgColor="bg-indigo-50" />
-        <KpiCard icon={Users} label="Atendimentos" value={String(entries.length)} color="text-blue-600" bgColor="bg-blue-50" />
+        <KpiCard icon={BarChart3} label="Ticket Médio" value={formatCents(avgTicket)} subValue="Por atendimento concluído" color="text-indigo-600" bgColor="bg-indigo-50" />
+        <KpiCard icon={Users} label="Atendimentos" value={String(activeEntries.length)} color="text-blue-600" bgColor="bg-blue-50" />
       </div>
 
       {/* ── Rankings ────────────────────────────────────── */}
