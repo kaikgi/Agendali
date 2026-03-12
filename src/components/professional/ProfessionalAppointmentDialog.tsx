@@ -1,4 +1,5 @@
 import { useState } from 'react';
+// PortalAppointment is exported from this file for use by other components
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {

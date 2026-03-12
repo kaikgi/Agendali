@@ -40,48 +40,6 @@ interface Appointment {
   service: { id: string; name: string; duration_minutes: number } | null;
 }
 
-const statusColors: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
-  booked: 'bg-blue-100 text-blue-800 border-blue-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  arrived: 'bg-purple-100 text-purple-800 border-purple-200',
-  in_service: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  completed: 'bg-muted text-muted-foreground border-border',
-  no_show: 'bg-red-100 text-red-800 border-red-200',
-  canceled: 'bg-red-100 text-red-800 border-red-200',
-  paid_pending_confirmation: 'bg-primary/10 text-primary border-primary/20',
-  pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
-  canceled_by_customer: 'bg-red-100 text-red-800 border-red-200',
-  canceled_by_establishment: 'bg-orange-100 text-orange-800 border-orange-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-};
-
-const statusLabels: Record<string, string> = {
-  pending_approval: 'Aguardando aprovação',
-  booked: 'Agendado',
-  confirmed: 'Confirmado',
-  arrived: 'Chegou',
-  in_service: 'Em atendimento',
-  completed: 'Concluído',
-  no_show: 'Não compareceu',
-  canceled: 'Cancelado',
-  canceled_by_customer: 'Cancelado pelo cliente',
-  canceled_by_establishment: 'Cancelado pelo estabelecimento',
-  rejected: 'Recusado',
-};
-
-// Unique legend entries (deduped by label) for the status bar
-const legendStatuses: { key: string; label: string }[] = [
-  { key: 'pending_approval', label: 'Aguardando aprovação' },
-  { key: 'booked', label: 'Agendado' },
-  { key: 'confirmed', label: 'Confirmado' },
-  { key: 'arrived', label: 'Chegou' },
-  { key: 'in_service', label: 'Em atendimento' },
-  { key: 'completed', label: 'Concluído' },
-  { key: 'no_show', label: 'Não compareceu' },
-  { key: 'canceled', label: 'Cancelado' },
-];
-
 type ViewMode = 'week' | 'month' | 'list';
 
 export default function Agenda() {

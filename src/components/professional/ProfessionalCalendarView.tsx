@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { statusColors, dotColors } from '@/lib/appointmentStatus';
+import type { PortalAppointment } from '@/components/professional/ProfessionalAppointmentDialog';
 
 interface ProfessionalCalendarViewProps {
   currentMonth: Date;

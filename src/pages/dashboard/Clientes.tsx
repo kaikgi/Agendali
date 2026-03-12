@@ -263,8 +263,8 @@ export default function Clientes() {
                                 )}
                               </div>
                               <div className="text-right space-y-2">
-                                <Badge className={`${statusColors[appointment.status]} text-white`}>
-                                  {statusLabels[appointment.status]}
+                                <Badge className={`${getStatusBadgeClasses(appointment.status)} border`}>
+                                  {getStatusLabel(appointment.status)}
                                 </Badge>
                                 {appointment.service?.price_cents && (
                                   <p className="text-sm font-medium">
