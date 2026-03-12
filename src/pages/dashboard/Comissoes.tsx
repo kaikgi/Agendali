@@ -743,21 +743,15 @@ function ComissoesContent() {
 
   const handleExportSummary = () => {
     if (!summary.length) return;
-    const headers = ['Profissional', 'Atendimentos', 'Receita Bruta', 'Comissão Total', 'Pendente', 'Repassado', 'Ticket Médio'];
+    const headers = ['Profissional', 'Atendimentos', 'Receita Realizada', 'Comissão Total', 'Pendente', 'Repassado', 'Ticket Médio'];
     const rows = summary.map((s) => {
-      const pendingAmt = entries
-        .filter((e) => e.professional_id === s.professionalId && e.status === 'pending')
-        .reduce((sum, e) => sum + e.commission_amount_cents, 0);
-      const settledAmt = entries
-        .filter((e) => e.professional_id === s.professionalId && e.status === 'settled')
-        .reduce((sum, e) => sum + e.commission_amount_cents, 0);
       return [
         s.professionalName,
         String(s.count),
         (s.totalRevenue / 100).toFixed(2),
         (s.totalCommission / 100).toFixed(2),
-        (pendingAmt / 100).toFixed(2),
-        (settledAmt / 100).toFixed(2),
+        (s.pendingAmount / 100).toFixed(2),
+        (s.settledAmount / 100).toFixed(2),
         s.count ? (s.totalRevenue / s.count / 100).toFixed(2) : '0',
       ];
     });
