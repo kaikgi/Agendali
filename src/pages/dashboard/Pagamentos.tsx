@@ -1,7 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { FeatureGate } from '@/components/dashboard/FeatureGate';
 import {
   usePaymentAccount,
   usePaymentSettings,
@@ -43,11 +42,7 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export default function Pagamentos() {
-  return (
-    <FeatureGate feature="online_payments">
-      <PagamentosContent />
-    </FeatureGate>
-  );
+  return <PagamentosContent />;
 }
 
 function PagamentosContent() {

@@ -66,7 +66,7 @@ export function HeroSection() {
                 ))}
               </div>
               <div className="text-body-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">2.500+</span> profissionais confiam na Agendali
+                Profissionais já confiam na <span className="font-semibold text-foreground">Agendali</span>
               </div>
             </div>
           </div>

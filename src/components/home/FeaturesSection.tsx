@@ -94,7 +94,7 @@ const features: Feature[] = [
     description: "Configure seu estabelecimento em minutos e comece a receber agendamentos hoje.",
     details: [
       "Cadastro em menos de 5 minutos",
-      "Importação de serviços",
+      "Configuração guiada",
       "Suporte dedicado"
     ]
   },
