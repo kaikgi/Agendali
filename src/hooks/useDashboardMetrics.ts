@@ -37,7 +37,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .select('id', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!)
           .gte('start_at', weekStart)
-          .neq('status', 'canceled');
+          .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
       } catch {
