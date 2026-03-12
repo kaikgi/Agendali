@@ -4,6 +4,7 @@ import { format, addMinutes, isBefore, addHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getStatusLabel, getStatusVariant } from '@/lib/appointmentStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
@@ -98,15 +99,7 @@ export default function ManageAppointment() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      booked: { label: 'Agendado', variant: 'default' },
-      confirmed: { label: 'Confirmado', variant: 'default' },
-      completed: { label: 'Concluído', variant: 'secondary' },
-      canceled: { label: 'Cancelado', variant: 'destructive' },
-      no_show: { label: 'Não compareceu', variant: 'outline' },
-    };
-    const config = statusConfig[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>;
   };
 
   const formatPrice = (cents: number) => {

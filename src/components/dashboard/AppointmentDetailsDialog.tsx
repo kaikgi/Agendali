@@ -34,7 +34,7 @@ interface AppointmentDetailsDialogProps {
   appointment: Appointment | null;
 }
 
-const statusOptions: string[] = ['pending_approval', 'paid_pending_confirmation', 'pending_payment', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
+const statusOptions: string[] = ['pending_approval', 'paid_pending_confirmation', 'pending_payment', 'booked', 'confirmed', 'arrived', 'in_service', 'completed', 'no_show', 'canceled', 'rejected'];
 
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();
