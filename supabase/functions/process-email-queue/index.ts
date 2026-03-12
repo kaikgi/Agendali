@@ -55,6 +55,7 @@ interface TypeConfig {
   showCTA: boolean;
   showWarning: boolean;
   showFooterNote: boolean;
+  showRatingCTA?: boolean;
 }
 
 const TYPE_MAP: Record<string, TypeConfig> = {
@@ -84,7 +85,8 @@ const TYPE_MAP: Record<string, TypeConfig> = {
     accent: "#7c3aed", bg: "#f5f3ff",
     message: (n) => `Seu atendimento em <strong>${n}</strong> foi concluído com sucesso. Obrigado pela preferência!`,
     subject: (n) => `🎉 Atendimento concluído - ${n}`,
-    showCTA: true, showWarning: false, showFooterNote: false,
+    showCTA: false, showWarning: false, showFooterNote: false,
+    showRatingCTA: true,
   },
   appointment_no_show: {
     icon: "📋", title: "Registro de Ausência",
@@ -155,6 +157,7 @@ interface EmailPayload {
   establishment_phone?: string | null;
   establishment_address?: string | null;
   start_at: string;
+  manage_token_hash?: string | null;
 }
 
 // ─── Build payload from job data + optional DB enrichment ────
@@ -257,7 +260,7 @@ async function buildEmailPayload(
 }
 
 // ─── Build HTML ──────────────────────────────────────────────
-function buildHtml(cfg: TypeConfig, p: EmailPayload): string {
+function buildHtml(cfg: TypeConfig, p: EmailPayload, manageUrl?: string): string {
   const baseUrl = `https://www.agendali.online/${p.establishment_slug}`;
   const logoUrl = "https://www.agendali.online/logo-512.png";
   const { accent, bg } = cfg;
@@ -299,6 +302,7 @@ function buildHtml(cfg: TypeConfig, p: EmailPayload): string {
         </td></tr>
         ${cfg.showWarning ? `<tr><td style="padding-bottom:24px;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:8px;"><tr><td style="padding:14px 18px;font-size:14px;color:#92400e;line-height:1.5;"><strong>⚠️ Importante:</strong> Caso não possa comparecer, por favor avise com antecedência.</td></tr></table></td></tr>` : ""}
         ${cfg.showCTA ? `<tr><td align="center" style="padding-bottom:24px;"><a href="${baseUrl}" style="display:inline-block;padding:14px 32px;background-color:#111827;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;">Agendar novo horário</a></td></tr>` : ""}
+        ${cfg.showRatingCTA && manageUrl ? `<tr><td style="padding-bottom:24px;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f3ff;border:1px solid #c4b5fd;border-radius:12px;"><tr><td style="padding:24px;text-align:center;"><p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#7c3aed;">⭐ Avalie seu atendimento</p><p style="margin:0 0 16px;font-size:14px;color:#6b7280;">Sua opinião é muito importante para nós!</p><a href="${manageUrl}" style="display:inline-block;padding:14px 32px;background-color:#7c3aed;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;">Avaliar Atendimento</a></td></tr></table></td></tr>` : ""}
         ${cfg.showFooterNote ? `<tr><td style="padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">Caso precise reagendar ou cancelar, acesse sua área de agendamentos.</p></td></tr>` : ""}
         <tr><td style="padding-top:24px;border-top:1px solid #e5e7eb;">
           <p style="margin:0;text-align:center;font-size:12px;color:#9ca3af;line-height:1.6;">Enviado por ${p.establishment_name} através do <a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">Agendali</a></p>
@@ -391,7 +395,33 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Unknown email type: ${emailType}`);
         }
 
-        const html = buildHtml(cfg, emailPayload);
+        // Build manage URL for rating CTA (completed emails)
+        let manageUrl: string | undefined;
+        if (cfg.showRatingCTA && emailPayload.establishment_slug) {
+          // Try to get manage_token from this job's payload first
+          const jobPld = (job.payload && typeof job.payload === "object") ? job.payload as Record<string, unknown> : {};
+          let token = jobPld.manage_token as string | null;
+          
+          // If not in this payload, look up from the original booking email job
+          if (!token) {
+            const { data: origJob } = await supabase
+              .from("appointment_email_jobs")
+              .select("payload")
+              .eq("appointment_id", job.appointment_id)
+              .in("email_type", ["appointment_confirmation", "appointment_pending_approval"])
+              .limit(1)
+              .maybeSingle();
+            if (origJob?.payload && typeof origJob.payload === "object") {
+              token = (origJob.payload as Record<string, unknown>).manage_token as string | null;
+            }
+          }
+          
+          if (token) {
+            manageUrl = `https://www.agendali.online/${emailPayload.establishment_slug}/gerenciar/${token}`;
+          }
+        }
+
+        const html = buildHtml(cfg, emailPayload, manageUrl);
         const subject = job.subject || cfg.subject(emailPayload.establishment_name);
         const fromAddress = `${sanitizeName(emailPayload.establishment_name)} <${RESEND_FROM}>`;
 
