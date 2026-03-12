@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Star, Check, Trash2, CheckCheck } from 'lucide-react';
+import { Bell, Star, Check, Trash2, CheckCheck, Calendar, XCircle, RefreshCw, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -14,20 +14,59 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useInAppNotifications, InAppNotification } from '@/hooks/useInAppNotifications';
 
-function StarRating({ stars }: { stars: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={cn(
-            'h-3 w-3',
-            i <= stars ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'
-          )}
-        />
-      ))}
-    </div>
-  );
+function getNotificationIcon(type: string) {
+  switch (type) {
+    case 'new_appointment':
+      return (
+        <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+          <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
+        </div>
+      );
+    case 'pending_approval':
+      return (
+        <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        </div>
+      );
+    case 'cancelled_appointment':
+      return (
+        <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+        </div>
+      );
+    case 'rescheduled_appointment':
+      return (
+        <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </div>
+      );
+    case 'new_rating':
+      return (
+        <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+          <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        </div>
+      );
+    default:
+      return (
+        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+          <Bell className="h-4 w-4 text-muted-foreground" />
+        </div>
+      );
+  }
+}
+
+function getNavigationPath(notification: InAppNotification): string {
+  switch (notification.type) {
+    case 'new_appointment':
+    case 'pending_approval':
+    case 'cancelled_appointment':
+    case 'rescheduled_appointment':
+      return '/dashboard/agenda';
+    case 'new_rating':
+      return '/dashboard/avaliacoes';
+    default:
+      return '/dashboard';
+  }
 }
 
 function NotificationItem({
@@ -45,33 +84,24 @@ function NotificationItem({
     <div
       className={cn(
         'flex items-start gap-3 p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer transition-colors',
-        !notification.read && 'bg-primary/5'
+        !notification.is_read && 'bg-primary/5'
       )}
       onClick={onClick}
     >
       <div className="flex-shrink-0 mt-0.5">
-        {notification.type === 'new_rating' && (
-          <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-            <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-          </div>
-        )}
+        {getNotificationIcon(notification.type)}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm">{notification.title}</span>
-          {!notification.read && (
+          {!notification.is_read && (
             <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
           )}
         </div>
         <p className="text-sm text-muted-foreground line-clamp-2">
           {notification.message}
         </p>
-        {notification.data.stars && (
-          <div className="mt-1">
-            <StarRating stars={notification.data.stars} />
-          </div>
-        )}
         <p className="text-xs text-muted-foreground mt-1">
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
@@ -81,7 +111,7 @@ function NotificationItem({
       </div>
 
       <div className="flex flex-col gap-1 flex-shrink-0">
-        {!notification.read && (
+        {!notification.is_read && (
           <Button
             variant="ghost"
             size="icon"
@@ -125,11 +155,8 @@ export function NotificationBell() {
 
   const handleNotificationClick = (notification: InAppNotification) => {
     markAsRead(notification.id);
-    
-    if (notification.type === 'new_rating') {
-      navigate('/dashboard/avaliacoes');
-      setOpen(false);
-    }
+    navigate(getNavigationPath(notification));
+    setOpen(false);
   };
 
   return (
