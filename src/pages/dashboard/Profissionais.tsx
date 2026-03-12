@@ -49,6 +49,8 @@ export default function Profissionais() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { professionals, isLoading, error, refetch, create, update, delete: deleteProfessional, isCreating, isUpdating } = useManageProfessionals(establishment?.id);
   const { data: limits } = usePlanLimits(establishment?.id);
+  const { features } = usePlanFeatures();
+  const hasPortalAccess = features.professional_portal;
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
