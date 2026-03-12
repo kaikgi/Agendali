@@ -166,7 +166,7 @@ export function useReportData(filters: ReportFilters) {
 
   const total = filtered.length;
   const confirmed = filtered.filter(a => ['confirmed', 'booked', 'completed'].includes(a.status)).length;
-  const canceled = filtered.filter(a => a.status === 'canceled').length;
+  const canceled = filtered.filter(a => ['canceled', 'canceled_by_customer', 'canceled_by_establishment'].includes(a.status)).length;
   const noShow = filtered.filter(a => a.status === 'no_show').length;
   const completed = filtered.filter(a => a.status === 'completed').length;
 

@@ -229,7 +229,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
         
         if (data) {
           data.forEach((apt) => {
-            if (apt.status !== 'canceled') {
+            if (!['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'rejected'].includes(apt.status)) {
               const dayKey = format(startOfDay(parseISO(apt.start_at)), 'yyyy-MM-dd');
               if (dayMap[dayKey]) {
                 dayMap[dayKey].count += 1;
