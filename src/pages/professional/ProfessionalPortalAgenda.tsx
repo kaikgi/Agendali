@@ -49,6 +49,7 @@ import { ProfessionalCalendarView } from '@/components/professional/Professional
 import { ProfessionalDashboardView } from '@/components/professional/ProfessionalDashboardView';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
 import { ProfessionalTimeBlocksView } from '@/components/professional/ProfessionalTimeBlocksView';
+import { ProfessionalCustomerTagsDialog } from '@/components/professional/ProfessionalCustomerTagsDialog';
 import type { PortalAppointment } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
