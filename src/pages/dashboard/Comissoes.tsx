@@ -1075,9 +1075,9 @@ function ComissoesContent() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 text-sm">
                         <div className="p-3 rounded-lg bg-muted/50">
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">Receita bruta</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Receita realizada</p>
                           <p className="text-base font-semibold">{formatCents(s.totalRevenue)}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-muted/50">
@@ -1099,6 +1099,16 @@ function ComissoesContent() {
                         <div className="p-3 rounded-lg bg-muted/50">
                           <p className="text-[10px] sm:text-xs text-muted-foreground">Atendimentos</p>
                           <p className="text-base font-semibold">{s.count}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Pendentes repasse</p>
+                          <p className="text-base font-semibold">{s.pendingCount}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">Último repasse</p>
+                          <p className="text-base font-semibold text-sm">
+                            {lastSettlement ? format(new Date(lastSettlement.paid_at || lastSettlement.created_at), 'dd/MM/yy') : '—'}
+                          </p>
                         </div>
                       </div>
 
