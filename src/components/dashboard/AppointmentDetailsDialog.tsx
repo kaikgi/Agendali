@@ -19,7 +19,7 @@ interface Appointment {
   id: string;
   start_at: string;
   end_at: string;
-  status: AppointmentStatus;
+  status: string;
   customer_notes: string | null;
   internal_notes: string | null;
   created_at: string;

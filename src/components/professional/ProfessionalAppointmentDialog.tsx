@@ -35,6 +35,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { statusColors, statusLabels } from '@/lib/appointmentStatus';
 
+export interface PortalAppointment {
+  id: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string | null;
+  service_name: string;
+  service_duration: number;
+  service_price_cents?: number | null;
+  customer_notes: string | null;
+  internal_notes?: string | null;
+  completed_at?: string | null;
+  created_at?: string;
+  payment_status?: string | null;
+  payment_amount_cents?: number | null;
+  commission_amount_cents?: number | null;
+  commission_type?: string | null;
+  commission_value?: number | null;
+}
+
 function formatCents(cents: number | null | undefined): string {
   if (!cents) return '—';
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
