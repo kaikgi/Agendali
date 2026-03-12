@@ -27,6 +27,7 @@ import {
   Search,
   DollarSign,
   LayoutDashboard,
+  Ban,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,40 +48,38 @@ import { ProfessionalCommissionsView } from '@/components/professional/Professio
 import { ProfessionalCalendarView } from '@/components/professional/ProfessionalCalendarView';
 import { ProfessionalDashboardView } from '@/components/professional/ProfessionalDashboardView';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
+import { ProfessionalTimeBlocksView } from '@/components/professional/ProfessionalTimeBlocksView';
+import type { PortalAppointment } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 
 const statusColors: Record<string, string> = {
+  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
+  paid_pending_confirmation: 'bg-amber-100 text-amber-800 border-amber-200',
+  pending_payment: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   booked: 'bg-blue-100 text-blue-800 border-blue-200',
   confirmed: 'bg-green-100 text-green-800 border-green-200',
   completed: 'bg-muted text-muted-foreground border-border',
   no_show: 'bg-red-100 text-red-800 border-red-200',
   canceled: 'bg-red-100 text-red-800 border-red-200',
+  rejected: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const statusLabels: Record<string, string> = {
+  pending_approval: 'Aguardando aprovação',
+  paid_pending_confirmation: 'Pago – aguardando',
+  pending_payment: 'Aguardando pagamento',
   booked: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
   no_show: 'Não compareceu',
   canceled: 'Cancelado',
+  rejected: 'Recusado',
 };
 
 type ViewMode = 'week' | 'list';
-type TabMode = 'dashboard' | 'agenda' | 'calendar' | 'commissions' | 'profile';
-
-interface PortalAppointment {
-  id: string;
-  start_at: string;
-  end_at: string;
-  status: string;
-  customer_name: string;
-  customer_phone: string;
-  service_name: string;
-  service_duration: number;
-  customer_notes: string | null;
-}
+type TabMode = 'dashboard' | 'agenda' | 'calendar' | 'blocks' | 'commissions' | 'profile';
 
 export default function ProfessionalPortalAgenda() {
   const { establishmentSlug, professionalSlug } = useParams<{
@@ -146,7 +145,9 @@ export default function ProfessionalPortalAgenda() {
   const filteredAppointments = useMemo(() => {
     let filtered = appointments || [];
     if (statusFilter === 'active') {
-      filtered = filtered.filter((a) => ['booked', 'confirmed'].includes(a.status));
+      filtered = filtered.filter((a) => ['booked', 'confirmed', 'pending_approval', 'paid_pending_confirmation', 'pending_payment'].includes(a.status));
+    } else if (statusFilter === 'pending') {
+      filtered = filtered.filter((a) => ['pending_approval', 'paid_pending_confirmation'].includes(a.status));
     } else if (statusFilter !== 'all') {
       filtered = filtered.filter((a) => a.status === statusFilter);
     }
@@ -162,10 +163,16 @@ export default function ProfessionalPortalAgenda() {
     return filtered.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
   }, [appointments, statusFilter, searchQuery]);
 
+  const pendingCount = useMemo(() => {
+    return (appointments || []).filter((a) =>
+      ['pending_approval', 'paid_pending_confirmation'].includes(a.status)
+    ).length;
+  }, [appointments]);
+
   const nextAppointment = useMemo(() => {
     const now = new Date();
     return (appointments || [])
-      .filter((a) => ['booked', 'confirmed'].includes(a.status) && new Date(a.start_at) > now)
+      .filter((a) => ['booked', 'confirmed', 'pending_approval', 'paid_pending_confirmation'].includes(a.status) && new Date(a.start_at) > now)
       .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0] || null;
   }, [appointments]);
 
@@ -231,6 +238,27 @@ export default function ProfessionalPortalAgenda() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-4 sm:py-6 max-w-6xl">
+        {/* Pending approval alert */}
+        {pendingCount > 0 && (activeTab === 'dashboard' || activeTab === 'agenda') && (
+          <button
+            type="button"
+            onClick={() => { setActiveTab('agenda'); setStatusFilter('pending'); }}
+            className="w-full mb-4 p-3 rounded-xl border bg-amber-50 border-amber-200 hover:bg-amber-100 transition-all text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-amber-100">
+                <Clock className="h-4 w-4 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  {pendingCount} agendamento{pendingCount > 1 ? 's' : ''} aguardando sua aprovação
+                </p>
+                <p className="text-xs text-amber-600">Clique para revisar e aprovar</p>
+              </div>
+            </div>
+          </button>
+        )}
+
         {/* Next appointment quick card */}
         {nextAppointment && (activeTab === 'dashboard' || activeTab === 'agenda') && (
           <button
@@ -265,13 +293,22 @@ export default function ProfessionalPortalAgenda() {
                 <LayoutDashboard className="h-4 w-4" />
                 <span className="hidden sm:inline">Painel</span>
               </TabsTrigger>
-              <TabsTrigger value="agenda" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
+              <TabsTrigger value="agenda" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none relative">
                 <List className="h-4 w-4" />
                 <span className="hidden sm:inline">Agenda</span>
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 text-[10px] text-white flex items-center justify-center font-bold">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <CalendarIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Calendário</span>
+              </TabsTrigger>
+              <TabsTrigger value="blocks" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
+                <Ban className="h-4 w-4" />
+                <span className="hidden sm:inline">Bloqueios</span>
               </TabsTrigger>
               <TabsTrigger value="commissions" className="gap-1.5 text-xs sm:text-sm flex-1 sm:flex-none">
                 <DollarSign className="h-4 w-4" />
@@ -307,16 +344,18 @@ export default function ProfessionalPortalAgenda() {
                   />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="pending">Aguardando aprovação</SelectItem>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="booked">Agendados</SelectItem>
                     <SelectItem value="confirmed">Confirmados</SelectItem>
                     <SelectItem value="completed">Concluídos</SelectItem>
                     <SelectItem value="canceled">Cancelados</SelectItem>
+                    <SelectItem value="no_show">Não compareceu</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -440,7 +479,10 @@ export default function ProfessionalPortalAgenda() {
                         filteredAppointments.map((apt) => (
                           <TableRow
                             key={apt.id}
-                            className="cursor-pointer hover:bg-muted/50"
+                            className={cn(
+                              'cursor-pointer hover:bg-muted/50',
+                              ['pending_approval', 'paid_pending_confirmation'].includes(apt.status) && 'bg-amber-50/50'
+                            )}
                             onClick={() => handleAppointmentClick(apt)}
                           >
                             <TableCell>
@@ -466,7 +508,7 @@ export default function ProfessionalPortalAgenda() {
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className={cn('text-[10px] sm:text-xs', statusColors[apt.status])}>
-                                {statusLabels[apt.status]}
+                                {statusLabels[apt.status] || apt.status}
                               </Badge>
                             </TableCell>
                           </TableRow>
@@ -488,6 +530,11 @@ export default function ProfessionalPortalAgenda() {
               onAppointmentClick={handleAppointmentClick}
               isLoading={appointmentsLoading}
             />
+          </TabsContent>
+
+          {/* ============ BLOCKS TAB ============ */}
+          <TabsContent value="blocks" className="space-y-6">
+            <ProfessionalTimeBlocksView token={token!} />
           </TabsContent>
 
           {/* ============ COMMISSIONS TAB ============ */}
