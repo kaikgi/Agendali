@@ -260,7 +260,7 @@ async function buildEmailPayload(
 }
 
 // ─── Build HTML ──────────────────────────────────────────────
-function buildHtml(cfg: TypeConfig, p: EmailPayload): string {
+function buildHtml(cfg: TypeConfig, p: EmailPayload, manageUrl?: string): string {
   const baseUrl = `https://www.agendali.online/${p.establishment_slug}`;
   const logoUrl = "https://www.agendali.online/logo-512.png";
   const { accent, bg } = cfg;
