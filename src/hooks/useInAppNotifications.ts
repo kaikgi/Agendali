@@ -5,112 +5,68 @@ import { useUserEstablishment } from './useUserEstablishment';
 
 export interface InAppNotification {
   id: string;
-  type: 'new_rating' | 'new_appointment' | 'cancelled_appointment';
+  type: string;
   title: string;
   message: string;
-  data: {
-    ratingId?: string;
-    appointmentId?: string;
-    stars?: number;
-    customerName?: string;
-    serviceName?: string;
-  };
-  read: boolean;
+  data: Record<string, any>;
+  is_read: boolean;
+  appointment_id: string | null;
   created_at: string;
 }
 
-// Local storage key for notifications
-const NOTIFICATIONS_KEY = 'agendali_notifications';
-const READ_NOTIFICATIONS_KEY = 'agendali_read_notifications';
-
 export function useInAppNotifications() {
   const { data: establishment } = useUserEstablishment();
-  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const queryClient = useQueryClient();
+  const establishmentId = establishment?.id;
 
-  // Load notifications from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(NOTIFICATIONS_KEY);
-    const readIds = JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]');
-    
-    if (stored) {
-      const parsed = JSON.parse(stored) as InAppNotification[];
-      // Mark read notifications
-      const withReadStatus = parsed.map(n => ({
-        ...n,
-        read: readIds.includes(n.id)
-      }));
-      setNotifications(withReadStatus);
-    }
-  }, []);
+  // Fetch notifications from DB
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['establishment-notifications', establishmentId],
+    queryFn: async () => {
+      if (!establishmentId) return [];
+      const { data, error } = await supabase
+        .from('establishment_notifications')
+        .select('*')
+        .eq('establishment_id', establishmentId)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-  // Save notifications to localStorage whenever they change
-  useEffect(() => {
-    if (notifications.length > 0) {
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
-    }
-  }, [notifications]);
+      if (error) {
+        console.error('[Notifications] Error fetching:', error);
+        return [];
+      }
 
-  // Subscribe to new ratings via Realtime
+      return (data || []).map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        data: n.data || {},
+        is_read: n.is_read,
+        appointment_id: n.appointment_id,
+        created_at: n.created_at,
+      })) as InAppNotification[];
+    },
+    enabled: !!establishmentId,
+    refetchInterval: 30000, // Fallback polling every 30s
+  });
+
+  // Realtime subscription for new notifications
   useEffect(() => {
-    if (!establishment?.id) return;
+    if (!establishmentId) return;
 
     const channel = supabase
-      .channel('ratings-notifications')
+      .channel(`notifications-${establishmentId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'ratings',
-          filter: `establishment_id=eq.${establishment.id}`,
+          table: 'establishment_notifications',
+          filter: `establishment_id=eq.${establishmentId}`,
         },
-        async (payload) => {
-          const rating = payload.new as {
-            id: string;
-            stars: number;
-            comment: string | null;
-            customer_id: string;
-            appointment_id: string;
-            created_at: string;
-          };
-
-          const { data: appointmentData } = await supabase
-            .from('appointments')
-            .select(`
-              id,
-              customer:customers!appointments_customer_id_fkey(name),
-              service:services!appointments_service_id_fkey(name)
-            `)
-            .eq('id', rating.appointment_id)
-            .single();
-
-          const customerName = (appointmentData?.customer as any)?.name || 'Cliente';
-          const serviceName = (appointmentData?.service as any)?.name || 'Serviço';
-
-          const newNotification: InAppNotification = {
-            id: `rating-${rating.id}`,
-            type: 'new_rating',
-            title: 'Nova Avaliação',
-            message: `${customerName} avaliou ${serviceName} com ${rating.stars} estrela${rating.stars !== 1 ? 's' : ''}`,
-            data: {
-              ratingId: rating.id,
-              appointmentId: rating.appointment_id,
-              stars: rating.stars,
-              customerName,
-              serviceName,
-            },
-            read: false,
-            created_at: rating.created_at,
-          };
-
-          setNotifications(prev => {
-            if (prev.some(n => n.id === newNotification.id)) return prev;
-            return [newNotification, ...prev].slice(0, 50);
-          });
-
-          queryClient.invalidateQueries({ queryKey: ['establishment-rating'] });
-          queryClient.invalidateQueries({ queryKey: ['establishment-ratings'] });
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['establishment-notifications', establishmentId] });
         }
       )
       .subscribe();
@@ -118,115 +74,85 @@ export function useInAppNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [establishment?.id, queryClient]);
+  }, [establishmentId, queryClient]);
 
-  // Subscribe to new appointments via Realtime
-  useEffect(() => {
-    if (!establishment?.id) return;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-    const channel = supabase
-      .channel('appointments-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'appointments',
-          filter: `establishment_id=eq.${establishment.id}`,
-        },
-        async (payload) => {
-          const appointment = payload.new as {
-            id: string;
-            customer_id: string;
-            service_id: string;
-            professional_id: string;
-            start_at: string;
-            created_at: string;
-          };
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      // Optimistic update
+      queryClient.setQueryData(
+        ['establishment-notifications', establishmentId],
+        (old: InAppNotification[] | undefined) =>
+          (old || []).map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+      );
 
-          // Fetch details
-          const [customerRes, serviceRes, professionalRes] = await Promise.all([
-            supabase.from('customers').select('name').eq('id', appointment.customer_id).single(),
-            supabase.from('services').select('name').eq('id', appointment.service_id).single(),
-            supabase.from('professionals').select('name').eq('id', appointment.professional_id).single(),
-          ]);
+      const { error } = await supabase
+        .from('establishment_notifications')
+        .update({ is_read: true } as any)
+        .eq('id', notificationId);
 
-          const customerName = customerRes.data?.name || 'Cliente';
-          const serviceName = serviceRes.data?.name || 'Serviço';
-          const professionalName = professionalRes.data?.name || 'Profissional';
+      if (error) console.error('[Notifications] Error marking as read:', error);
+    },
+    [establishmentId, queryClient]
+  );
 
-          const startDate = new Date(appointment.start_at);
-          const dateStr = startDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-          const timeStr = startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const markAllAsRead = useCallback(async () => {
+    if (!establishmentId) return;
 
-          const newNotification: InAppNotification = {
-            id: `appointment-${appointment.id}`,
-            type: 'new_appointment',
-            title: 'Novo Agendamento',
-            message: `${customerName} agendou ${serviceName} com ${professionalName} em ${dateStr} às ${timeStr}`,
-            data: {
-              appointmentId: appointment.id,
-              customerName,
-              serviceName,
-            },
-            read: false,
-            created_at: appointment.created_at,
-          };
-
-          setNotifications(prev => {
-            if (prev.some(n => n.id === newNotification.id)) return prev;
-            return [newNotification, ...prev].slice(0, 50);
-          });
-
-          // Refresh appointment queries
-          queryClient.invalidateQueries({ queryKey: ['appointments'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [establishment?.id, queryClient]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === notificationId ? { ...n, read: true } : n))
+    queryClient.setQueryData(
+      ['establishment-notifications', establishmentId],
+      (old: InAppNotification[] | undefined) =>
+        (old || []).map((n) => ({ ...n, is_read: true }))
     );
-    
-    // Update read IDs in localStorage
-    const readIds = JSON.parse(localStorage.getItem(READ_NOTIFICATIONS_KEY) || '[]');
-    if (!readIds.includes(notificationId)) {
-      localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify([...readIds, notificationId]));
-    }
-  }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    
-    const allIds = notifications.map(n => n.id);
-    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allIds));
-  }, [notifications]);
+    const { error } = await supabase
+      .from('establishment_notifications')
+      .update({ is_read: true } as any)
+      .eq('establishment_id', establishmentId)
+      .eq('is_read', false);
 
-  const clearNotifications = useCallback(() => {
-    setNotifications([]);
-    localStorage.removeItem(NOTIFICATIONS_KEY);
-    localStorage.removeItem(READ_NOTIFICATIONS_KEY);
-  }, []);
+    if (error) console.error('[Notifications] Error marking all as read:', error);
+  }, [establishmentId, queryClient]);
 
-  const removeNotification = useCallback((notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  }, []);
+  const removeNotification = useCallback(
+    async (notificationId: string) => {
+      queryClient.setQueryData(
+        ['establishment-notifications', establishmentId],
+        (old: InAppNotification[] | undefined) =>
+          (old || []).filter((n) => n.id !== notificationId)
+      );
+
+      const { error } = await supabase
+        .from('establishment_notifications')
+        .delete()
+        .eq('id', notificationId);
+
+      if (error) console.error('[Notifications] Error removing:', error);
+    },
+    [establishmentId, queryClient]
+  );
+
+  const clearNotifications = useCallback(async () => {
+    if (!establishmentId) return;
+
+    queryClient.setQueryData(['establishment-notifications', establishmentId], []);
+
+    const { error } = await supabase
+      .from('establishment_notifications')
+      .delete()
+      .eq('establishment_id', establishmentId);
+
+    if (error) console.error('[Notifications] Error clearing:', error);
+  }, [establishmentId, queryClient]);
 
   return {
     notifications,
     unreadCount,
+    isLoading,
     markAsRead,
     markAllAsRead,
-    clearNotifications,
     removeNotification,
+    clearNotifications,
   };
 }
