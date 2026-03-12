@@ -34,7 +34,7 @@ export interface ClientAppointment {
 }
 
 interface UseClientAppointmentsFilters {
-  status?: 'booked' | 'confirmed' | 'completed' | 'canceled' | 'no_show' | 'all';
+  status?: string;
   startDate?: Date;
   endDate?: Date;
 }
