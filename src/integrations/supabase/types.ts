@@ -470,6 +470,50 @@ export type Database = {
           },
         ]
       }
+      client_tags: {
+        Row: {
+          bypass_approval: boolean
+          color: string
+          created_at: string
+          establishment_id: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          bypass_approval?: boolean
+          color?: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          bypass_approval?: boolean
+          color?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_tags_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_entries: {
         Row: {
           appointment_date: string
@@ -687,6 +731,52 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tag_assignments: {
+        Row: {
+          created_at: string
+          customer_id: string
+          establishment_id: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          establishment_id: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          establishment_id?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tag_assignments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_tag_assignments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "client_tags"
             referencedColumns: ["id"]
           },
         ]
@@ -1912,6 +2002,10 @@ export type Database = {
           p_payload?: Json
         }
         Returns: Json
+      }
+      customer_has_bypass_approval: {
+        Args: { p_customer_id: string; p_establishment_id: string }
+        Returns: boolean
       }
       get_admin_audit_logs: {
         Args: {

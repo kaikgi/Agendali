@@ -13,13 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes } from '@/hooks/useAppointments';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';
+import { statusColors, statusLabels, type AppointmentStatus } from '@/lib/appointmentStatus';
 
 interface Appointment {
   id: string;
   start_at: string;
   end_at: string;
-  status: AppointmentStatus;
+  status: string;
   customer_notes: string | null;
   internal_notes: string | null;
   created_at: string;
@@ -34,31 +34,7 @@ interface AppointmentDetailsDialogProps {
   appointment: Appointment | null;
 }
 
-const statusColors: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
-  booked: 'bg-blue-100 text-blue-800 border-blue-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  completed: 'bg-gray-100 text-gray-800 border-gray-200',
-  no_show: 'bg-red-100 text-red-800 border-red-200',
-  canceled: 'bg-red-100 text-red-800 border-red-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-  paid_pending_confirmation: 'bg-primary/10 text-primary border-primary/20',
-  pending_payment: 'bg-amber-100 text-amber-800 border-amber-200',
-};
-
-const statusLabels: Record<AppointmentStatus, string> = {
-  pending_approval: 'Aguardando aprovação',
-  booked: 'Agendado',
-  confirmed: 'Confirmado',
-  completed: 'Concluído',
-  no_show: 'Não compareceu',
-  canceled: 'Cancelado',
-  rejected: 'Recusado',
-  paid_pending_confirmation: 'Pago — aguardando confirmação',
-  pending_payment: 'Aguardando pagamento',
-};
-
-const statusOptions: AppointmentStatus[] = ['pending_approval', 'paid_pending_confirmation', 'pending_payment', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
+const statusOptions: string[] = ['pending_approval', 'paid_pending_confirmation', 'pending_payment', 'booked', 'confirmed', 'completed', 'no_show', 'canceled', 'rejected'];
 
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();
@@ -77,9 +53,9 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
 
   if (!appointment) return null;
 
-  const handleStatusChange = async (newStatus: AppointmentStatus) => {
+  const handleStatusChange = async (newStatus: string) => {
     try {
-      await updateStatus({ id: appointment.id, status: newStatus, oldStatus: appointment.status });
+      await updateStatus({ id: appointment.id, status: newStatus as any, oldStatus: appointment.status });
       toast({ title: 'Status atualizado com sucesso!' });
       // Auto-close modal on success
       onOpenChange(false);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+// PortalAppointment is exported from this file for use by other components
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -32,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { statusColors, statusLabels } from '@/lib/appointmentStatus';
 
 export interface PortalAppointment {
   id: string;
@@ -54,30 +56,6 @@ export interface PortalAppointment {
   commission_type?: string | null;
   commission_value?: number | null;
 }
-
-const statusColors: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
-  paid_pending_confirmation: 'bg-amber-100 text-amber-800 border-amber-200',
-  pending_payment: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  booked: 'bg-blue-100 text-blue-800 border-blue-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  completed: 'bg-muted text-muted-foreground border-border',
-  no_show: 'bg-red-100 text-red-800 border-red-200',
-  canceled: 'bg-red-100 text-red-800 border-red-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-};
-
-const statusLabels: Record<string, string> = {
-  pending_approval: 'Aguardando aprovação',
-  paid_pending_confirmation: 'Pago – aguardando confirmação',
-  pending_payment: 'Aguardando pagamento',
-  booked: 'Agendado',
-  confirmed: 'Confirmado',
-  completed: 'Concluído',
-  no_show: 'Não compareceu',
-  canceled: 'Cancelado',
-  rejected: 'Recusado',
-};
 
 function formatCents(cents: number | null | undefined): string {
   if (!cents) return '—';

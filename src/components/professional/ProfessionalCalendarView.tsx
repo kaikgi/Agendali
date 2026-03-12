@@ -17,42 +17,8 @@ import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface PortalAppointment {
-  id: string;
-  start_at: string;
-  end_at: string;
-  status: string;
-  customer_name: string;
-  customer_phone: string;
-  service_name: string;
-  service_duration: number;
-  customer_notes: string | null;
-}
-
-const dotColors: Record<string, string> = {
-  pending_approval: 'bg-amber-500',
-  paid_pending_confirmation: 'bg-amber-500',
-  pending_payment: 'bg-yellow-500',
-  booked: 'bg-blue-500',
-  confirmed: 'bg-green-500',
-  completed: 'bg-muted-foreground',
-  no_show: 'bg-red-500',
-  canceled: 'bg-red-300',
-  rejected: 'bg-red-300',
-};
-
-const statusColors: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-800 border-amber-200',
-  paid_pending_confirmation: 'bg-amber-100 text-amber-800 border-amber-200',
-  pending_payment: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  booked: 'bg-blue-100 text-blue-800 border-blue-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  completed: 'bg-muted text-muted-foreground border-border',
-  no_show: 'bg-red-100 text-red-800 border-red-200',
-  canceled: 'bg-red-100 text-red-800 border-red-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-};
+import { statusColors, dotColors } from '@/lib/appointmentStatus';
+import type { PortalAppointment } from '@/components/professional/ProfessionalAppointmentDialog';
 
 interface ProfessionalCalendarViewProps {
   currentMonth: Date;
