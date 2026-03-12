@@ -43,11 +43,7 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export default function Pagamentos() {
-  return (
-    <FeatureGate feature="online_payments">
-      <PagamentosContent />
-    </FeatureGate>
-  );
+  return <PagamentosContent />;
 }
 
 function PagamentosContent() {
