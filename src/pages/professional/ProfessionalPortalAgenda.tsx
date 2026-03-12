@@ -49,6 +49,7 @@ import { ProfessionalCalendarView } from '@/components/professional/Professional
 import { ProfessionalDashboardView } from '@/components/professional/ProfessionalDashboardView';
 import { ProfessionalAppointmentDialog } from '@/components/professional/ProfessionalAppointmentDialog';
 import { ProfessionalTimeBlocksView } from '@/components/professional/ProfessionalTimeBlocksView';
+import { ProfessionalCustomerTagsDialog } from '@/components/professional/ProfessionalCustomerTagsDialog';
 import type { PortalAppointment } from '@/components/professional/ProfessionalAppointmentDialog';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
@@ -77,6 +78,8 @@ export default function ProfessionalPortalAgenda() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<PortalAppointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [tagsCustomer, setTagsCustomer] = useState<{ id: string; name: string } | null>(null);
 
   // Agenda date range
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
@@ -543,7 +546,22 @@ export default function ProfessionalPortalAgenda() {
         onOpenChange={setDialogOpen}
         token={token!}
         onStatusChanged={handleStatusChanged}
+        onOpenTags={(customerId, customerName) => {
+          setTagsCustomer({ id: customerId, name: customerName });
+          setTagsDialogOpen(true);
+        }}
       />
+
+      {/* Customer Tags Dialog */}
+      {tagsCustomer && (
+        <ProfessionalCustomerTagsDialog
+          open={tagsDialogOpen}
+          onOpenChange={setTagsDialogOpen}
+          token={token!}
+          customerId={tagsCustomer.id}
+          customerName={tagsCustomer.name}
+        />
+      )}
     </div>
   );
 }
