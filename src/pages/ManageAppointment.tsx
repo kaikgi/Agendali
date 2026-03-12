@@ -361,7 +361,7 @@ export default function ManageAppointment() {
         )}
 
         {/* Completed/Canceled Status */}
-        {['completed', 'canceled', 'no_show'].includes(appointment.status) && (
+        {['completed', 'canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6 text-center">
               {appointment.status === 'completed' ? (
