@@ -78,6 +78,8 @@ export default function ProfessionalPortalAgenda() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<PortalAppointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [tagsCustomer, setTagsCustomer] = useState<{ id: string; name: string } | null>(null);
 
   // Agenda date range
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
