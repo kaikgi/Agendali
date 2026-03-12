@@ -1050,14 +1050,11 @@ function ComissoesContent() {
           ) : (
             <div className="grid gap-4">
               {summary.map((s) => {
-                const pendingAmt = entries
-                  .filter((e) => e.professional_id === s.professionalId && e.status === 'pending')
-                  .reduce((sum, e) => sum + e.commission_amount_cents, 0);
-                const settledAmt = entries
-                  .filter((e) => e.professional_id === s.professionalId && e.status === 'settled')
-                  .reduce((sum, e) => sum + e.commission_amount_cents, 0);
                 const isExpanded = expandedProfessional === s.professionalId;
                 const profEntries = entries.filter((e) => e.professional_id === s.professionalId);
+                const lastSettlement = settlements
+                  .filter((st) => st.professional_id === s.professionalId)
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
                 return (
                   <Card key={s.professionalId} className="overflow-hidden">
