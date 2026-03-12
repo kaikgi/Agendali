@@ -37,9 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import { statusLabels, getStatusVariant } from '@/lib/appointmentStatus';
-
-const statusVariants = (status: string) => getStatusVariant(status);
+import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 
 function getGreeting(): string {
   const h = new Date().getHours();

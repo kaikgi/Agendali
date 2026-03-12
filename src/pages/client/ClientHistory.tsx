@@ -33,9 +33,7 @@ import {
 } from '@/hooks/useClientAppointments';
 import { ClientAppointmentDialog } from '@/components/client/ClientAppointmentDialog';
 
-import { statusLabels, getStatusVariant } from '@/lib/appointmentStatus';
-
-const statusVariants = (status: string) => getStatusVariant(status);
+import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 
 export default function ClientHistory() {
   const [statusFilter, setStatusFilter] = useState<string>('all');

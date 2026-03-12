@@ -155,6 +155,14 @@ export const dotColors: Record<string, string> = Object.fromEntries(
   Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.dotColor])
 );
 
+/** All Badge variants as a record */
+export const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.variant])
+);
+export const dotColors: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.dotColor])
+);
+
 /** Legend items for status bars */
 export const legendStatuses = [
   { key: 'pending_approval', label: 'Aguardando aprovação' },

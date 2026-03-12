@@ -32,9 +32,7 @@ interface ClientAppointmentDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-import { statusLabels, getStatusVariant } from '@/lib/appointmentStatus';
-
-const statusVariants = (status: string) => getStatusVariant(status);
+import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
