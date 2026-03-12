@@ -2170,6 +2170,10 @@ export type Database = {
         Args: { p_name?: string; p_photo_url?: string; p_token: string }
         Returns: Json
       }
+      public_cancel_appointment_by_token: {
+        Args: { p_appointment_id: string; p_token: string }
+        Returns: Json
+      }
       public_create_appointment: {
         Args: {
           p_customer_email?: string

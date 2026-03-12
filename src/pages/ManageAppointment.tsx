@@ -46,7 +46,7 @@ export default function ManageAppointment() {
   const availableSlots = slotResult?.slots ?? [];
 
   const canModify = appointment && 
-    ['booked', 'confirmed'].includes(appointment.status) &&
+    ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) &&
     isBefore(new Date(), addHours(new Date(appointment.start_at), -(appointment.establishment?.reschedule_min_hours || 2)));
 
   const handleCancel = async () => {
@@ -346,7 +346,7 @@ export default function ManageAppointment() {
         )}
 
         {/* Cannot Modify Message */}
-        {!canModify && ['booked', 'confirmed'].includes(appointment.status) && (
+        {!canModify && ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 text-muted-foreground">
@@ -361,19 +361,25 @@ export default function ManageAppointment() {
         )}
 
         {/* Completed/Canceled Status */}
-        {['completed', 'canceled', 'no_show'].includes(appointment.status) && (
+        {['completed', 'canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6 text-center">
               {appointment.status === 'completed' ? (
                 <div className="flex flex-col items-center gap-2">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <CheckCircle className="h-8 w-8 text-emerald-600" />
                   <p className="font-medium">Agendamento concluído</p>
                   <p className="text-sm text-muted-foreground">Obrigado pela visita!</p>
+                </div>
+              ) : appointment.status === 'rejected' ? (
+                <div className="flex flex-col items-center gap-2">
+                  <XCircle className="h-8 w-8 text-destructive" />
+                  <p className="font-medium">Agendamento recusado</p>
+                  <p className="text-sm text-muted-foreground">Este agendamento foi recusado pelo estabelecimento.</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <XCircle className="h-8 w-8 text-destructive" />
-                  <p className="font-medium">Agendamento cancelado</p>
+                  <p className="font-medium">{getStatusLabel(appointment.status)}</p>
                 </div>
               )}
               <Link to={`/${slug}`} className="block mt-4">

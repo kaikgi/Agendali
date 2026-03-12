@@ -42,7 +42,7 @@ function AppointmentCard({
   onClick: () => void;
 }) {
   const startDate = new Date(apt.start_at);
-  const isUpcoming = isFuture(startDate) && !['canceled', 'no_show'].includes(apt.status);
+  const isUpcoming = isFuture(startDate) && !['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(apt.status);
 
   return (
     <Card
@@ -182,7 +182,7 @@ export default function ClientAppointments() {
         .filter(
           (a) =>
             isFuture(new Date(a.start_at)) &&
-            !['canceled', 'no_show'].includes(a.status)
+            !['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(a.status)
         )
         .sort(
           (a, b) =>

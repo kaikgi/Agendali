@@ -30,6 +30,7 @@ import { ImageUploadButton } from '@/components/ImageUploadButton';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { usePlanFeatures } from '@/hooks/useFeatureAccess';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ProfessionalHoursDialog } from '@/components/dashboard/ProfessionalHoursDialog';
@@ -48,6 +49,8 @@ export default function Profissionais() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { professionals, isLoading, error, refetch, create, update, delete: deleteProfessional, isCreating, isUpdating } = useManageProfessionals(establishment?.id);
   const { data: limits } = usePlanLimits(establishment?.id);
+  const { features } = usePlanFeatures();
+  const hasPortalAccess = features.professional_portal;
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -351,23 +354,25 @@ export default function Profissionais() {
                     <span className="text-sm text-muted-foreground">Ativo</span>
                   </div>
                   <div className="flex gap-1 flex-wrap">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Portal"
-                      onClick={() => {
-                        setSelectedProfessional({ 
-                          id: prof.id, 
-                          name: prof.name, 
-                          slug: (prof as any).slug || null,
-                          portal_enabled: (prof as any).portal_enabled ?? false,
-                          portal_password_hash: (prof as any).portal_password_hash || null,
-                        });
-                        setPortalDialogOpen(true);
-                      }}
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
+                    {hasPortalAccess && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Portal"
+                        onClick={() => {
+                          setSelectedProfessional({ 
+                            id: prof.id, 
+                            name: prof.name, 
+                            slug: (prof as any).slug || null,
+                            portal_enabled: (prof as any).portal_enabled ?? false,
+                            portal_password_hash: (prof as any).portal_password_hash || null,
+                          });
+                          setPortalDialogOpen(true);
+                        }}
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
