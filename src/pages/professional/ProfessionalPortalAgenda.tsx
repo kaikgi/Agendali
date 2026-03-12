@@ -546,7 +546,22 @@ export default function ProfessionalPortalAgenda() {
         onOpenChange={setDialogOpen}
         token={token!}
         onStatusChanged={handleStatusChanged}
+        onOpenTags={(customerId, customerName) => {
+          setTagsCustomer({ id: customerId, name: customerName });
+          setTagsDialogOpen(true);
+        }}
       />
+
+      {/* Customer Tags Dialog */}
+      {tagsCustomer && (
+        <ProfessionalCustomerTagsDialog
+          open={tagsDialogOpen}
+          onOpenChange={setTagsDialogOpen}
+          token={token!}
+          customerId={tagsCustomer.id}
+          customerName={tagsCustomer.name}
+        />
+      )}
     </div>
   );
 }
