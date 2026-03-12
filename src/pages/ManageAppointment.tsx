@@ -99,15 +99,7 @@ export default function ManageAppointment() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      booked: { label: 'Agendado', variant: 'default' },
-      confirmed: { label: 'Confirmado', variant: 'default' },
-      completed: { label: 'Concluído', variant: 'secondary' },
-      canceled: { label: 'Cancelado', variant: 'destructive' },
-      no_show: { label: 'Não compareceu', variant: 'outline' },
-    };
-    const config = statusConfig[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>;
   };
 
   const formatPrice = (cents: number) => {
