@@ -2203,6 +2203,15 @@ export type Database = {
         }
         Returns: Json
       }
+      public_submit_rating_by_token: {
+        Args: {
+          p_appointment_id: string
+          p_comment?: string
+          p_stars: number
+          p_token: string
+        }
+        Returns: Json
+      }
       recreate_appointment_email_jobs_for_reschedule: {
         Args: {
           p_appointment_id: string
