@@ -84,7 +84,8 @@ const TYPE_MAP: Record<string, TypeConfig> = {
     accent: "#7c3aed", bg: "#f5f3ff",
     message: (n) => `Seu atendimento em <strong>${n}</strong> foi concluído com sucesso. Obrigado pela preferência!`,
     subject: (n) => `🎉 Atendimento concluído - ${n}`,
-    showCTA: true, showWarning: false, showFooterNote: false,
+    showCTA: false, showWarning: false, showFooterNote: false,
+    showRatingCTA: true,
   },
   appointment_no_show: {
     icon: "📋", title: "Registro de Ausência",
