@@ -112,18 +112,7 @@ export function useUpdateAppointmentStatus() {
         .eq('id', id);
       if (error) throw error;
       
-      // Create email notification job via server-side RPC (fire and forget)
-      (supabase.rpc as any)('notify_appointment_status_change', {
-        p_appointment_id: id,
-        p_new_status: status,
-        p_old_status: oldStatus ?? null,
-      }).then(({ data, error: rpcErr }: any) => {
-        if (rpcErr) {
-          console.warn('Failed to create email notification job:', rpcErr.message);
-        } else {
-          console.log('Email notification job result:', data);
-        }
-      });
+      // Email notification is handled automatically by DB trigger trg_appointment_status_email
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
