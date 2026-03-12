@@ -2170,46 +2170,26 @@ export type Database = {
         Args: { p_name?: string; p_photo_url?: string; p_token: string }
         Returns: Json
       }
-      public_create_appointment:
-        | {
-            Args: {
-              p_customer_email?: string
-              p_customer_name: string
-              p_customer_notes?: string
-              p_customer_phone: string
-              p_customer_reminder_hours?: number
-              p_customer_user_id?: string
-              p_end_at: string
-              p_professional_id: string
-              p_service_id: string
-              p_slug: string
-              p_start_at: string
-            }
-            Returns: {
-              appointment_id: string
-              manage_token: string
-            }[]
-          }
-        | {
-            Args: {
-              p_customer_email?: string
-              p_customer_name: string
-              p_customer_notes?: string
-              p_customer_phone: string
-              p_customer_reminder_hours?: number
-              p_customer_user_id?: string
-              p_end_at: string
-              p_professional_id: string
-              p_requires_payment?: boolean
-              p_service_id: string
-              p_slug: string
-              p_start_at: string
-            }
-            Returns: {
-              appointment_id: string
-              manage_token: string
-            }[]
-          }
+      public_create_appointment: {
+        Args: {
+          p_customer_email?: string
+          p_customer_name: string
+          p_customer_notes?: string
+          p_customer_phone: string
+          p_customer_reminder_hours?: number
+          p_customer_user_id?: string
+          p_end_at: string
+          p_professional_id: string
+          p_requires_payment?: boolean
+          p_service_id: string
+          p_slug: string
+          p_start_at: string
+        }
+        Returns: {
+          appointment_id: string
+          manage_token: string
+        }[]
+      }
       public_reschedule_appointment: {
         Args: {
           p_appointment_id: string
