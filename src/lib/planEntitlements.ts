@@ -1,9 +1,6 @@
 export type FeatureFlag =
   | 'commissions'
-  | 'online_payments'
-  | 'advanced_reports'
-  | 'custom_branding'
-  | 'priority_support';
+  | 'advanced_reports';
 
 export interface PlanEntitlements {
   planLabel: string;
@@ -15,26 +12,17 @@ export interface PlanEntitlements {
 
 const SOLO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: false,
-  online_payments: false,
   advanced_reports: false,
-  custom_branding: false,
-  priority_support: false,
 };
 
 const STUDIO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: true,
-  online_payments: true,
   advanced_reports: true,
-  custom_branding: false,
-  priority_support: false,
 };
 
 const PRO_FEATURES: Record<FeatureFlag, boolean> = {
   commissions: true,
-  online_payments: true,
   advanced_reports: true,
-  custom_branding: true,
-  priority_support: true,
 };
 
 /** Human-readable labels for feature flags */
@@ -44,25 +32,10 @@ export const FEATURE_LABELS: Record<FeatureFlag, { title: string; description: s
     description: 'Gerencie comissões e repasses dos seus profissionais automaticamente.',
     minPlan: 'Studio',
   },
-  online_payments: {
-    title: 'Pagamento Online e Sinal',
-    description: 'Receba pagamentos e sinais antecipados via Mercado Pago.',
-    minPlan: 'Studio',
-  },
   advanced_reports: {
-    title: 'Relatórios Avançados',
-    description: 'Acesse relatórios detalhados de desempenho e financeiro.',
+    title: 'Relatórios de Desempenho',
+    description: 'Acesse relatórios detalhados de desempenho e financeiro do seu estabelecimento.',
     minPlan: 'Studio',
-  },
-  custom_branding: {
-    title: 'Personalização Avançada',
-    description: 'Personalize completamente sua página pública de agendamento.',
-    minPlan: 'Pro',
-  },
-  priority_support: {
-    title: 'Suporte Prioritário',
-    description: 'Atendimento prioritário e canais exclusivos de suporte.',
-    minPlan: 'Pro',
   },
 };
 

@@ -60,7 +60,7 @@ const navItems: NavItem[] = [
   { title: 'Serviços', url: '/dashboard/servicos', icon: Scissors },
   { title: 'Comissões', url: '/dashboard/comissoes', icon: Percent, requiredFeature: 'commissions' },
   { title: 'Relatórios', url: '/dashboard/relatorios', icon: BarChart3, requiredFeature: 'advanced_reports' },
-  { title: 'Pagamentos', url: '/dashboard/pagamentos', icon: CreditCard, requiredFeature: 'online_payments' },
+  { title: 'Pagamentos', url: '/dashboard/pagamentos', icon: CreditCard },
   { title: 'Horários', url: '/dashboard/horarios', icon: Clock },
   { title: 'Bloqueios', url: '/dashboard/bloqueios', icon: CalendarOff },
   { title: 'Avaliações', url: '/dashboard/avaliacoes', icon: Star },

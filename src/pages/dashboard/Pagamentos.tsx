@@ -1,7 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { FeatureGate } from '@/components/dashboard/FeatureGate';
 import {
   usePaymentAccount,
   usePaymentSettings,
