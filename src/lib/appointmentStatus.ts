@@ -44,8 +44,8 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
   pending_payment: {
     label: 'Aguardando pagamento',
-    badgeClasses: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    dotColor: 'bg-yellow-500',
+    badgeClasses: 'bg-lime-100 text-lime-800 border-lime-300',
+    dotColor: 'bg-lime-500',
     variant: 'outline',
   },
   booked: {
