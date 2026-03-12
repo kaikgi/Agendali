@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, addMinutes, isBefore, addHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionButton } from '@/components/ui/action-button';
 import { getStatusLabel, getStatusVariant } from '@/lib/appointmentStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +26,164 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAppointmentByToken, useCancelAppointment, useRescheduleAppointment } from '@/hooks/useAppointmentByToken';
 import { useAvailableSlots } from '@/hooks/useAvailableSlots';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { sendRatingNotificationEmail } from '@/lib/emailNotifications';
+
+function TokenRatingForm({ appointmentId, token, establishmentName }: { appointmentId: string; token: string; establishmentName: string }) {
+  const [stars, setStars] = useState(0);
+  const [hoveredStars, setHoveredStars] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const { toast } = useToast();
+
+  // Check if already rated
+  const { data: alreadyRated, isLoading: checkingRated } = useQuery({
+    queryKey: ['rating-check-token', appointmentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ratings')
+        .select('id, stars, comment')
+        .eq('appointment_id', appointmentId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  if (checkingRated) return null;
+
+  if (alreadyRated || submitted) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center space-y-3">
+          <div className="flex justify-center gap-1">
+            {[1, 2, 3, 4, 5].map((v) => (
+              <Star
+                key={v}
+                className={cn(
+                  'h-6 w-6',
+                  v <= (alreadyRated?.stars || stars)
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-muted-foreground/30'
+                )}
+              />
+            ))}
+          </div>
+          <p className="text-sm font-medium text-foreground">Obrigado pela sua avaliação!</p>
+          {(alreadyRated?.comment || comment) && (
+            <p className="text-sm text-muted-foreground italic">"{alreadyRated?.comment || comment}"</p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const displayStars = hoveredStars || stars;
+
+  const handleSubmit = async () => {
+    if (stars === 0) {
+      toast({ variant: 'destructive', title: 'Selecione uma nota', description: 'Escolha de 1 a 5 estrelas.' });
+      throw new Error('validation');
+    }
+
+    const { data, error } = await (supabase.rpc as any)('public_submit_rating_by_token', {
+      p_token: token,
+      p_appointment_id: appointmentId,
+      p_stars: stars,
+      p_comment: comment.trim() || null,
+    });
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      throw error;
+    }
+
+    const result = data as { success: boolean; error?: string; rating_id?: string };
+    if (!result.success) {
+      toast({ variant: 'destructive', title: 'Erro', description: result.error || 'Erro ao enviar avaliação' });
+      throw new Error(result.error);
+    }
+
+    // Send notification to establishment (fire and forget)
+    if (result.rating_id) {
+      sendRatingNotificationEmail(result.rating_id).catch(console.warn);
+    }
+
+    toast({ title: 'Avaliação enviada!', description: 'Obrigado pelo seu feedback.' });
+    setSubmitted(true);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+          Avalie seu atendimento
+        </CardTitle>
+        <CardDescription>
+          Como foi sua experiência em {establishmentName}?
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Stars */}
+        <div className="flex justify-center gap-2">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setStars(value)}
+              onMouseEnter={() => setHoveredStars(value)}
+              onMouseLeave={() => setHoveredStars(0)}
+              className="p-1 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary rounded"
+            >
+              <Star
+                className={cn(
+                  'h-9 w-9 transition-colors',
+                  value <= displayStars
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-muted-foreground/30'
+                )}
+              />
+            </button>
+          ))}
+        </div>
+        <div className="text-center text-sm text-muted-foreground">
+          {displayStars === 0 && 'Toque nas estrelas para avaliar'}
+          {displayStars === 1 && 'Muito ruim'}
+          {displayStars === 2 && 'Ruim'}
+          {displayStars === 3 && 'Regular'}
+          {displayStars === 4 && 'Bom'}
+          {displayStars === 5 && 'Excelente'}
+        </div>
+
+        {/* Comment */}
+        <div className="space-y-2">
+          <Label htmlFor="rating-comment">Comentário (opcional)</Label>
+          <Textarea
+            id="rating-comment"
+            placeholder="Conte como foi sua experiência..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={500}
+            className="min-h-[80px] resize-none"
+          />
+          <p className="text-xs text-muted-foreground text-right">{comment.length}/500</p>
+        </div>
+
+        <ActionButton
+          className="w-full"
+          onClick={handleSubmit}
+          disabled={stars === 0}
+          loadingLabel="Enviando..."
+          successLabel="Enviado!"
+        >
+          Enviar Avaliação
+        </ActionButton>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ManageAppointment() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
@@ -360,17 +521,41 @@ export default function ManageAppointment() {
           </Card>
         )}
 
-        {/* Completed/Canceled Status */}
-        {['completed', 'canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(appointment.status) && (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              {appointment.status === 'completed' ? (
+        {/* Completed Status + Rating */}
+        {appointment.status === 'completed' && (
+          <>
+            <Card>
+              <CardContent className="pt-6 text-center">
                 <div className="flex flex-col items-center gap-2">
                   <CheckCircle className="h-8 w-8 text-emerald-600" />
                   <p className="font-medium">Agendamento concluído</p>
                   <p className="text-sm text-muted-foreground">Obrigado pela visita!</p>
                 </div>
-              ) : appointment.status === 'rejected' ? (
+              </CardContent>
+            </Card>
+
+            {/* Rating Form */}
+            {token && (
+              <TokenRatingForm
+                appointmentId={appointment.id}
+                token={token}
+                establishmentName={appointment.establishment?.name || ''}
+              />
+            )}
+
+            <div className="text-center">
+              <Link to={`/${slug}`}>
+                <Button variant="outline">Fazer novo agendamento</Button>
+              </Link>
+            </div>
+          </>
+        )}
+
+        {/* Canceled/Rejected Status */}
+        {['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'].includes(appointment.status) && (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              {appointment.status === 'rejected' ? (
                 <div className="flex flex-col items-center gap-2">
                   <XCircle className="h-8 w-8 text-destructive" />
                   <p className="font-medium">Agendamento recusado</p>
