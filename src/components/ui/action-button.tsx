@@ -64,15 +64,6 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       };
     }, []);
 
-    const fireConfetti = () => {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: ["#22c55e", "#10b981", "#059669", "#34d399", "#6ee7b7"],
-        shapes: ["star", "circle"],
-      });
-    };
 
     const handleClick = async () => {
       if (!onClick || state === "loading" || state === "success") return;
