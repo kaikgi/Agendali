@@ -43,7 +43,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       variant = "default",
       size = "default",
       className,
-      ...props
+      type = "button",
     },
     ref
   ) => {
