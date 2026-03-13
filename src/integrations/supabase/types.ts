@@ -2107,6 +2107,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_establishment_rating: {
+        Args: { p_establishment_id: string }
+        Returns: {
+          rating_avg: number
+          rating_count: number
+        }[]
+      }
       get_payment_config_for_booking: {
         Args: { p_service_id: string; p_slug: string }
         Returns: Json
