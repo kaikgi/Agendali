@@ -80,8 +80,15 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       if (!onClick || state === "loading" || state === "success") return;
 
       setState("loading");
+      const startTime = Date.now();
       try {
         await onClick();
+        // Ensure at least 4 seconds of loading animation
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 4000 - elapsed);
+        if (remaining > 0) {
+          await new Promise((r) => setTimeout(r, remaining));
+        }
         setState("success");
         fireConfetti();
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
