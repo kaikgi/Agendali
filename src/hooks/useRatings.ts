@@ -34,12 +34,13 @@ export function useEstablishmentRating(establishmentId: string | undefined) {
 
       if (error) throw error;
       
-      // Type assertion for RPC response
-      const result = data as unknown as { rating_avg: number; rating_count: number } | null;
+      // RPC returns an array of rows; take the first one
+      const rows = data as unknown as { rating_avg: number; rating_count: number }[];
+      const result = Array.isArray(rows) ? rows[0] : rows;
       
       return {
-        rating_avg: result?.rating_avg || 0,
-        rating_count: result?.rating_count || 0,
+        rating_avg: Number(result?.rating_avg) || 0,
+        rating_count: Number(result?.rating_count) || 0,
       };
     },
     enabled: !!establishmentId,
