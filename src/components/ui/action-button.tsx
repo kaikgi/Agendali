@@ -148,7 +148,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
                     "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
             className
           )}
-          {...props}
+          type={type}
         >
           {/* Spark border effect - idle only */}
           {state === "idle" && (variant === "default" || variant === "hero" || variant === "premium") && (
