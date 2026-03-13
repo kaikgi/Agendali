@@ -79,7 +79,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
           await new Promise((r) => setTimeout(r, remaining));
         }
         setState("success");
-        fireConfetti();
+        
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
       } catch {
         setState("error");
