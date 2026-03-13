@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 type ActionState = "idle" | "loading" | "success" | "error";
 
-interface ActionButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> {
+interface ActionButtonProps {
   /** Async handler — manages loading/success/error states automatically */
   onClick?: () => Promise<void> | void;
   /** Override internal loading state (for external control) */
@@ -23,6 +23,10 @@ interface ActionButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
   size?: "default" | "sm" | "lg" | "xl" | "icon";
   /** Button style variant */
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "hero" | "premium" | "subtle";
+  className?: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
+  type?: "button" | "submit" | "reset";
 }
 
 const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
