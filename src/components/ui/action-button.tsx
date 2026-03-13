@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Check, Loader2, AlertCircle } from "lucide-react";
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
 
 type ActionState = "idle" | "loading" | "success" | "error";
 
-interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
+interface ActionButtonProps {
   /** Async handler — manages loading/success/error states automatically */
   onClick?: () => Promise<void> | void;
   /** Override internal loading state (for external control) */
@@ -18,6 +19,14 @@ interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   successDuration?: number;
   /** Icon shown in idle state (before the label) */
   icon?: React.ReactNode;
+  /** Button size variant */
+  size?: "default" | "sm" | "lg" | "xl" | "icon";
+  /** Button style variant */
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "hero" | "premium" | "subtle";
+  className?: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
+  type?: "button" | "submit" | "reset";
 }
 
 const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
@@ -28,34 +37,44 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       loading: externalLoading,
       loadingLabel,
       successLabel = "Salvo",
-      successDuration = 1500,
+      successDuration = 2000,
       icon,
       disabled,
-      variant,
+      variant = "default",
+      size = "default",
       className,
-      ...props
+      type = "button",
     },
     ref
   ) => {
     const [state, setState] = React.useState<ActionState>("idle");
     const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
 
-    // Sync with external loading prop — show success when loading transitions false
     React.useEffect(() => {
       if (externalLoading === true) {
         setState("loading");
       } else if (externalLoading === false && state === "loading") {
         setState("success");
+        fireConfetti();
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
       }
     }, [externalLoading]);
 
-    // Cleanup timeout on unmount
     React.useEffect(() => {
       return () => {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
       };
     }, []);
+
+    const fireConfetti = () => {
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ["#22c55e", "#10b981", "#059669", "#34d399", "#6ee7b7"],
+        shapes: ["star", "circle"],
+      });
+    };
 
     const handleClick = async () => {
       if (!onClick || state === "loading" || state === "success") return;
@@ -64,6 +83,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       try {
         await onClick();
         setState("success");
+        fireConfetti();
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
       } catch {
         setState("error");
@@ -75,54 +95,161 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
     const isSuccess = state === "success";
     const isError = state === "error";
 
-    const currentVariant = isSuccess
-      ? undefined // we override classes manually
-      : isError
-        ? "destructive"
-        : variant;
+    const sizeClasses: Record<string, string> = {
+      default: "h-10 px-4 py-2 text-sm",
+      sm: "h-9 px-3 text-xs",
+      lg: "h-12 px-6 text-base",
+      xl: "h-14 px-8 text-base font-semibold",
+      icon: "h-10 w-10",
+    };
+
+    const motionVariants = {
+      idle: { scale: 1 },
+      saving: { scale: 1 },
+      saved: {
+        scale: [1, 1.08, 1],
+        transition: { duration: 0.3, times: [0, 0.5, 1] },
+      },
+    };
 
     return (
-      <Button
-        ref={ref}
-        variant={currentVariant}
-        disabled={disabled || isLoading}
-        className={cn(
-          "relative transition-all duration-300",
-          isSuccess &&
-            "bg-success text-success-foreground hover:bg-success/90 border-success",
-          isError && "animate-[shake_0.3s_ease-in-out]",
-          className
-        )}
-        onClick={handleClick}
-        {...props}
-      >
-        {/* Loading spinner */}
-        {isLoading && (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        )}
+      <div className="relative inline-flex">
+        <motion.button
+          ref={ref}
+          disabled={disabled || isLoading}
+          onClick={handleClick}
+          animate={isSuccess ? "saved" : isLoading ? "saving" : "idle"}
+          variants={motionVariants}
+          whileHover={state === "idle" && !disabled ? { scale: 1.03 } : {}}
+          whileTap={state === "idle" && !disabled ? { scale: 0.97 } : {}}
+          className={cn(
+            "group relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all duration-300 overflow-hidden",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "disabled:pointer-events-none disabled:opacity-50",
+            "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+            sizeClasses[size],
+            // State-based styles
+            isSuccess
+              ? "bg-success text-success-foreground shadow-lg"
+              : isError
+                ? "bg-destructive text-destructive-foreground"
+                : isLoading
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : // idle variant styles
+                    variant === "default" ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" :
+                    variant === "destructive" ? "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90" :
+                    variant === "outline" ? "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground" :
+                    variant === "secondary" ? "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80" :
+                    variant === "ghost" ? "hover:bg-accent hover:text-accent-foreground" :
+                    variant === "link" ? "text-primary underline-offset-4 hover:underline" :
+                    variant === "hero" ? "bg-foreground text-background shadow-lg hover:bg-foreground/90" :
+                    variant === "premium" ? "bg-foreground text-background shadow-lg hover:bg-foreground/90" :
+                    variant === "subtle" ? "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground" :
+                    "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+            className
+          )}
+          type={type}
+        >
+          {/* Spark border effect - idle only */}
+          {state === "idle" && (variant === "default" || variant === "hero" || variant === "premium") && (
+            <span>
+              <span
+                className={cn(
+                  "spark mask-gradient absolute inset-0 h-full w-full animate-flip overflow-hidden rounded-lg",
+                  "[mask:linear-gradient(black,_transparent_50%)]",
+                  "before:absolute before:aspect-square before:w-[200%] before:bg-[conic-gradient(from_0deg,transparent_0_340deg,hsl(var(--primary))_360deg)]",
+                  "before:rotate-[-90deg] before:animate-rotate",
+                  "before:content-[''] before:[inset:0_auto_auto_50%] before:[translate:-50%_-15%]",
+                  "dark:[mask:linear-gradient(white,_transparent_50%)]",
+                  "dark:before:bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)]",
+                )}
+              />
+            </span>
+          )}
 
-        {/* Success check */}
-        {isSuccess && (
-          <Check className="h-4 w-4 animate-scale-in" />
-        )}
+          {/* Backdrop */}
+          {state === "idle" && (variant === "default" || variant === "hero" || variant === "premium") && (
+            <span className="backdrop absolute inset-px rounded-[calc(var(--radius)-1px)] bg-primary transition-colors duration-200" />
+          )}
 
-        {/* Error icon */}
-        {isError && (
-          <AlertCircle className="h-4 w-4" />
-        )}
+          {/* Content */}
+          <span className="z-10 flex items-center justify-center gap-2">
+            <AnimatePresence mode="wait">
+              {isLoading && (
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0, rotate: 0 }}
+                  animate={{ opacity: 1, rotate: 360 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    rotate: { repeat: Infinity, duration: 1, ease: "linear" },
+                  }}
+                >
+                  <Loader2 className="h-4 w-4" />
+                </motion.span>
+              )}
+              {isSuccess && (
+                <motion.span
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Check className="h-4 w-4" />
+                </motion.span>
+              )}
+              {isError && (
+                <motion.span
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <AlertCircle className="h-4 w-4" />
+                </motion.span>
+              )}
+              {!isLoading && !isSuccess && !isError && icon && (
+                <motion.span
+                  key="icon"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {icon}
+                </motion.span>
+              )}
+            </AnimatePresence>
 
-        {/* Idle icon */}
-        {!isLoading && !isSuccess && !isError && icon}
+            <motion.span
+              key={state}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isLoading
+                ? (loadingLabel || children)
+                : isSuccess
+                  ? successLabel
+                  : children}
+            </motion.span>
+          </span>
+        </motion.button>
 
-        {/* Label */}
-        <span>
-          {isLoading
-            ? (loadingLabel || children)
-            : isSuccess
-              ? successLabel
-              : children}
-        </span>
-      </Button>
+        {/* Sparkle icon on success */}
+        <AnimatePresence>
+          {isSuccess && (
+            <motion.div
+              className="absolute -top-1 -right-1 pointer-events-none"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0 }}
+            >
+              <Sparkles className="w-5 h-5 text-warning" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 );
