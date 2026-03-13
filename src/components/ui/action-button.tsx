@@ -1,7 +1,6 @@
 import * as React from "react";
-import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { Check, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
 
 type ActionState = "idle" | "loading" | "success" | "error";
@@ -65,15 +64,6 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       };
     }, []);
 
-    const fireConfetti = () => {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: ["#22c55e", "#10b981", "#059669", "#34d399", "#6ee7b7"],
-        shapes: ["star", "circle"],
-      });
-    };
 
     const handleClick = async () => {
       if (!onClick || state === "loading" || state === "success") return;
@@ -89,7 +79,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
           await new Promise((r) => setTimeout(r, remaining));
         }
         setState("success");
-        fireConfetti();
+        
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
       } catch {
         setState("error");
@@ -242,19 +232,6 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
           </span>
         </motion.button>
 
-        {/* Sparkle icon on success */}
-        <AnimatePresence>
-          {isSuccess && (
-            <motion.div
-              className="absolute -top-1 -right-1 pointer-events-none"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-            >
-              <Sparkles className="w-5 h-5 text-warning" />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     );
   }
