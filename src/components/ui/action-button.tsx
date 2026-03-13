@@ -55,7 +55,6 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
         setState("loading");
       } else if (externalLoading === false && state === "loading") {
         setState("success");
-        fireConfetti();
         timeoutRef.current = setTimeout(() => setState("idle"), successDuration);
       }
     }, [externalLoading]);
