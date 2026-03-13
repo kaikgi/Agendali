@@ -1,7 +1,6 @@
 import * as React from "react";
-import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { Check, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
 
 type ActionState = "idle" | "loading" | "success" | "error";
