@@ -232,19 +232,6 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
           </span>
         </motion.button>
 
-        {/* Sparkle icon on success */}
-        <AnimatePresence>
-          {isSuccess && (
-            <motion.div
-              className="absolute -top-1 -right-1 pointer-events-none"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-            >
-              <Sparkles className="w-5 h-5 text-warning" />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     );
   }
