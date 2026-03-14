@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useUpdateAppointmentStatus } from '@/hooks/useAppointments';
+import { useUserEstablishment } from '@/hooks/useUserEstablishment';
+import { useAllCustomerTags } from '@/hooks/useClientTags';
 import { toast } from 'sonner';
 
 interface PendingAppointment {
