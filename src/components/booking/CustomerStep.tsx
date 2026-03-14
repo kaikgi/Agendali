@@ -41,6 +41,8 @@ interface CustomerStepProps {
     phone?: string;
     email?: string;
   };
+  /** When true, email is editable (guest booking) */
+  isGuest?: boolean;
 }
 
 export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
