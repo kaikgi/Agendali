@@ -428,6 +428,7 @@ export default function Agenda() {
                       {apt.customer?.name}
                       {renderCustomerTags(apt.customer?.id)}
                     </p>
+                    <p className="text-xs text-muted-foreground truncate">{apt.service?.name} • {apt.professional?.name}</p>
                   </div>
                 ))
               )}
