@@ -2077,6 +2077,18 @@ export type Database = {
         Returns: boolean
       }
       digest: { Args: { data: string; type: string }; Returns: string }
+      enqueue_appointment_email: {
+        Args: {
+          p_appointment_id: string
+          p_customer_email: string
+          p_customer_name: string
+          p_email_type: string
+          p_establishment_id: string
+          p_payload: Json
+          p_scheduled_for: string
+        }
+        Returns: Json
+      }
       gen_random_bytes: { Args: { length: number }; Returns: string }
       get_admin_audit_logs: {
         Args: {
