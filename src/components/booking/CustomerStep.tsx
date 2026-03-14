@@ -115,10 +115,10 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
   const policyText = establishment.cancellation_policy_text || defaultPolicyText;
 
   const onFormSubmit = async (data: CustomerFormData) => {
-    // Inject canonical email before submitting – never trust form state for email
+    // For logged-in users, inject canonical email. For guests, use form email.
     const finalData: CustomerFormData = {
       ...data,
-      email: canonicalEmail,
+      email: isGuest ? data.email : canonicalEmail,
     };
     console.log('submit clicked (customer step)', finalData);
     await onSubmit(finalData);
