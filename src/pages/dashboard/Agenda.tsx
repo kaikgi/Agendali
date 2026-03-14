@@ -424,8 +424,10 @@ export default function Agenda() {
                         {statusLabels[apt.status]}
                       </Badge>
                     </div>
-                    <p className="text-sm truncate">{apt.customer?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{apt.service?.name} • {apt.professional?.name}</p>
+                    <p className="text-sm truncate">
+                      {apt.customer?.name}
+                      {renderCustomerTags(apt.customer?.id)}
+                    </p>
                   </div>
                 ))
               )}
