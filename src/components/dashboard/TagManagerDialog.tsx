@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Tag, Shield, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Shield, CreditCard, Loader2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
@@ -49,12 +49,14 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
   const [formName, setFormName] = useState('');
   const [formColor, setFormColor] = useState(TAG_COLORS[0]);
   const [formBypass, setFormBypass] = useState(false);
+  const [formBypassPayment, setFormBypassPayment] = useState(false);
   const [formActive, setFormActive] = useState(true);
 
   const resetForm = () => {
     setFormName('');
     setFormColor(TAG_COLORS[0]);
     setFormBypass(false);
+    setFormBypassPayment(false);
     setFormActive(true);
     setEditingTag(null);
     setIsCreating(false);
@@ -69,6 +71,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
     setFormName(tag.name);
     setFormColor(tag.color);
     setFormBypass(tag.bypass_approval);
+    setFormBypassPayment(tag.bypass_payment);
     setFormActive(tag.is_active);
     setEditingTag(tag);
     setIsCreating(false);
@@ -87,6 +90,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
           name: formName.trim(),
           color: formColor,
           bypass_approval: formBypass,
+          bypass_payment: formBypassPayment,
           is_active: formActive,
         });
         toast.success('Tag atualizada!');
@@ -95,6 +99,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
           name: formName.trim(),
           color: formColor,
           bypass_approval: formBypass,
+          bypass_payment: formBypassPayment,
         });
         toast.success('Tag criada!');
       }
@@ -171,6 +176,12 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
                               <span className="text-xs text-emerald-600">Sem aprovação manual</span>
                             </div>
                           )}
+                          {tag.bypass_payment && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <CreditCard className="h-3 w-3 text-blue-600" />
+                              <span className="text-xs text-blue-600">Sem pagamento online</span>
+                            </div>
+                          )}
                         </div>
                         {!tag.is_active && (
                           <Badge variant="secondary" className="text-xs">Inativa</Badge>
@@ -234,6 +245,16 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
                       </p>
                     </div>
                     <Switch checked={formBypass} onCheckedChange={setFormBypass} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-accent/30">
+                    <div>
+                      <Label className="text-sm font-medium">Agendar sem pagamento</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Clientes com esta tag não precisam pagar online para agendar
+                      </p>
+                    </div>
+                    <Switch checked={formBypassPayment} onCheckedChange={setFormBypassPayment} />
                   </div>
 
                   {editingTag && (
