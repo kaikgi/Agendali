@@ -81,8 +81,9 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
 
-  // Always show reminder when we have a canonical email
-  const showReminderSection = !!canonicalEmail;
+  // Show reminder when we have an email (canonical or from form for guests)
+  const watchedEmail = watch('email');
+  const showReminderSection = isGuest ? !!watchedEmail : !!canonicalEmail;
 
   const handlePolicyRead = () => {
     setPolicyRead(true);
