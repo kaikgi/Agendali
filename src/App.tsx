@@ -170,6 +170,8 @@ const App = () => (
               <Route path="/:establishmentSlug/p/:professionalSlug/agenda" element={<ProfessionalPortalAgenda />} />
               
               {/* Public booking routes - MUST be last */}
+              <Route path="/agendar/:slug" element={<PublicBooking />} />
+              <Route path="/agendar/:slug/gerenciar/:token" element={<ManageAppointment />} />
               <Route path="/:slug" element={<PublicBooking />} />
               <Route path="/:slug/gerenciar/:token" element={<ManageAppointment />} />
               
