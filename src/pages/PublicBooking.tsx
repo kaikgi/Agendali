@@ -400,6 +400,23 @@ export default function PublicBooking() {
     console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
+    if (paymentConfigError) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro no checkout',
+        description: 'Não foi possível carregar a configuração de pagamento. Tente novamente.',
+      });
+      return;
+    }
+
+    if (isLoadingPaymentConfig) {
+      toast({
+        title: 'Aguarde um instante',
+        description: 'Estamos carregando a configuração de pagamento deste serviço.',
+      });
+      return;
+    }
+
     if (!session) {
       console.log('[Booking] No session, showing login modal');
       setShowLoginModal(true);
