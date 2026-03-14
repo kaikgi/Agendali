@@ -383,6 +383,7 @@ export default function Agenda() {
                         <div className="flex items-center gap-1 text-muted-foreground truncate">
                           <User className="h-3 w-3" />
                           {apt.customer?.name}
+                          {renderCustomerTags(apt.customer?.id)}
                         </div>
                       </div>
                     ))
