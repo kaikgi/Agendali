@@ -117,7 +117,11 @@ export default function PublicBooking() {
   });
 
   // Payment config for selected service
-  const { data: paymentConfig } = usePaymentConfigForBooking(slug, selectedService?.id);
+  const {
+    data: paymentConfig,
+    isLoading: isLoadingPaymentConfig,
+    error: paymentConfigError,
+  } = usePaymentConfigForBooking(slug, selectedService?.id);
 
   const createPayment = useCreatePayment();
 
