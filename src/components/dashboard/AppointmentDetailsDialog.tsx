@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes } from '@/hooks/useAppointments';
+import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { statusColors, statusLabels, type AppointmentStatus } from '@/lib/appointmentStatus';
