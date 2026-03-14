@@ -43,7 +43,7 @@ export function useClientTags(establishmentId: string | undefined) {
 export function useCreateClientTag(establishmentId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (tag: { name: string; color: string; bypass_approval?: boolean }) => {
+    mutationFn: async (tag: { name: string; color: string; bypass_approval?: boolean; bypass_payment?: boolean }) => {
       const { data, error } = await supabase
         .from('client_tags' as any)
         .insert({
@@ -51,6 +51,7 @@ export function useCreateClientTag(establishmentId: string | undefined) {
           name: tag.name,
           color: tag.color,
           bypass_approval: tag.bypass_approval ?? false,
+          bypass_payment: tag.bypass_payment ?? false,
         } as any)
         .select()
         .single();
