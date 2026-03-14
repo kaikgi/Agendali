@@ -664,6 +664,7 @@ export default function PublicBooking() {
               establishment={{...establishment, ask_email: true}} 
               onSubmit={handleSubmit} 
               isSubmitting={isSubmitting}
+              isGuest
               defaultValues={{
                 name: '',
                 phone: '',
