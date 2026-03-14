@@ -346,10 +346,22 @@ export default function PublicBooking() {
         setCreatedAppointmentId(result.appointment_id);
       }
 
-      // If payment is required, go to payment step (status already set server-side)
+      // If payment is required, check if server actually set pending_payment
+      // (customer may have bypass_payment tag, in which case server skips payment)
       if (requiresPayment && result?.appointment_id) {
-        console.log('[Booking] Payment required, moving to payment step');
-        setCurrentStep(4);
+        const { data: apt } = await supabase
+          .from('appointments')
+          .select('status')
+          .eq('id', result.appointment_id)
+          .single();
+
+        if (apt?.status === 'pending_payment') {
+          console.log('[Booking] Payment required, moving to payment step');
+          setCurrentStep(4);
+        } else {
+          console.log('[Booking] Payment bypassed by tag, booking complete');
+          setIsSuccess(true);
+        }
       } else {
         console.log('[Booking] No payment required, booking complete');
         setIsSuccess(true);
