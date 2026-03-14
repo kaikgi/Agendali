@@ -304,7 +304,7 @@ export default function PublicBooking() {
       endAt.setMinutes(endAt.getMinutes() + selectedService.duration_minutes);
 
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const canonicalEmail = currentUser?.email || user?.email || '';
+      const canonicalEmail = customerData.email || currentUser?.email || user?.email || '';
       const canonicalName = customerData.name || profile?.full_name || '';
       const canonicalPhone = customerData.phone || profile?.phone || '';
       const canonicalUserId = currentUser?.id || null;
