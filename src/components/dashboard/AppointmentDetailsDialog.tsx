@@ -157,7 +157,7 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
                 <p className="font-medium">{appointment.customer?.name}</p>
                 <CustomerTagBadges
                   customerId={appointment.customer?.id}
-                  establishmentId={undefined}
+                  establishmentId={establishment?.id}
                 />
               </div>
               
