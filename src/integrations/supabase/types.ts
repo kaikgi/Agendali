@@ -2076,6 +2076,8 @@ export type Database = {
         Args: { p_customer_id: string; p_establishment_id: string }
         Returns: boolean
       }
+      digest: { Args: { data: string; type: string }; Returns: string }
+      gen_random_bytes: { Args: { length: number }; Returns: string }
       get_admin_audit_logs: {
         Args: {
           p_action?: string
