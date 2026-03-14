@@ -417,11 +417,7 @@ export default function PublicBooking() {
       return;
     }
 
-    if (!session) {
-      console.log('[Booking] No session, showing login modal');
-      setShowLoginModal(true);
-      return;
-    }
+    // Allow guest booking — no session required
 
     if (!establishment || !selectedService || !selectedProfessional || !selectedDate || !selectedTime || !slug) {
       console.warn('[Booking] Missing fields', { establishment: !!establishment, selectedService: !!selectedService, selectedProfessional: !!selectedProfessional, selectedDate: !!selectedDate, selectedTime, slug });
