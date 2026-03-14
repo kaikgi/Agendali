@@ -49,8 +49,8 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
 
-  // Email is always canonical (readonly) – never part of the editable form state
-  const canonicalEmail = defaultValues?.email || '';
+  // Email is canonical (readonly) for logged-in users, editable for guests
+  const canonicalEmail = isGuest ? '' : (defaultValues?.email || '');
 
   const {
     register,
