@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, User, Scissors, Phone, Mail, FileText, Save } from 'lucide-react';
+import { CustomerTagBadges } from '@/components/dashboard/CustomerTagBadges';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
