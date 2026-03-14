@@ -10,12 +10,15 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
     queryKey: ['metrics-today', establishmentId],
     queryFn: async () => {
       try {
-        const todayStart = startOfDay(new Date()).toISOString();
+        const now = new Date();
+        const todayStart = startOfDay(now).toISOString();
+        const tomorrowStart = startOfDay(subDays(now, -1)).toISOString();
         const { count, error } = await supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!)
           .gte('start_at', todayStart)
+          .lt('start_at', tomorrowStart)
           .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
