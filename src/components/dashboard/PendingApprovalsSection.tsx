@@ -217,6 +217,7 @@ export function PendingApprovalsSection({ appointments, onAppointmentClick, prof
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className="font-medium truncate">{apt.customer?.name}</span>
+                      {renderCustomerTags(apt.customer?.id)}
                       {(apt.customer_email || apt.customer?.email) && (
                         <span className="text-muted-foreground text-xs truncate hidden sm:inline">
                           • {apt.customer_email || apt.customer?.email}
