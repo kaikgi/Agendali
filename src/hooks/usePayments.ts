@@ -199,7 +199,10 @@ export function useCreatePayment() {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      console.log('[Payment] Creating payment preference', { appointment_id: params.appointment_id, amount_cents: params.amount_cents });
+      // Send the current origin so the edge function can build correct back_urls
+      const origin = window.location.origin;
+
+      console.log('[Payment] Creating payment preference', { appointment_id: params.appointment_id, amount_cents: params.amount_cents, origin });
 
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/mercadopago-create-payment`,
@@ -209,7 +212,7 @@ export function useCreatePayment() {
             'Content-Type': 'application/json',
             'apikey': anonKey,
           },
-          body: JSON.stringify(params),
+          body: JSON.stringify({ ...params, origin }),
         }
       );
       const data = await res.json();

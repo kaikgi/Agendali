@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       service_name,
       customer_name,
       slug,
+      origin,
     } = body;
 
     console.log("mercadopago-create-payment: received", {
@@ -33,6 +34,7 @@ Deno.serve(async (req) => {
       appointment_id,
       amount_cents,
       payment_type,
+      origin,
     });
 
     if (!establishment_id || !appointment_id || !amount_cents) {
@@ -69,7 +71,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const appUrl = Deno.env.get("APP_URL") || "https://agendali.lovable.app";
+    // Use origin from frontend (most reliable), fallback to APP_URL env, then default
+    const appUrl = origin || Deno.env.get("APP_URL") || "https://agendali.lovable.app";
     const webhookUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
 
     // Build back URLs
