@@ -166,18 +166,32 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
           {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
         </div>
 
-        {/* Email – always readonly, canonical from auth */}
+        {/* Email – readonly for logged-in users, editable for guests */}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={canonicalEmail}
-            readOnly
-            className="bg-muted cursor-not-allowed"
-            tabIndex={-1}
-          />
-          <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+          {isGuest ? (
+            <>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                {...register('email')}
+              />
+              <p className="text-xs text-muted-foreground">Opcional. Usado para enviar confirmação e lembretes.</p>
+            </>
+          ) : (
+            <>
+              <Input
+                id="email"
+                type="email"
+                value={canonicalEmail}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+                tabIndex={-1}
+              />
+              <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+            </>
+          )}
         </div>
 
         {establishment.ask_notes && (
