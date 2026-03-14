@@ -7,6 +7,7 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, User, Ban, Filter, CalendarDays, List, Scissors, RefreshCw, CalendarRange } from 'lucide-react';
+import { useAllCustomerTags } from '@/hooks/useClientTags';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,37 @@ export default function Agenda() {
   
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { professionals } = useManageProfessionals(establishment?.id);
+  const { data: allCustomerTags = [] } = useAllCustomerTags(establishment?.id);
+
+  // Build customer → tags lookup
+  const customerTagsMap = useMemo(() => {
+    const map = new Map<string, typeof allCustomerTags>();
+    for (const ct of allCustomerTags) {
+      const list = map.get(ct.customer_id) ?? [];
+      list.push(ct);
+      map.set(ct.customer_id, list);
+    }
+    return map;
+  }, [allCustomerTags]);
+
+  const renderCustomerTags = (customerId: string | undefined) => {
+    if (!customerId) return null;
+    const tags = customerTagsMap.get(customerId);
+    if (!tags?.length) return null;
+    return (
+      <span className="inline-flex flex-wrap gap-0.5 ml-1">
+        {tags.map((ct) => (
+          <span
+            key={ct.tag_id}
+            className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-medium text-white leading-none"
+            style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+          >
+            {ct.tag?.name}
+          </span>
+        ))}
+      </span>
+    );
+  };
 
   // Compute date range based on view mode
   const { rangeStart, rangeEnd } = useMemo(() => {
@@ -268,6 +300,7 @@ export default function Agenda() {
                       >
                         <span className="hidden sm:inline">
                           {format(parseISO(apt.start_at), 'HH:mm')} {apt.customer?.name}
+                          {renderCustomerTags(apt.customer?.id)}
                         </span>
                         <span className="sm:hidden">
                           {format(parseISO(apt.start_at), 'HH:mm')}
@@ -350,6 +383,7 @@ export default function Agenda() {
                         <div className="flex items-center gap-1 text-muted-foreground truncate">
                           <User className="h-3 w-3" />
                           {apt.customer?.name}
+                          {renderCustomerTags(apt.customer?.id)}
                         </div>
                       </div>
                     ))
@@ -390,7 +424,10 @@ export default function Agenda() {
                         {statusLabels[apt.status]}
                       </Badge>
                     </div>
-                    <p className="text-sm truncate">{apt.customer?.name}</p>
+                    <p className="text-sm truncate">
+                      {apt.customer?.name}
+                      {renderCustomerTags(apt.customer?.id)}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{apt.service?.name} • {apt.professional?.name}</p>
                   </div>
                 ))
@@ -442,6 +479,7 @@ export default function Agenda() {
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className={cn(isCompletedApt(apt.status) && "line-through")}>{apt.customer?.name}</span>
+                            {renderCustomerTags(apt.customer?.id)}
                           </div>
                         </TableCell>
                         <TableCell>

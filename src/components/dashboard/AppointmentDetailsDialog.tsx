@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, User, Scissors, Phone, Mail, FileText, Save } from 'lucide-react';
+import { CustomerTagBadges } from '@/components/dashboard/CustomerTagBadges';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
@@ -11,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUpdateAppointmentStatus, useUpdateAppointmentNotes } from '@/hooks/useAppointments';
+import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { statusColors, statusLabels, type AppointmentStatus } from '@/lib/appointmentStatus';
@@ -39,6 +41,7 @@ const statusOptions: string[] = ['pending_approval', 'paid_pending_confirmation'
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();
   const { mutateAsync: updateNotes, isPending: isUpdatingNotes } = useUpdateAppointmentNotes();
+  const { data: establishment } = useUserEstablishment();
   const { toast } = useToast();
   
   const [internalNotes, setInternalNotes] = useState('');
@@ -150,7 +153,13 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Cliente</p>
             <div className="space-y-2">
-              <p className="font-medium">{appointment.customer?.name}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium">{appointment.customer?.name}</p>
+                <CustomerTagBadges
+                  customerId={appointment.customer?.id}
+                  establishmentId={establishment?.id}
+                />
+              </div>
               
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-3 w-3 text-muted-foreground" />

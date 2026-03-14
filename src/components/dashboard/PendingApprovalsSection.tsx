@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useUpdateAppointmentStatus } from '@/hooks/useAppointments';
+import { useUserEstablishment } from '@/hooks/useUserEstablishment';
+import { useAllCustomerTags } from '@/hooks/useClientTags';
 import { toast } from 'sonner';
 
 interface PendingAppointment {
@@ -43,6 +45,37 @@ function formatCents(cents: number | null | undefined): string {
 
 export function PendingApprovalsSection({ appointments, onAppointmentClick, professionals = [] }: PendingApprovalsSectionProps) {
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateAppointmentStatus();
+  const { data: establishment } = useUserEstablishment();
+  const { data: allCustomerTags = [] } = useAllCustomerTags(establishment?.id);
+
+  const customerTagsMap = useMemo(() => {
+    const map = new Map<string, typeof allCustomerTags>();
+    for (const ct of allCustomerTags) {
+      const list = map.get(ct.customer_id) ?? [];
+      list.push(ct);
+      map.set(ct.customer_id, list);
+    }
+    return map;
+  }, [allCustomerTags]);
+
+  const renderCustomerTags = (customerId: string | undefined) => {
+    if (!customerId) return null;
+    const tags = customerTagsMap.get(customerId);
+    if (!tags?.length) return null;
+    return (
+      <span className="inline-flex flex-wrap gap-0.5 ml-1">
+        {tags.map((ct) => (
+          <span
+            key={ct.tag_id}
+            className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-medium text-white leading-none"
+            style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+          >
+            {ct.tag?.name}
+          </span>
+        ))}
+      </span>
+    );
+  };
 
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; apt: PendingAppointment | null }>({ open: false, apt: null });
   const [rejectReason, setRejectReason] = useState('');
@@ -184,6 +217,7 @@ export function PendingApprovalsSection({ appointments, onAppointmentClick, prof
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className="font-medium truncate">{apt.customer?.name}</span>
+                      {renderCustomerTags(apt.customer?.id)}
                       {(apt.customer_email || apt.customer?.email) && (
                         <span className="text-muted-foreground text-xs truncate hidden sm:inline">
                           • {apt.customer_email || apt.customer?.email}
