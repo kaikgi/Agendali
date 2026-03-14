@@ -478,6 +478,7 @@ export default function Agenda() {
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className={cn(isCompletedApt(apt.status) && "line-through")}>{apt.customer?.name}</span>
+                            {renderCustomerTags(apt.customer?.id)}
                           </div>
                         </TableCell>
                         <TableCell>

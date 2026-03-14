@@ -151,7 +151,13 @@ export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: Ap
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Cliente</p>
             <div className="space-y-2">
-              <p className="font-medium">{appointment.customer?.name}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium">{appointment.customer?.name}</p>
+                <CustomerTagBadges
+                  customerId={appointment.customer?.id}
+                  establishmentId={undefined}
+                />
+              </div>
               
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-3 w-3 text-muted-foreground" />
