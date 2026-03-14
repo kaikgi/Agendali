@@ -473,6 +473,7 @@ export type Database = {
       client_tags: {
         Row: {
           bypass_approval: boolean
+          bypass_payment: boolean
           color: string
           created_at: string
           establishment_id: string
@@ -484,6 +485,7 @@ export type Database = {
         }
         Insert: {
           bypass_approval?: boolean
+          bypass_payment?: boolean
           color?: string
           created_at?: string
           establishment_id: string
@@ -495,6 +497,7 @@ export type Database = {
         }
         Update: {
           bypass_approval?: boolean
+          bypass_payment?: boolean
           color?: string
           created_at?: string
           establishment_id?: string
@@ -2066,6 +2069,10 @@ export type Database = {
         Returns: Json
       }
       customer_has_bypass_approval: {
+        Args: { p_customer_id: string; p_establishment_id: string }
+        Returns: boolean
+      }
+      customer_has_bypass_payment: {
         Args: { p_customer_id: string; p_establishment_id: string }
         Returns: boolean
       }
