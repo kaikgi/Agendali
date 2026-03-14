@@ -8,6 +8,7 @@ export interface ClientTag {
   color: string;
   is_active: boolean;
   bypass_approval: boolean;
+  bypass_payment: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;

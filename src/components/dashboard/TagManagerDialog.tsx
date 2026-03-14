@@ -49,6 +49,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
   const [formName, setFormName] = useState('');
   const [formColor, setFormColor] = useState(TAG_COLORS[0]);
   const [formBypass, setFormBypass] = useState(false);
+  const [formBypassPayment, setFormBypassPayment] = useState(false);
   const [formActive, setFormActive] = useState(true);
 
   const resetForm = () => {
