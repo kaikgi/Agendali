@@ -398,6 +398,7 @@ export default function PublicBooking() {
   const handlePayment = async () => {
     if (!createdAppointmentId || !establishment || !selectedService || !paymentConfig) {
       console.warn('[Booking] handlePayment: missing data', { createdAppointmentId, establishment: !!establishment, selectedService: !!selectedService, paymentConfig: !!paymentConfig });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Dados incompletos para pagamento. Tente novamente.' });
       return;
     }
 
@@ -419,15 +420,22 @@ export default function PublicBooking() {
       });
 
       if (result.payment_url) {
-        console.log('[Booking] Redirecting to payment URL');
-        window.location.href = result.payment_url;
+        console.log('[Booking] Redirecting to payment URL:', result.payment_url);
+        // Use top-level navigation to escape iframe if needed
+        const targetWindow = window.top || window.parent || window;
+        targetWindow.location.href = result.payment_url;
       } else {
-        console.error('[Booking] No payment_url in response');
+        console.error('[Booking] No payment_url in response:', result);
         throw new Error('URL de pagamento não recebida');
       }
     } catch (err) {
       console.error('[Booking] handlePayment error:', err);
       setIsPaymentProcessing(false);
+      toast({
+        variant: 'destructive',
+        title: 'Erro no pagamento',
+        description: err instanceof Error ? err.message : 'Falha ao iniciar pagamento. Tente novamente.',
+      });
       throw err;
     }
   };
