@@ -41,6 +41,7 @@ const statusOptions: string[] = ['pending_approval', 'paid_pending_confirmation'
 export function AppointmentDetailsDialog({ open, onOpenChange, appointment }: AppointmentDetailsDialogProps) {
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } = useUpdateAppointmentStatus();
   const { mutateAsync: updateNotes, isPending: isUpdatingNotes } = useUpdateAppointmentNotes();
+  const { data: establishment } = useUserEstablishment();
   const { toast } = useToast();
   
   const [internalNotes, setInternalNotes] = useState('');
