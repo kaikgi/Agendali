@@ -56,6 +56,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
     setFormName('');
     setFormColor(TAG_COLORS[0]);
     setFormBypass(false);
+    setFormBypassPayment(false);
     setFormActive(true);
     setEditingTag(null);
     setIsCreating(false);
