@@ -188,9 +188,13 @@ export function PlanCardsGrid({
                   </Button>
                 ) : (
                   <Button
-                    variant={plan.popular ? "secondary" : "default"}
+                    variant={plan.popular ? "outline" : "default"}
                     size="lg"
-                    className={cn("w-full font-semibold", compact ? "h-10" : "h-12")}
+                    className={cn(
+                      "w-full font-semibold",
+                      compact ? "h-10" : "h-12",
+                      plan.popular && "bg-background text-foreground hover:bg-background/90 border-background"
+                    )}
                     asChild
                   >
                     <a href={plan.checkoutUrls[period]} target="_blank" rel="noopener noreferrer">
