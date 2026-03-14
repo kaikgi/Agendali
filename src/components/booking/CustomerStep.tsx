@@ -45,7 +45,7 @@ interface CustomerStepProps {
   isGuest?: boolean;
 }
 
-export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
+export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues, isGuest = false }: CustomerStepProps) {
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
 
