@@ -53,6 +53,37 @@ export default function Agenda() {
   
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { professionals } = useManageProfessionals(establishment?.id);
+  const { data: allCustomerTags = [] } = useAllCustomerTags(establishment?.id);
+
+  // Build customer → tags lookup
+  const customerTagsMap = useMemo(() => {
+    const map = new Map<string, typeof allCustomerTags>();
+    for (const ct of allCustomerTags) {
+      const list = map.get(ct.customer_id) ?? [];
+      list.push(ct);
+      map.set(ct.customer_id, list);
+    }
+    return map;
+  }, [allCustomerTags]);
+
+  const renderCustomerTags = (customerId: string | undefined) => {
+    if (!customerId) return null;
+    const tags = customerTagsMap.get(customerId);
+    if (!tags?.length) return null;
+    return (
+      <span className="inline-flex flex-wrap gap-0.5 ml-1">
+        {tags.map((ct) => (
+          <span
+            key={ct.tag_id}
+            className="inline-flex items-center px-1 py-0 rounded-full text-[9px] font-medium text-white leading-none"
+            style={{ backgroundColor: ct.tag?.color || '#6b7280' }}
+          >
+            {ct.tag?.name}
+          </span>
+        ))}
+      </span>
+    );
+  };
 
   // Compute date range based on view mode
   const { rangeStart, rangeEnd } = useMemo(() => {
