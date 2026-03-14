@@ -300,6 +300,7 @@ export default function Agenda() {
                       >
                         <span className="hidden sm:inline">
                           {format(parseISO(apt.start_at), 'HH:mm')} {apt.customer?.name}
+                          {renderCustomerTags(apt.customer?.id)}
                         </span>
                         <span className="sm:hidden">
                           {format(parseISO(apt.start_at), 'HH:mm')}
