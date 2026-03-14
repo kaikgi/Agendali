@@ -657,23 +657,23 @@ export default function PublicBooking() {
 
         {currentStep === 3 && !session && (
           <div className="space-y-6">
-            <h2 className="text-lg font-semibold">Seus dados</h2>
-            <div className="p-6 border border-border rounded-lg bg-muted/30 text-center space-y-4">
-              <LogIn className="w-10 h-10 mx-auto text-muted-foreground" />
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">Para continuar, entre na sua conta ou crie seu cadastro</p>
-                <p className="text-sm text-muted-foreground">É necessário ter uma conta para realizar agendamentos.</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => { setAuthTab('login'); setShowLoginModal(true); }}>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Entrar
-                </Button>
-                <Button variant="outline" onClick={() => { setAuthTab('signup'); setShowLoginModal(true); }}>
-                  Criar conta
-                </Button>
+            <div className="p-4 border border-border rounded-lg bg-muted/30 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <LogIn className="w-4 h-4" />
+                <span>Já tem conta? <button type="button" className="text-primary underline" onClick={() => { setAuthTab('login'); setShowLoginModal(true); }}>Entrar</button> ou <button type="button" className="text-primary underline" onClick={() => { setAuthTab('signup'); setShowLoginModal(true); }}>Criar conta</button></span>
               </div>
             </div>
+            <CustomerStep 
+              key="guest"
+              establishment={{...establishment, ask_email: true}} 
+              onSubmit={handleSubmit} 
+              isSubmitting={isSubmitting}
+              defaultValues={{
+                name: '',
+                phone: '',
+                email: '',
+              }}
+            />
           </div>
         )}
 
