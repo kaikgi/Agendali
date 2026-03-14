@@ -41,14 +41,16 @@ interface CustomerStepProps {
     phone?: string;
     email?: string;
   };
+  /** When true, email is editable (guest booking) */
+  isGuest?: boolean;
 }
 
-export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues }: CustomerStepProps) {
+export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues, isGuest = false }: CustomerStepProps) {
   const [policyRead, setPolicyRead] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
 
-  // Email is always canonical (readonly) – never part of the editable form state
-  const canonicalEmail = defaultValues?.email || '';
+  // Email is canonical (readonly) for logged-in users, editable for guests
+  const canonicalEmail = isGuest ? '' : (defaultValues?.email || '');
 
   const {
     register,
@@ -79,8 +81,9 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
 
-  // Always show reminder when we have a canonical email
-  const showReminderSection = !!canonicalEmail;
+  // Show reminder when we have an email (canonical or from form for guests)
+  const watchedEmail = watch('email');
+  const showReminderSection = isGuest ? !!watchedEmail : !!canonicalEmail;
 
   const handlePolicyRead = () => {
     setPolicyRead(true);
@@ -112,10 +115,10 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
   const policyText = establishment.cancellation_policy_text || defaultPolicyText;
 
   const onFormSubmit = async (data: CustomerFormData) => {
-    // Inject canonical email before submitting – never trust form state for email
+    // For logged-in users, inject canonical email. For guests, use form email.
     const finalData: CustomerFormData = {
       ...data,
-      email: canonicalEmail,
+      email: isGuest ? data.email : canonicalEmail,
     };
     console.log('submit clicked (customer step)', finalData);
     await onSubmit(finalData);
@@ -163,18 +166,32 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
           {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
         </div>
 
-        {/* Email – always readonly, canonical from auth */}
+        {/* Email – readonly for logged-in users, editable for guests */}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={canonicalEmail}
-            readOnly
-            className="bg-muted cursor-not-allowed"
-            tabIndex={-1}
-          />
-          <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+          {isGuest ? (
+            <>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                {...register('email')}
+              />
+              <p className="text-xs text-muted-foreground">Opcional. Usado para enviar confirmação e lembretes.</p>
+            </>
+          ) : (
+            <>
+              <Input
+                id="email"
+                type="email"
+                value={canonicalEmail}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+                tabIndex={-1}
+              />
+              <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
+            </>
+          )}
         </div>
 
         {establishment.ask_notes && (
