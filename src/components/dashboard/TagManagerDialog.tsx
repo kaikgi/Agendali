@@ -176,6 +176,12 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
                               <span className="text-xs text-emerald-600">Sem aprovação manual</span>
                             </div>
                           )}
+                          {tag.bypass_payment && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <CreditCard className="h-3 w-3 text-blue-600" />
+                              <span className="text-xs text-blue-600">Sem pagamento online</span>
+                            </div>
+                          )}
                         </div>
                         {!tag.is_active && (
                           <Badge variant="secondary" className="text-xs">Inativa</Badge>
