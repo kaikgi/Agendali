@@ -117,7 +117,11 @@ export default function PublicBooking() {
   });
 
   // Payment config for selected service
-  const { data: paymentConfig } = usePaymentConfigForBooking(slug, selectedService?.id);
+  const {
+    data: paymentConfig,
+    isLoading: isLoadingPaymentConfig,
+    error: paymentConfigError,
+  } = usePaymentConfigForBooking(slug, selectedService?.id);
 
   const createPayment = useCreatePayment();
 
@@ -337,35 +341,51 @@ export default function PublicBooking() {
 
       console.log('[Booking] RPC success:', data);
       const result = Array.isArray(data) ? data[0] : data;
+      const appointmentId = result?.appointment_id as string | undefined;
+
+      if (!appointmentId) {
+        console.error('[Booking] RPC did not return appointment_id:', result);
+        throw new Error('Agendamento criado sem appointment_id. Não foi possível iniciar pagamento.');
+      }
 
       if (result?.manage_token) {
         setManageToken(result.manage_token);
       }
 
-      if (result?.appointment_id) {
-        setCreatedAppointmentId(result.appointment_id);
-      }
+      setCreatedAppointmentId(appointmentId);
 
-      // If payment is required, check if server actually set pending_payment
-      // (customer may have bypass_payment tag, in which case server skips payment)
-      if (requiresPayment && result?.appointment_id) {
-        const { data: apt } = await supabase
+      // If payment is required, validate appointment status strictly.
+      // Never silently skip payment when status lookup fails.
+      if (requiresPayment) {
+        const { data: apt, error: aptError } = await supabase
           .from('appointments')
           .select('status')
-          .eq('id', result.appointment_id)
-          .single();
+          .eq('id', appointmentId)
+          .maybeSingle();
 
-        if (apt?.status === 'pending_payment') {
+        if (aptError) {
+          console.error('[Booking] Failed to read appointment status for payment:', aptError);
+          throw new Error(`Falha ao validar status para pagamento: ${aptError.message}`);
+        }
+
+        if (!apt?.status) {
+          console.error('[Booking] Appointment status not found after creation', { appointmentId });
+          throw new Error('Agendamento criado, mas o status de pagamento não pôde ser validado.');
+        }
+
+        if (apt.status === 'pending_payment') {
           console.log('[Booking] Payment required, moving to payment step');
           setCurrentStep(4);
-        } else {
-          console.log('[Booking] Payment bypassed by tag, booking complete');
-          setIsSuccess(true);
+          return;
         }
-      } else {
-        console.log('[Booking] No payment required, booking complete');
+
+        console.log('[Booking] Payment bypassed or not required by server status', { status: apt.status });
         setIsSuccess(true);
+        return;
       }
+
+      console.log('[Booking] No payment required, booking complete');
+      setIsSuccess(true);
     } catch (error) {
       console.error('[Booking] handleConfirmedSubmit error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Não foi possível concluir o agendamento. Tente novamente.';
@@ -379,6 +399,23 @@ export default function PublicBooking() {
   const handleSubmit = async (customerData: CustomerFormData) => {
     console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
+
+    if (paymentConfigError) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro no checkout',
+        description: 'Não foi possível carregar a configuração de pagamento. Tente novamente.',
+      });
+      return;
+    }
+
+    if (isLoadingPaymentConfig) {
+      toast({
+        title: 'Aguarde um instante',
+        description: 'Estamos carregando a configuração de pagamento deste serviço.',
+      });
+      return;
+    }
 
     if (!session) {
       console.log('[Booking] No session, showing login modal');
