@@ -90,6 +90,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
           name: formName.trim(),
           color: formColor,
           bypass_approval: formBypass,
+          bypass_payment: formBypassPayment,
           is_active: formActive,
         });
         toast.success('Tag atualizada!');
@@ -98,6 +99,7 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
           name: formName.trim(),
           color: formColor,
           bypass_approval: formBypass,
+          bypass_payment: formBypassPayment,
         });
         toast.success('Tag criada!');
       }
