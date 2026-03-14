@@ -241,6 +241,16 @@ export function TagManagerDialog({ open, onOpenChange, establishmentId }: TagMan
                     <Switch checked={formBypass} onCheckedChange={setFormBypass} />
                   </div>
 
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-accent/30">
+                    <div>
+                      <Label className="text-sm font-medium">Agendar sem pagamento</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Clientes com esta tag não precisam pagar online para agendar
+                      </p>
+                    </div>
+                    <Switch checked={formBypassPayment} onCheckedChange={setFormBypassPayment} />
+                  </div>
+
                   {editingTag && (
                     <div className="flex items-center justify-between p-3 rounded-lg border">
                       <Label className="text-sm">Tag ativa</Label>
