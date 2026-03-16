@@ -441,6 +441,12 @@ export default function Configuracoes() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">JPG, PNG, GIF, WebP. Máximo 5MB.</p>
+              {uploadingLogo && (
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Enviando logo e salvando no estabelecimento...
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

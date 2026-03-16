@@ -99,15 +99,20 @@ export function ImageUploadButton({
   };
 
   const handleProceedToCrop = () => {
+    console.log('[logo-upload] Usuário confirmou preview e abriu recorte');
     setPreviewDialogOpen(false);
     setCropDialogOpen(true);
   };
 
-  const handleCropComplete = (croppedBlob: Blob) => {
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    console.log('[logo-upload] Recorte concluído', {
+      size: croppedBlob.size,
+      type: croppedBlob.type,
+    });
     setCropDialogOpen(false);
     setPreviewUrl(null);
     setSelectedFile(null);
-    onImageCropped(croppedBlob);
+    await onImageCropped(croppedBlob);
   };
 
   const handleClosePreview = () => {
