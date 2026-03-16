@@ -106,21 +106,66 @@ export default function Configuracoes() {
   }, [establishment]);
 
   const handleLogoUpload = async (croppedBlob: Blob) => {
-    if (!establishment) return;
+    if (!establishment) {
+      console.error('[logo-upload] Upload cancelado: estabelecimento não encontrado');
+      toast({ title: 'Estabelecimento não encontrado', description: 'Recarregue a página e tente novamente.', variant: 'destructive' });
+      return;
+    }
+
+    console.log('[logo-upload] Clique em salvar/enviar logo', {
+      establishmentId: establishment.id,
+      blobSize: croppedBlob.size,
+      blobType: croppedBlob.type,
+    });
+
     setUploadingLogo(true);
     try {
+      const bucket = 'uploads';
       const filePath = `logos/${establishment.id}/logo.jpg`;
-      const { error: uploadError } = await supabase.storage.from('uploads').upload(filePath, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
+      console.log('[logo-upload] Iniciando upload no storage', { bucket, filePath });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, croppedBlob, {
+          upsert: true,
+          contentType: 'image/jpeg',
+          cacheControl: '0',
+        });
+
+      console.log('[logo-upload] Retorno do storage', { uploadData, uploadError });
       if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(filePath);
-      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
-      const { error: updateError } = await supabase.from('establishments').update({ logo_url: urlWithCacheBuster }).eq('id', establishment.id);
+
+      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+      const urlWithCacheBuster = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+      console.log('[logo-upload] URL final gerada', { urlWithCacheBuster });
+
+      const { data: updatedEstablishment, error: updateError } = await supabase
+        .from('establishments')
+        .update({ logo_url: urlWithCacheBuster })
+        .eq('id', establishment.id)
+        .select('id, logo_url')
+        .single();
+
+      console.log('[logo-upload] Retorno do save no banco', { updatedEstablishment, updateError });
       if (updateError) throw updateError;
-      setLogoUrl(urlWithCacheBuster);
+
+      const nextLogoUrl = updatedEstablishment.logo_url;
+      setLogoUrl(nextLogoUrl);
+      queryClient.setQueryData(['user-establishment', (establishment as any).owner_user_id], (prev: any) =>
+        prev ? { ...prev, logo_url: nextLogoUrl } : prev
+      );
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
-      toast({ title: 'Logo atualizado!' });
+      queryClient.invalidateQueries({ queryKey: ['establishment'] });
+
+      console.log('[logo-upload] UI atualizada com nova logo', { nextLogoUrl });
+      toast({ title: 'Logo atualizada!', description: 'A nova logo já está salva e visível no sistema.' });
     } catch (err: any) {
-      toast({ title: 'Erro ao enviar logo', description: err?.message || 'Tente novamente', variant: 'destructive' });
+      console.error('[logo-upload] Erro no fluxo de upload', err);
+      toast({
+        title: 'Erro ao enviar logo',
+        description: err?.message || 'Não foi possível salvar a logo. Tente novamente.',
+        variant: 'destructive',
+      });
     } finally {
       setUploadingLogo(false);
     }
@@ -133,14 +178,24 @@ export default function Configuracoes() {
       const urlParts = logoUrl.split('/uploads/');
       if (urlParts.length > 1) {
         const rawPath = urlParts[1].split('?')[0];
-        await supabase.storage.from('uploads').remove([rawPath]);
+        console.log('[logo-upload] Removendo arquivo antigo do storage', { rawPath });
+        const { data: removeData, error: removeError } = await supabase.storage.from('uploads').remove([rawPath]);
+        console.log('[logo-upload] Retorno da remoção no storage', { removeData, removeError });
+        if (removeError) throw removeError;
       }
-      const { error } = await supabase.from('establishments').update({ logo_url: null }).eq('id', establishment.id);
+      const { data: updatedEstablishment, error } = await supabase
+        .from('establishments')
+        .update({ logo_url: null })
+        .eq('id', establishment.id)
+        .select('id, logo_url')
+        .single();
       if (error) throw error;
-      setLogoUrl(null);
+      setLogoUrl(updatedEstablishment.logo_url);
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
-      toast({ title: 'Logo removido!' });
+      queryClient.invalidateQueries({ queryKey: ['establishment'] });
+      toast({ title: 'Logo removida!', description: 'A logo atual foi removida com sucesso.' });
     } catch (err: any) {
+      console.error('[logo-upload] Erro ao remover logo', err);
       toast({ title: 'Erro ao remover logo', description: err?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setUploadingLogo(false);
@@ -386,6 +441,12 @@ export default function Configuracoes() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">JPG, PNG, GIF, WebP. Máximo 5MB.</p>
+              {uploadingLogo && (
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Enviando logo e salvando no estabelecimento...
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

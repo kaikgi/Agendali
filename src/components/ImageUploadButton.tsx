@@ -12,7 +12,7 @@ import {
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 interface ImageUploadButtonProps {
-  onImageCropped: (croppedBlob: Blob) => void;
+  onImageCropped: (croppedBlob: Blob) => Promise<void> | void;
   currentImageUrl?: string | null;
   buttonText?: string;
   changeButtonText?: string;
@@ -51,6 +51,12 @@ export function ImageUploadButton({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log('[logo-upload] Arquivo selecionado', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+
     // Reset state
     setError(null);
     setSelectedFile(null);
@@ -59,6 +65,7 @@ export function ImageUploadButton({
     // Validate file type - only safe image formats
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
+      console.warn('[logo-upload] Tipo de arquivo inválido', { type: file.type });
       setError('Selecione um arquivo de imagem válido (JPG, PNG, GIF ou WebP)');
       setPreviewDialogOpen(true);
       return;
@@ -66,6 +73,10 @@ export function ImageUploadButton({
 
     // Validate file size
     if (file.size > maxFileSizeBytes) {
+      console.warn('[logo-upload] Arquivo acima do limite', {
+        size: file.size,
+        maxFileSizeBytes,
+      });
       setError(`A imagem deve ter no máximo ${maxFileSizeMB}MB. O arquivo selecionado tem ${formatFileSize(file.size)}.`);
       setPreviewDialogOpen(true);
       return;
@@ -74,6 +85,7 @@ export function ImageUploadButton({
     // Create preview
     const reader = new FileReader();
     reader.onload = () => {
+      console.log('[logo-upload] Preview gerado com sucesso');
       setPreviewUrl(reader.result as string);
       setSelectedFile(file);
       setPreviewDialogOpen(true);
@@ -87,15 +99,20 @@ export function ImageUploadButton({
   };
 
   const handleProceedToCrop = () => {
+    console.log('[logo-upload] Usuário confirmou preview e abriu recorte');
     setPreviewDialogOpen(false);
     setCropDialogOpen(true);
   };
 
-  const handleCropComplete = (croppedBlob: Blob) => {
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    console.log('[logo-upload] Recorte concluído', {
+      size: croppedBlob.size,
+      type: croppedBlob.type,
+    });
     setCropDialogOpen(false);
     setPreviewUrl(null);
     setSelectedFile(null);
-    onImageCropped(croppedBlob);
+    await onImageCropped(croppedBlob);
   };
 
   const handleClosePreview = () => {
