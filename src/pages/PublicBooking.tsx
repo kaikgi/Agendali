@@ -359,6 +359,24 @@ export default function PublicBooking() {
 
       setCreatedAppointmentId(appointmentId);
 
+      // Persist accepted terms (fire-and-forget, non-blocking)
+      const termsToSave = terms || pendingTerms;
+      if (termsToSave && establishment) {
+        (supabase as any)
+          .from('appointment_accepted_terms')
+          .insert({
+            appointment_id: appointmentId,
+            establishment_id: establishment.id,
+            terms_type: termsToSave.type,
+            terms_text: termsToSave.text,
+            terms_params: termsToSave.params,
+          })
+          .then(({ error: termsErr }: any) => {
+            if (termsErr) console.error('[Booking] Failed to save accepted terms:', termsErr);
+            else console.log('[Booking] Accepted terms saved successfully');
+          });
+      }
+
       // If payment is required, validate appointment status strictly.
       // Never silently skip payment when status lookup fails.
       if (requiresPayment) {
