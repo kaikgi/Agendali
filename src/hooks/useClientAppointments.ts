@@ -9,6 +9,7 @@ export interface ClientAppointment {
   end_at: string;
   status: string;
   customer_notes: string | null;
+  customer_reminder_hours: number | null;
   service: {
     id: string;
     name: string;
