@@ -419,7 +419,7 @@ export default function PublicBooking() {
     }
   };
 
-  const handleSubmit = async (customerData: CustomerFormData) => {
+  const handleSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
     console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
