@@ -32,6 +32,7 @@ import { useCancelClientAppointment, type ClientAppointment } from '@/hooks/useC
 import { ClientRescheduleDialog } from './ClientRescheduleDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
+import { useProfile } from '@/hooks/useProfile';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
