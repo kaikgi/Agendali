@@ -30,6 +30,8 @@ export interface ClientAppointment {
     city: string | null;
     state: string | null;
     max_future_days: number;
+    slot_interval_minutes: number;
+    buffer_minutes: number;
   };
 }
 
