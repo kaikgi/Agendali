@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +22,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useState } from 'react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCancelClientAppointment, type ClientAppointment } from '@/hooks/useClientAppointments';
 import { ClientRescheduleDialog } from './ClientRescheduleDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
@@ -37,8 +44,23 @@ import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState<{ terms_type: string; terms_text: string; accepted_at: string } | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
+
+  // Load accepted terms for this appointment
+  useEffect(() => {
+    if (!appointment || !open) return;
+    (supabase as any)
+      .from('appointment_accepted_terms')
+      .select('terms_type, terms_text, accepted_at')
+      .eq('appointment_id', appointment.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setAcceptedTerms(data || null);
+      });
+  }, [appointment?.id, open]);
 
   if (!appointment) return null;
 
@@ -169,6 +191,27 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                 <p className="text-sm text-muted-foreground mb-1">Observações</p>
                 <p className="text-sm bg-muted/50 p-2 rounded">{appointment.customer_notes}</p>
               </div>
+            )}
+
+            {/* Accepted Terms */}
+            {acceptedTerms && (
+              <Collapsible open={termsOpen} onOpenChange={setTermsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">
+                      Termos aceitos em {format(new Date(acceptedTerms.accepted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ScrollArea className="max-h-48 mt-2">
+                    <div className="text-xs whitespace-pre-wrap bg-muted/50 p-3 rounded text-muted-foreground leading-relaxed">
+                      {acceptedTerms.terms_text}
+                    </div>
+                  </ScrollArea>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Actions */}

@@ -18,6 +18,7 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { CustomerFormData } from '@/lib/validations/booking';
+import type { GeneratedTerms } from '@/lib/bookingTerms';
 import { getManageAppointmentUrl, buildPublicUrl } from '@/lib/publicUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -272,7 +273,11 @@ export default function PublicBooking() {
     }
   };
 
-  const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
+  // Store terms for persistence after appointment creation
+  const [pendingTerms, setPendingTerms] = useState<GeneratedTerms | null>(null);
+
+  const handleConfirmedSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
+    if (terms) setPendingTerms(terms);
     if (isSubmitting) {
       console.warn('[Booking] handleConfirmedSubmit: already submitting, skipping');
       return;
@@ -354,6 +359,24 @@ export default function PublicBooking() {
 
       setCreatedAppointmentId(appointmentId);
 
+      // Persist accepted terms (fire-and-forget, non-blocking)
+      const termsToSave = terms || pendingTerms;
+      if (termsToSave && establishment) {
+        (supabase as any)
+          .from('appointment_accepted_terms')
+          .insert({
+            appointment_id: appointmentId,
+            establishment_id: establishment.id,
+            terms_type: termsToSave.type,
+            terms_text: termsToSave.text,
+            terms_params: termsToSave.params,
+          })
+          .then(({ error: termsErr }: any) => {
+            if (termsErr) console.error('[Booking] Failed to save accepted terms:', termsErr);
+            else console.log('[Booking] Accepted terms saved successfully');
+          });
+      }
+
       // If payment is required, validate appointment status strictly.
       // Never silently skip payment when status lookup fails.
       if (requiresPayment) {
@@ -396,7 +419,7 @@ export default function PublicBooking() {
     }
   };
 
-  const handleSubmit = async (customerData: CustomerFormData) => {
+  const handleSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
     console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
@@ -425,7 +448,7 @@ export default function PublicBooking() {
       return;
     }
 
-    await handleConfirmedSubmit(customerData);
+    await handleConfirmedSubmit(customerData, terms);
   };
 
   const handlePayment = async () => {
@@ -665,6 +688,8 @@ export default function PublicBooking() {
               onSubmit={handleSubmit} 
               isSubmitting={isSubmitting}
               isGuest
+              paymentConfig={paymentConfig}
+              servicePriceCents={selectedService?.price_cents}
               defaultValues={{
                 name: '',
                 phone: '',
@@ -680,6 +705,8 @@ export default function PublicBooking() {
             establishment={{...establishment, ask_email: true}} 
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting}
+            paymentConfig={paymentConfig}
+            servicePriceCents={selectedService?.price_cents}
             defaultValues={{
               name: profile?.full_name || user?.user_metadata?.full_name || '',
               phone: profile?.phone || user?.user_metadata?.phone || '',

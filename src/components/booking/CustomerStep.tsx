@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { customerFormSchema, CustomerFormData } from '@/lib/validations/booking';
+import { generateBookingTerms, type TermsParams, type GeneratedTerms } from '@/lib/bookingTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,26 +32,52 @@ const REMINDER_OPTIONS = [
   { value: 24, label: '24 horas antes', icon: Bell },
 ] as const;
 
+export interface PaymentConfigForTerms {
+  enabled: boolean;
+  deposit_required?: boolean;
+  deposit_type?: string;
+  deposit_value?: number;
+  full_payment_online?: boolean;
+  require_manual_confirmation?: boolean;
+  refund_on_cancellation?: boolean;
+  refund_deadline_hours?: number;
+}
+
 interface CustomerStepProps {
   establishment: Establishment;
-  onSubmit: (data: CustomerFormData) => Promise<void>;
+  onSubmit: (data: CustomerFormData, terms: GeneratedTerms) => Promise<void>;
   isSubmitting: boolean;
-  /** Canonical auth data – treated as the single source of truth */
   defaultValues?: {
     name?: string;
     phone?: string;
     email?: string;
   };
-  /** When true, email is editable (guest booking) */
   isGuest?: boolean;
+  paymentConfig?: PaymentConfigForTerms | null;
+  servicePriceCents?: number | null;
 }
 
-export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues, isGuest = false }: CustomerStepProps) {
-  const [policyRead, setPolicyRead] = useState(false);
-  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues, isGuest = false, paymentConfig, servicePriceCents }: CustomerStepProps) {
+  const [termsRead, setTermsRead] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
-  // Email is canonical (readonly) for logged-in users, editable for guests
   const canonicalEmail = isGuest ? '' : (defaultValues?.email || '');
+
+  // Generate dynamic terms based on establishment config and payment mode
+  const generatedTerms = useMemo<GeneratedTerms>(() => {
+    const params: TermsParams = {
+      establishmentName: establishment.name,
+      rescheduleMinHours: establishment.reschedule_min_hours || 2,
+      depositRequired: paymentConfig?.enabled && paymentConfig?.deposit_required || false,
+      depositType: (paymentConfig?.deposit_type as 'fixed' | 'percentage') || 'fixed',
+      depositValue: paymentConfig?.deposit_value || 0,
+      fullPaymentOnline: paymentConfig?.enabled && paymentConfig?.full_payment_online || false,
+      refundOnCancellation: paymentConfig?.refund_on_cancellation || false,
+      refundDeadlineHours: paymentConfig?.refund_deadline_hours || 24,
+      servicePriceCents: servicePriceCents || 0,
+    };
+    return generateBookingTerms(params);
+  }, [establishment, paymentConfig, servicePriceCents]);
 
   const {
     register,
@@ -61,12 +88,10 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     formState: { errors },
   } = useForm<CustomerFormData>({
     resolver: zodResolver(
-      establishment.require_policy_acceptance
-        ? customerFormSchema.refine((data) => data.acceptPolicy === true, {
-            message: 'Você precisa aceitar a política de cancelamento',
-            path: ['acceptPolicy'],
-          })
-        : customerFormSchema
+      customerFormSchema.refine((data) => data.acceptPolicy === true, {
+        message: 'Você precisa aceitar os termos de agendamento',
+        path: ['acceptPolicy'],
+      })
     ),
     defaultValues: {
       name: defaultValues?.name || '',
@@ -81,55 +106,44 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
 
-  // Show reminder when we have an email (canonical or from form for guests)
   const watchedEmail = watch('email');
   const showReminderSection = isGuest ? !!watchedEmail : !!canonicalEmail;
 
-  const handlePolicyRead = () => {
-    setPolicyRead(true);
-    setPolicyModalOpen(false);
+  const handleTermsRead = () => {
+    setTermsRead(true);
+    setTermsModalOpen(false);
   };
 
   const handleCheckboxChange = (checked: boolean) => {
-    if (checked && !policyRead) {
-      setPolicyModalOpen(true);
+    if (checked && !termsRead) {
+      setTermsModalOpen(true);
       return;
     }
     setValue('acceptPolicy', checked, { shouldValidate: true });
   };
 
-  const defaultPolicyText = `Política de Cancelamento
-
-Para garantir uma melhor organização da agenda e atendimento a todos os clientes, pedimos atenção às seguintes regras:
-
-• Cancelamentos ou reagendamentos devem ser solicitados com no mínimo ${establishment.reschedule_min_hours || 2} horas de antecedência em relação ao horário agendado.
-
-• Reagendamentos estão sujeitos à disponibilidade de horários na agenda do profissional.
-
-• Em caso de não comparecimento sem aviso prévio, o estabelecimento poderá aplicar restrições ou condições especiais para futuros agendamentos.
-
-• Cancelamentos frequentes ou faltas recorrentes podem resultar em limitações para novos agendamentos.
-
-Ao continuar com o agendamento, você declara estar ciente e de acordo com esta política.`;
-
-  const policyText = establishment.cancellation_policy_text || defaultPolicyText;
-
   const onFormSubmit = async (data: CustomerFormData) => {
-    // For logged-in users, inject canonical email. For guests, use form email.
     const finalData: CustomerFormData = {
       ...data,
       email: isGuest ? data.email : canonicalEmail,
     };
-    console.log('submit clicked (customer step)', finalData);
-    await onSubmit(finalData);
+    console.log('[CustomerStep] submit', { termsType: generatedTerms.type });
+    await onSubmit(finalData, generatedTerms);
   };
+
+  // Label for terms type
+  const termsTypeLabel = generatedTerms.type === 'deposit'
+    ? 'Termos de Agendamento (com sinal)'
+    : generatedTerms.type === 'full_payment_online'
+    ? 'Termos de Agendamento (pagamento integral)'
+    : 'Termos de Agendamento';
 
   return (
     <form
       onSubmit={handleSubmit(
         onFormSubmit,
         (formErrors) => {
-          console.log('submit blocked by validation', formErrors);
+          console.log('[CustomerStep] validation errors', formErrors);
           const firstErrorField = Object.keys(formErrors)[0];
           if (firstErrorField) {
             const el = document.getElementById(firstErrorField);
@@ -241,102 +255,101 @@ Ao continuar com o agendamento, você declara estar ciente e de acordo com esta 
           </div>
         )}
 
-        {establishment.require_policy_acceptance && (
-          <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              <h3 className="font-medium text-sm">Política de cancelamento</h3>
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Antes de confirmar, leia e aceite nossa política de cancelamento.
-            </p>
-
-            <Dialog open={policyModalOpen} onOpenChange={setPolicyModalOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  {policyRead ? 'Reler política' : 'Ler política de cancelamento'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Política de Cancelamento
-                  </DialogTitle>
-                  <DialogDescription>
-                    {establishment.name}
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <ScrollArea className="max-h-[60vh] pr-4">
-                  <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed space-y-1">
-                    {policyText}
-                  </div>
-                </ScrollArea>
-
-                <DialogFooter className="flex-col sm:flex-row gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setPolicyModalOpen(false)}
-                    className="sm:flex-1"
-                  >
-                    Fechar
-                  </Button>
-                  <Button 
-                    type="button"
-                    onClick={handlePolicyRead}
-                    className="sm:flex-1"
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Li e entendi
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <div className="flex items-start gap-2 pt-2">
-              <Checkbox
-                id="acceptPolicy"
-                checked={acceptPolicy}
-                disabled={!policyRead}
-                onCheckedChange={handleCheckboxChange}
-                className={!policyRead ? 'opacity-50 cursor-not-allowed' : ''}
-              />
-              <div className="flex-1">
-                <Label 
-                  htmlFor="acceptPolicy" 
-                  className={`text-sm font-normal ${policyRead ? 'cursor-pointer' : 'cursor-not-allowed text-muted-foreground'}`}
-                >
-                  Li e aceito a política de cancelamento
-                </Label>
-                {!policyRead && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Você precisa ler a política antes de aceitar
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {policyRead && acceptPolicy && (
-              <div className="flex items-center gap-2 text-green-600 text-sm">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Política aceita</span>
-              </div>
-            )}
-
-            {errors.acceptPolicy && (
-              <p className="text-sm text-destructive">{errors.acceptPolicy.message}</p>
-            )}
+        {/* Dynamic Terms of Service - Always shown */}
+        <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h3 className="font-medium text-sm">{termsTypeLabel}</h3>
           </div>
-        )}
+
+          <p className="text-sm text-muted-foreground">
+            Antes de confirmar, leia e aceite os termos de agendamento.
+          </p>
+
+          <Dialog open={termsModalOpen} onOpenChange={setTermsModalOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {termsRead ? 'Reler termos' : 'Ler termos de agendamento'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  {termsTypeLabel}
+                </DialogTitle>
+                <DialogDescription>
+                  {establishment.name}
+                </DialogDescription>
+              </DialogHeader>
+
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed space-y-1">
+                  {generatedTerms.text}
+                </div>
+              </ScrollArea>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setTermsModalOpen(false)}
+                  className="sm:flex-1"
+                >
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleTermsRead}
+                  className="sm:flex-1"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Li e entendi
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <div className="flex items-start gap-2 pt-2">
+            <Checkbox
+              id="acceptPolicy"
+              checked={acceptPolicy}
+              disabled={!termsRead}
+              onCheckedChange={handleCheckboxChange}
+              className={!termsRead ? 'opacity-50 cursor-not-allowed' : ''}
+            />
+            <div className="flex-1">
+              <Label
+                htmlFor="acceptPolicy"
+                className={`text-sm font-normal ${termsRead ? 'cursor-pointer' : 'cursor-not-allowed text-muted-foreground'}`}
+              >
+                Li e aceito os termos de agendamento
+              </Label>
+              {!termsRead && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Você precisa ler os termos antes de aceitar
+                </p>
+              )}
+            </div>
+          </div>
+
+          {termsRead && acceptPolicy && (
+            <div className="flex items-center gap-2 text-green-600 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Termos aceitos</span>
+            </div>
+          )}
+
+          {errors.acceptPolicy && (
+            <p className="text-sm text-destructive">{errors.acceptPolicy.message}</p>
+          )}
+        </div>
       </div>
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
