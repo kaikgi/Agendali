@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle, Bell, CreditCard, BanknoteIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle, Bell, CreditCard, BanknoteIcon, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
