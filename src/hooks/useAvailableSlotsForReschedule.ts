@@ -27,8 +27,20 @@ export function useAvailableSlotsForReschedule({
       if (!establishmentId || !professionalId || !date) return [];
 
       const weekday = date.getDay();
+      const dateStr = format(date, 'yyyy-MM-dd');
       const dayStart = startOfDay(date);
       const dayEnd = addDays(dayStart, 1);
+
+      console.log('[reschedule-slots] Fetching slots for:', {
+        establishmentId,
+        professionalId,
+        date: dateStr,
+        weekday,
+        serviceDurationMinutes,
+        slotIntervalMinutes,
+        bufferMinutes,
+        ignoreAppointmentId,
+      });
 
       // Fetch all data in parallel (mirrors useAvailableSlots)
       const [
@@ -97,16 +109,40 @@ export function useAvailableSlotsForReschedule({
           .eq('active', true),
       ]);
 
+      // Check for query errors - log them and throw if critical
+      const queryErrors = [
+        businessHoursRes.error && `business_hours: ${businessHoursRes.error.message}`,
+        professionalHoursRes.error && `professional_hours: ${professionalHoursRes.error.message}`,
+        appointmentsRes.error && `appointments: ${appointmentsRes.error.message}`,
+        timeBlocksRes.error && `time_blocks: ${timeBlocksRes.error.message}`,
+        estTimeBlocksRes.error && `est_time_blocks: ${estTimeBlocksRes.error.message}`,
+        recurringBlocksRes.error && `recurring_blocks: ${recurringBlocksRes.error.message}`,
+        estRecurringBlocksRes.error && `est_recurring_blocks: ${estRecurringBlocksRes.error.message}`,
+      ].filter(Boolean);
+
+      if (queryErrors.length > 0) {
+        console.error('[reschedule-slots] Query errors:', queryErrors);
+      }
+
+      // Critical: if business_hours query failed, throw instead of returning empty
+      if (businessHoursRes.error) {
+        throw new Error(`Erro ao buscar horários: ${businessHoursRes.error.message}`);
+      }
+
       const businessHours = businessHoursRes.data;
       const professionalHours = professionalHoursRes.data;
 
       // Check if establishment is closed
       if (!businessHours || businessHours.closed || !businessHours.open_time || !businessHours.close_time) {
+        console.log('[reschedule-slots] Establishment closed on weekday', weekday, { businessHours });
         return [];
       }
 
       // Check if professional is closed
-      if (professionalHours && professionalHours.closed) return [];
+      if (professionalHours && professionalHours.closed) {
+        console.log('[reschedule-slots] Professional closed on weekday', weekday);
+        return [];
+      }
 
       // Determine effective working hours (intersection of business + professional)
       let effectiveOpenTime: string;
@@ -124,7 +160,10 @@ export function useAvailableSlotsForReschedule({
         effectiveCloseTime = businessHours.close_time;
       }
 
-      if (effectiveOpenTime >= effectiveCloseTime) return [];
+      if (effectiveOpenTime >= effectiveCloseTime) {
+        console.log('[reschedule-slots] Invalid effective hours', { effectiveOpenTime, effectiveCloseTime });
+        return [];
+      }
 
       const [openHour, openMin] = effectiveOpenTime.split(':').map(Number);
       const [closeHour, closeMin] = effectiveCloseTime.split(':').map(Number);
@@ -165,31 +204,56 @@ export function useAvailableSlotsForReschedule({
       const slots: string[] = [];
       const now = new Date();
       let current = new Date(startTime);
+      let totalCandidates = 0;
+      let pastCount = 0;
+      let conflictCount = 0;
+
+      const effectiveInterval = slotIntervalMinutes > 0 ? slotIntervalMinutes : 15;
 
       while (isBefore(current, endTime) || format(current, 'HH:mm') === format(endTime, 'HH:mm')) {
         const slotEnd = addMinutes(current, serviceDurationMinutes);
 
         if (isAfter(slotEnd, endTime) && format(slotEnd, 'HH:mm') !== format(endTime, 'HH:mm')) {
-          current = addMinutes(current, slotIntervalMinutes);
+          current = addMinutes(current, effectiveInterval);
           continue;
         }
 
-        if (isAfter(current, now)) {
-          const hasConflict = blockedIntervals.some(
-            (interval) =>
-              (isAfter(current, interval.start) && isBefore(current, interval.end)) ||
-              (isAfter(slotEnd, interval.start) && isBefore(slotEnd, interval.end)) ||
-              (isBefore(current, interval.start) && isAfter(slotEnd, interval.end)) ||
-              format(current, 'HH:mm:ss') === format(interval.start, 'HH:mm:ss')
-          );
+        totalCandidates++;
 
-          if (!hasConflict) {
-            slots.push(format(current, 'HH:mm'));
-          }
+        if (!isAfter(current, now)) {
+          pastCount++;
+          current = addMinutes(current, effectiveInterval);
+          continue;
         }
 
-        current = addMinutes(current, slotIntervalMinutes);
+        const hasConflict = blockedIntervals.some(
+          (interval) =>
+            (isAfter(current, interval.start) && isBefore(current, interval.end)) ||
+            (isAfter(slotEnd, interval.start) && isBefore(slotEnd, interval.end)) ||
+            (isBefore(current, interval.start) && isAfter(slotEnd, interval.end)) ||
+            format(current, 'HH:mm:ss') === format(interval.start, 'HH:mm:ss')
+        );
+
+        if (hasConflict) {
+          conflictCount++;
+        } else {
+          slots.push(format(current, 'HH:mm'));
+        }
+
+        current = addMinutes(current, effectiveInterval);
       }
+
+      console.log('[reschedule-slots]', dateStr, {
+        effectiveOpenTime,
+        effectiveCloseTime,
+        totalCandidates,
+        pastCount,
+        conflictCount,
+        available: slots.length,
+        blockedIntervals: blockedIntervals.length,
+        appointments: appointmentsRes.data?.length ?? 0,
+        ignoredId: ignoreAppointmentId,
+      });
 
       return slots;
     },
