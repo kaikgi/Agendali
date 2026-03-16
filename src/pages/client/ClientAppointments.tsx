@@ -173,8 +173,28 @@ export default function ClientAppointments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] =
     useState<ClientAppointment | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const { data: allAppointments = [], isLoading } = useClientAppointments();
+
+  // Handle payment return params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus) {
+      if (paymentStatus === 'success') {
+        toast({ title: 'Pagamento aprovado!', description: 'Seu agendamento foi confirmado automaticamente.' });
+      } else if (paymentStatus === 'pending') {
+        toast({ title: 'Pagamento pendente', description: 'Você receberá uma confirmação assim que o pagamento for aprovado.' });
+      } else if (paymentStatus === 'failure') {
+        toast({ variant: 'destructive', title: 'Pagamento não aprovado', description: 'Houve um problema com o pagamento. Tente novamente.' });
+      }
+      // Clean up query params
+      searchParams.delete('payment');
+      searchParams.delete('apt');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   // Split into upcoming vs past
   const upcoming = useMemo(
