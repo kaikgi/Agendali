@@ -424,6 +424,27 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                 )}
               </div>
             )}
+
+            {/* Rating CTA for completed appointments */}
+            {appointment.status === 'completed' && !isRated && (
+              <div className="pt-2">
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => setRatingDialogOpen(true)}
+                >
+                  <Star className="h-4 w-4" />
+                  Avaliar Atendimento
+                </Button>
+              </div>
+            )}
+
+            {/* Already rated indicator */}
+            {appointment.status === 'completed' && isRated && (
+              <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span>Você já avaliou este atendimento</span>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
