@@ -39,6 +39,7 @@ export function CompletionPromptDialog({
   const [currentAppointment, setCurrentAppointment] = useState<{
     id: string;
     service_name: string;
+    professional_id: string;
     professional_name: string;
     customer_name: string;
     customer_id: string;
