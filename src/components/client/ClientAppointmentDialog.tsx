@@ -33,6 +33,8 @@ import { ClientRescheduleDialog } from './ClientRescheduleDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
 import { useProfile } from '@/hooks/useProfile';
+import { useAppointmentRated } from '@/hooks/useRatings';
+import { RatingDialog } from '@/components/ratings/RatingDialog';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
