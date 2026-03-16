@@ -44,8 +44,8 @@ export default function ClientHistory() {
 
   const { data: appointments = [], isLoading } = useClientAppointments();
 
-  // History = completed, canceled, no_show
-  const historyStatuses = ['completed', 'canceled', 'no_show'];
+  // History = completed, canceled (all types), no_show, rejected
+  const historyStatuses = ['completed', 'canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'];
 
   const allHistory = useMemo(
     () => appointments.filter((a) => historyStatuses.includes(a.status)),
