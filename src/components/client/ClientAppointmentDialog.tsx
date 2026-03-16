@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle, Bell, CreditCard, BanknoteIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -49,21 +49,50 @@ interface AcceptedTermsData {
   accepted_at: string;
 }
 
+interface PaymentData {
+  id: string;
+  amount_cents: number;
+  payment_type: string;
+  status: string;
+  payment_method: string | null;
+  paid_at: string | null;
+  refunded_at: string | null;
+}
+
+const paymentStatusLabels: Record<string, string> = {
+  pending: 'Pendente',
+  approved: 'Aprovado',
+  paid: 'Pago',
+  rejected: 'Rejeitado',
+  refunded: 'Reembolsado',
+  cancelled: 'Cancelado',
+  in_process: 'Em processamento',
+};
+
+const paymentTypeLabels: Record<string, string> = {
+  deposit: 'Sinal',
+  full: 'Pagamento integral',
+};
+
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
   const { profile } = useProfile();
 
-  // Load accepted terms for this appointment
+  // Load accepted terms and payment data for this appointment
   useEffect(() => {
     if (!appointment || !open) {
       setAcceptedTerms(null);
+      setPaymentData(null);
       return;
     }
+
+    // Fetch terms
     (supabase as any)
       .from('appointment_accepted_terms')
       .select('terms_type, terms_text, terms_params, accepted_at')
@@ -71,6 +100,18 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       .maybeSingle()
       .then(({ data }: any) => {
         setAcceptedTerms(data || null);
+      });
+
+    // Fetch payment data
+    (supabase as any)
+      .from('appointment_payments')
+      .select('id, amount_cents, payment_type, status, payment_method, paid_at, refunded_at')
+      .eq('appointment_id', appointment.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setPaymentData(data || null);
       });
   }, [appointment?.id, open]);
 
@@ -121,10 +162,20 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
 
   const showActions = canAct && !isPast;
 
+  const reminderLabel = (() => {
+    const hours = appointment.customer_reminder_hours;
+    if (hours == null) return null;
+    if (hours === 0) return 'Sem lembrete';
+    if (hours === 1) return '1 hora antes';
+    if (hours < 24) return `${hours} horas antes`;
+    const days = Math.floor(hours / 24);
+    return days === 1 ? '1 dia antes' : `${days} dias antes`;
+  })();
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Detalhes do Agendamento
@@ -216,6 +267,76 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
               </div>
             </div>
 
+            {/* Reminder Info */}
+            {reminderLabel && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Bell className="h-3.5 w-3.5" />
+                <span>Lembrete: {reminderLabel}</span>
+              </div>
+            )}
+
+            {/* Payment Info */}
+            {paymentData && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    Pagamento
+                  </p>
+                  <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {paymentTypeLabels[paymentData.payment_type] || paymentData.payment_type}
+                      </span>
+                      <span className="font-semibold text-sm">
+                        {formatPrice(paymentData.amount_cents)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge
+                        variant={
+                          ['approved', 'paid'].includes(paymentData.status)
+                            ? 'default'
+                            : paymentData.status === 'refunded'
+                            ? 'secondary'
+                            : ['rejected', 'cancelled'].includes(paymentData.status)
+                            ? 'destructive'
+                            : 'outline'
+                        }
+                        className="text-[10px]"
+                      >
+                        {paymentStatusLabels[paymentData.status] || paymentData.status}
+                      </Badge>
+                    </div>
+                    {paymentData.payment_method && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Método</span>
+                        <span className="text-sm capitalize">{paymentData.payment_method.replace(/_/g, ' ')}</span>
+                      </div>
+                    )}
+                    {paymentData.paid_at && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Pago em</span>
+                        <span className="text-sm">
+                          {format(new Date(paymentData.paid_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
+                    {paymentData.refunded_at && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Reembolsado em</span>
+                        <span className="text-sm">
+                          {format(new Date(paymentData.refunded_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Notes */}
             {appointment.customer_notes && (
               <div>
@@ -248,7 +369,6 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
             {/* Actions */}
             {showActions && cancellationDecision && (
               <div className="space-y-2 pt-2">
-                {/* Reschedule button - always show if allowed */}
                 {cancellationDecision.canReschedule && (
                   <Button
                     variant="outline"
@@ -260,7 +380,6 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                   </Button>
                 )}
 
-                {/* Cancel button - direct cancel */}
                 {cancellationDecision.canCancelDirectly && (
                   <Button
                     variant="destructive"
@@ -271,7 +390,6 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                   </Button>
                 )}
 
-                {/* WhatsApp contact - for paid or out-of-deadline */}
                 {cancellationDecision.showWhatsAppContact && cancellationDecision.whatsAppUrl && (
                   <Button
                     variant="outline"
@@ -289,7 +407,6 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                   </Button>
                 )}
 
-                {/* Out-of-deadline warning without WhatsApp */}
                 {!cancellationDecision.canCancelDirectly && !cancellationDecision.showWhatsAppContact && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm text-muted-foreground">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />

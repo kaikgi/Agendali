@@ -136,6 +136,7 @@ export function useClientAppointmentsByMonth(year: number, month: number) {
           end_at,
           status,
           customer_notes,
+          customer_reminder_hours,
           service:services(id, name, duration_minutes, price_cents),
           professional:professionals(id, name, photo_url),
           establishment:establishments(id, name, slug, logo_url, phone, address, city, state, max_future_days, slot_interval_minutes, buffer_minutes)
