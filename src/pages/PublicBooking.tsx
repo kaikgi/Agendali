@@ -448,7 +448,7 @@ export default function PublicBooking() {
       return;
     }
 
-    await handleConfirmedSubmit(customerData);
+    await handleConfirmedSubmit(customerData, terms);
   };
 
   const handlePayment = async () => {
