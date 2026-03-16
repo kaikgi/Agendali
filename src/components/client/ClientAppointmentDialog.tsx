@@ -62,6 +62,8 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       });
   }, [appointment?.id, open]);
 
+  if (!appointment) return null;
+
   const canCancel = ['booked', 'confirmed', 'pending_approval'].includes(appointment.status);
   const isPast = new Date(appointment.start_at) < new Date();
 
