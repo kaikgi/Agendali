@@ -234,7 +234,7 @@ export default function ClientDashboard() {
 
             <div className="flex flex-wrap gap-2 pt-1">
               <Button variant="outline" size="sm" asChild>
-                <Link to="/client/appointments">
+                <Link to={`/client/appointments?apt=${nextAppointment.id}`}>
                   Ver detalhes
                   <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                 </Link>
@@ -285,7 +285,7 @@ export default function ClientDashboard() {
                   {pastAppointments.map((apt) => (
                     <Link
                       key={apt.id}
-                      to="/client/appointments"
+                      to={`/client/appointments?apt=${apt.id}`}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <Avatar className="h-9 w-9 shrink-0 rounded-lg">
