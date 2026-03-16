@@ -228,7 +228,9 @@ export default function ClientAppointments() {
   const all = useMemo(() => {
     let filtered = [...allAppointments];
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'canceled_all') {
+      filtered = filtered.filter((a) => ['canceled', 'canceled_by_customer', 'canceled_by_establishment'].includes(a.status));
+    } else if (statusFilter !== 'all') {
       filtered = filtered.filter((a) => a.status === statusFilter);
     }
 
