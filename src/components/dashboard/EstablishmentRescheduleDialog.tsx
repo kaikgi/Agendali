@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAvailableSlotsForReschedule } from '@/hooks/useAvailableSlotsForReschedule';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
@@ -154,7 +153,7 @@ export function EstablishmentRescheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5" />
@@ -165,7 +164,7 @@ export function EstablishmentRescheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="space-y-4">
           {/* Current info */}
           <div className="p-3 bg-muted/50 rounded-lg text-sm">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -194,7 +193,7 @@ export function EstablishmentRescheduleDialog({
 
           {/* Time slots */}
           {selectedDate && (
-            <div className="flex-1 min-h-0">
+            <div>
               <h4 className="text-sm font-medium mb-2">Horários disponíveis</h4>
               {slotsLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -205,46 +204,44 @@ export function EstablishmentRescheduleDialog({
                   Nenhum horário disponível nesta data.
                 </p>
               ) : (
-                <ScrollArea className="h-[120px]">
-                  <div className="grid grid-cols-4 gap-2 pr-4">
-                    {availableSlots.map((time) => (
-                      <Button
-                        key={time}
-                        type="button"
-                        variant={selectedTime === time ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setSelectedTime(time)}
-                        className="text-xs"
-                      >
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
-                </ScrollArea>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {availableSlots.map((time) => (
+                    <Button
+                      key={time}
+                      type="button"
+                      variant={selectedTime === time ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedTime(time)}
+                      className="text-xs touch-target"
+                    >
+                      {time}
+                    </Button>
+                  ))}
+                </div>
               )}
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t mt-4">
+        <div className="flex gap-2 pt-4 border-t mt-2 sticky bottom-0 bg-background pb-1">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={() => onOpenChange(false)}
             disabled={rescheduleMutation.isPending}
           >
             Cancelar
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={handleReschedule}
             disabled={!selectedDate || !selectedTime || rescheduleMutation.isPending}
           >
             {rescheduleMutation.isPending && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             )}
-            Confirmar Reagendamento
+            Confirmar
           </Button>
         </div>
       </DialogContent>
