@@ -67,6 +67,7 @@ export default function Avaliacoes() {
         .select(`
           id,
           stars,
+          professional_stars,
           comment,
           created_at,
           customer:customers!ratings_customer_id_fkey (
