@@ -815,48 +815,30 @@ function PaymentReturnScreen({
   onRetry: () => void;
   onDone: () => void;
 }) {
-  // Check if establishment requires manual confirmation
-  const [requiresManualConfirmation, setRequiresManualConfirmation] = useState(false);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (status === 'success' && slug) {
-      // Fetch establishment to check manual confirmation
-      supabase.from('establishments').select('id').eq('slug', slug).single().then(({ data: est }) => {
-        if (est) {
-          supabase.from('payment_settings').select('require_manual_confirmation').eq('establishment_id', est.id).maybeSingle().then(({ data: ps }) => {
-            if (ps?.require_manual_confirmation) setRequiresManualConfirmation(true);
-          });
-        }
-      });
-    }
-  }, [status, slug]);
+  const handleGoToAppointments = () => {
+    navigate('/client/appointments?payment=' + status + (appointmentId ? '&apt=' + appointmentId : ''));
+  };
 
   if (status === 'success') {
     return (
       <div className="text-center space-y-6 py-12">
         <div className="flex justify-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${requiresManualConfirmation ? 'bg-amber-100' : 'bg-primary/10'}`}>
-            {requiresManualConfirmation ? (
-              <Clock className="w-10 h-10 text-amber-600" />
-            ) : (
-              <CheckCircle2 className="w-10 h-10 text-primary" />
-            )}
+          <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold">
-            {requiresManualConfirmation ? 'Pagamento aprovado!' : 'Pagamento aprovado!'}
-          </h2>
+          <h2 className="text-2xl font-bold">Pagamento aprovado!</h2>
           <p className="text-muted-foreground mt-2">
-            {requiresManualConfirmation
-              ? 'Seu pagamento foi processado com sucesso. Seu agendamento agora aguarda aprovação do estabelecimento. Você receberá uma notificação quando for confirmado.'
-              : 'Seu pagamento foi processado com sucesso. Seu agendamento foi confirmado.'
-            }
+            Seu pagamento foi processado e seu agendamento foi confirmado automaticamente.
           </p>
         </div>
         <div className="space-y-3 max-w-sm mx-auto">
-          <Button className="w-full" onClick={onDone}>
-            {requiresManualConfirmation ? 'Ver meus agendamentos' : 'Ver detalhes do agendamento'}
+          <Button className="w-full" onClick={handleGoToAppointments}>
+            <Calendar className="w-4 h-4 mr-2" />
+            Ver meus agendamentos
           </Button>
           <Button asChild variant="outline" className="w-full">
             <Link to="/">Voltar ao início</Link>
@@ -881,7 +863,8 @@ function PaymentReturnScreen({
           </p>
         </div>
         <div className="space-y-3 max-w-sm mx-auto">
-          <Button className="w-full" onClick={onDone}>
+          <Button className="w-full" onClick={handleGoToAppointments}>
+            <Calendar className="w-4 h-4 mr-2" />
             Ver meus agendamentos
           </Button>
           <Button asChild variant="outline" className="w-full">
@@ -911,7 +894,10 @@ function PaymentReturnScreen({
           <CreditCard className="w-4 h-4 mr-2" />
           Tentar novamente
         </Button>
-        <Button asChild variant="outline" className="w-full">
+        <Button className="w-full" variant="outline" onClick={handleGoToAppointments}>
+          Ver meus agendamentos
+        </Button>
+        <Button asChild variant="ghost" className="w-full">
           <Link to="/">Voltar ao início</Link>
         </Button>
       </div>
