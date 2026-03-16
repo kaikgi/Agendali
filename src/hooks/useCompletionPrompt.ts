@@ -113,6 +113,7 @@ interface PendingCompletionAppointment {
     duration_minutes: number;
   } | null;
   professional: {
+    id: string;
     name: string;
   } | null;
   customer: {
