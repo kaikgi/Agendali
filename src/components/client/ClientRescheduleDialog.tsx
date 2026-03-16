@@ -53,7 +53,7 @@ export function ClientRescheduleDialog({
       if (isAfter(appointmentDate, new Date())) {
         setSelectedDate(startOfDay(appointmentDate));
       } else {
-        setSelectedDate(startOfDay(addDays(new Date(), 1)));
+        setSelectedDate(startOfDay(new Date()));
       }
       setSelectedTime(undefined);
       setShowProfessionalSelector(false);
