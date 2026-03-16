@@ -234,6 +234,8 @@ export function CompletionPromptDialog({
           establishmentId={currentAppointment.establishment_id}
           customerId={currentAppointment.customer_id}
           establishmentName={currentAppointment.establishment_name}
+          professionalId={currentAppointment.professional_id}
+          professionalName={currentAppointment.professional_name}
         />
       )}
     </>
