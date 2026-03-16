@@ -42,6 +42,12 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: 'bg-violet-500',
     variant: 'outline',
   },
+  paid_confirmed: {
+    label: 'Pago — confirmado',
+    badgeClasses: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    dotColor: 'bg-emerald-500',
+    variant: 'default',
+  },
   pending_payment: {
     label: 'Aguardando pagamento',
     badgeClasses: 'bg-lime-100 text-lime-800 border-lime-300',

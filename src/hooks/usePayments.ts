@@ -41,6 +41,7 @@ export interface AppointmentPayment {
   paid_at: string | null;
   refunded_at: string | null;
   created_at: string;
+  payment_method: string | null;
 }
 
 // ── Payment Account ────────────────────────────────────
