@@ -285,7 +285,7 @@ export default function ClientDashboard() {
                   {pastAppointments.map((apt) => (
                     <Link
                       key={apt.id}
-                      to="/client/appointments"
+                      to={`/client/appointments?apt=${apt.id}`}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <Avatar className="h-9 w-9 shrink-0 rounded-lg">

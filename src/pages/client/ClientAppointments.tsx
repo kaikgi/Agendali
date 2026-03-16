@@ -178,6 +178,19 @@ export default function ClientAppointments() {
 
   const { data: allAppointments = [], isLoading } = useClientAppointments();
 
+  // Auto-open appointment detail from ?apt= query param
+  useEffect(() => {
+    const aptId = searchParams.get('apt');
+    if (aptId && allAppointments.length > 0 && !selectedAppointment) {
+      const found = allAppointments.find((a) => a.id === aptId);
+      if (found) {
+        setSelectedAppointment(found);
+        searchParams.delete('apt');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [allAppointments, searchParams]);
+
   // Handle payment return params
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
