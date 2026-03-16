@@ -89,9 +89,9 @@ export function ClientRescheduleDialog({
     ignoreAppointmentId: appointment?.id,
   });
 
-  // Date limits - use establishment's max_future_days setting
+  // Date limits - use establishment's max_future_days setting; allow today for future slots
   const maxFutureDays = appointment?.establishment?.max_future_days ?? 7;
-  const minDate = addDays(new Date(), 1);
+  const minDate = startOfDay(new Date());
   const maxDate = addDays(new Date(), maxFutureDays);
 
   const disabledDays = (date: Date) => {

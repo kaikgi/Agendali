@@ -9,7 +9,7 @@ interface UseAvailableSlotsForRescheduleParams {
   date: Date | undefined;
   slotIntervalMinutes: number;
   bufferMinutes: number;
-  ignoreAppointmentId?: string; // Current appointment to ignore for rescheduling
+  ignoreAppointmentId?: string;
 }
 
 export function useAvailableSlotsForReschedule({
@@ -30,96 +30,128 @@ export function useAvailableSlotsForReschedule({
       const dayStart = startOfDay(date);
       const dayEnd = addDays(dayStart, 1);
 
-      // Fetch business hours
-      const { data: businessHours } = await supabase
-        .from('business_hours')
-        .select('*')
-        .eq('establishment_id', establishmentId)
-        .eq('weekday', weekday)
-        .single();
+      // Fetch all data in parallel (mirrors useAvailableSlots)
+      const [
+        businessHoursRes,
+        professionalHoursRes,
+        appointmentsRes,
+        timeBlocksRes,
+        estTimeBlocksRes,
+        recurringBlocksRes,
+        estRecurringBlocksRes,
+      ] = await Promise.all([
+        supabase
+          .from('business_hours')
+          .select('*')
+          .eq('establishment_id', establishmentId)
+          .eq('weekday', weekday)
+          .maybeSingle(),
+        supabase
+          .from('professional_hours')
+          .select('*')
+          .eq('professional_id', professionalId)
+          .eq('weekday', weekday)
+          .maybeSingle(),
+        (() => {
+          let q = supabase
+            .from('appointments')
+            .select('id, start_at, end_at')
+            .eq('professional_id', professionalId)
+            .gte('start_at', dayStart.toISOString())
+            .lt('start_at', dayEnd.toISOString())
+            .in('status', ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation', 'pending_payment']);
+          if (ignoreAppointmentId) {
+            q = q.neq('id', ignoreAppointmentId);
+          }
+          return q;
+        })(),
+        // Professional-specific time blocks
+        supabase
+          .from('time_blocks')
+          .select('start_at, end_at')
+          .eq('professional_id', professionalId)
+          .gte('start_at', dayStart.toISOString())
+          .lt('start_at', dayEnd.toISOString()),
+        // Establishment-wide time blocks
+        supabase
+          .from('time_blocks')
+          .select('start_at, end_at')
+          .eq('establishment_id', establishmentId)
+          .is('professional_id', null)
+          .gte('start_at', dayStart.toISOString())
+          .lt('start_at', dayEnd.toISOString()),
+        // Professional-specific recurring blocks
+        supabase
+          .from('recurring_time_blocks')
+          .select('start_time, end_time')
+          .eq('professional_id', professionalId)
+          .eq('weekday', weekday)
+          .eq('active', true),
+        // Establishment-wide recurring blocks
+        supabase
+          .from('recurring_time_blocks')
+          .select('start_time, end_time')
+          .eq('establishment_id', establishmentId)
+          .is('professional_id', null)
+          .eq('weekday', weekday)
+          .eq('active', true),
+      ]);
 
+      const businessHours = businessHoursRes.data;
+      const professionalHours = professionalHoursRes.data;
+
+      // Check if establishment is closed
       if (!businessHours || businessHours.closed || !businessHours.open_time || !businessHours.close_time) {
         return [];
       }
 
-      // Fetch professional hours
-      const { data: profHours } = await supabase
-        .from('professional_hours')
-        .select('*')
-        .eq('professional_id', professionalId)
-        .eq('weekday', weekday)
-        .single();
+      // Check if professional is closed
+      if (professionalHours && professionalHours.closed) return [];
 
-      // If professional has specific hours and is closed, return empty
-      if (profHours?.closed) return [];
+      // Determine effective working hours (intersection of business + professional)
+      let effectiveOpenTime: string;
+      let effectiveCloseTime: string;
 
-      // Determine working hours
-      const openTime = profHours?.start_time || businessHours.open_time;
-      const closeTime = profHours?.end_time || businessHours.close_time;
-
-      // Parse times
-      const [openHour, openMin] = openTime.split(':').map(Number);
-      const [closeHour, closeMin] = closeTime.split(':').map(Number);
-
-      let startTime = new Date(date);
-      startTime.setHours(openHour, openMin, 0, 0);
-
-      const endTime = new Date(date);
-      endTime.setHours(closeHour, closeMin, 0, 0);
-
-      // Fetch existing appointments - EXCLUDE the current appointment being rescheduled
-      let appointmentsQuery = supabase
-        .from('appointments')
-        .select('id, start_at, end_at')
-        .eq('professional_id', professionalId)
-        .gte('start_at', dayStart.toISOString())
-        .lt('start_at', dayEnd.toISOString())
-        .in('status', ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation', 'pending_payment']);
-      
-      // Exclude the current appointment from conflict check
-      if (ignoreAppointmentId) {
-        appointmentsQuery = appointmentsQuery.neq('id', ignoreAppointmentId);
+      if (professionalHours && professionalHours.start_time && professionalHours.end_time) {
+        effectiveOpenTime = professionalHours.start_time > businessHours.open_time
+          ? professionalHours.start_time
+          : businessHours.open_time;
+        effectiveCloseTime = professionalHours.end_time < businessHours.close_time
+          ? professionalHours.end_time
+          : businessHours.close_time;
+      } else {
+        effectiveOpenTime = businessHours.open_time;
+        effectiveCloseTime = businessHours.close_time;
       }
 
-      const { data: appointments } = await appointmentsQuery;
+      if (effectiveOpenTime >= effectiveCloseTime) return [];
 
-      // Fetch time blocks
-      const { data: timeBlocks } = await supabase
-        .from('time_blocks')
-        .select('start_at, end_at')
-        .eq('professional_id', professionalId)
-        .gte('start_at', dayStart.toISOString())
-        .lt('start_at', dayEnd.toISOString());
+      const [openHour, openMin] = effectiveOpenTime.split(':').map(Number);
+      const [closeHour, closeMin] = effectiveCloseTime.split(':').map(Number);
 
-      // Fetch recurring time blocks
-      const { data: recurringBlocks } = await supabase
-        .from('recurring_time_blocks')
-        .select('start_time, end_time')
-        .eq('professional_id', professionalId)
-        .eq('weekday', weekday)
-        .eq('active', true);
+      const startTime = new Date(date);
+      startTime.setHours(openHour, openMin, 0, 0);
+      const endTime = new Date(date);
+      endTime.setHours(closeHour, closeMin, 0, 0);
 
       // Build blocked intervals
       const blockedIntervals: { start: Date; end: Date }[] = [];
 
-      // Add appointments with buffer
-      appointments?.forEach((apt) => {
+      appointmentsRes.data?.forEach((apt) => {
         blockedIntervals.push({
           start: addMinutes(parseISO(apt.start_at), -bufferMinutes),
           end: addMinutes(parseISO(apt.end_at), bufferMinutes),
         });
       });
 
-      // Add time blocks
-      timeBlocks?.forEach((block) => {
+      [...(timeBlocksRes.data || []), ...(estTimeBlocksRes.data || [])].forEach((block) => {
         blockedIntervals.push({
           start: parseISO(block.start_at),
           end: parseISO(block.end_at),
         });
       });
 
-      // Add recurring blocks
-      recurringBlocks?.forEach((block) => {
+      [...(recurringBlocksRes.data || []), ...(estRecurringBlocksRes.data || [])].forEach((block) => {
         const [startH, startM] = block.start_time.split(':').map(Number);
         const [endH, endM] = block.end_time.split(':').map(Number);
         const blockStart = new Date(date);
@@ -132,21 +164,23 @@ export function useAvailableSlotsForReschedule({
       // Generate slots
       const slots: string[] = [];
       const now = new Date();
-      let current = startTime;
+      let current = new Date(startTime);
 
-      while (isBefore(addMinutes(current, serviceDurationMinutes), endTime) || 
-             format(addMinutes(current, serviceDurationMinutes), 'HH:mm') === format(endTime, 'HH:mm')) {
+      while (isBefore(current, endTime) || format(current, 'HH:mm') === format(endTime, 'HH:mm')) {
         const slotEnd = addMinutes(current, serviceDurationMinutes);
 
-        // Check if slot is in the future
+        if (isAfter(slotEnd, endTime) && format(slotEnd, 'HH:mm') !== format(endTime, 'HH:mm')) {
+          current = addMinutes(current, slotIntervalMinutes);
+          continue;
+        }
+
         if (isAfter(current, now)) {
-          // Check if slot conflicts with any blocked interval
           const hasConflict = blockedIntervals.some(
             (interval) =>
               (isAfter(current, interval.start) && isBefore(current, interval.end)) ||
               (isAfter(slotEnd, interval.start) && isBefore(slotEnd, interval.end)) ||
               (isBefore(current, interval.start) && isAfter(slotEnd, interval.end)) ||
-              format(current, 'HH:mm') === format(interval.start, 'HH:mm')
+              format(current, 'HH:mm:ss') === format(interval.start, 'HH:mm:ss')
           );
 
           if (!hasConflict) {
