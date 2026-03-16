@@ -8,13 +8,11 @@ import {
   User,
   Search,
   MapPin,
-  Sparkles,
   CalendarCheck,
-  CalendarDays,
   Building2,
   MessageCircle,
 } from 'lucide-react';
-import { format, formatDistanceToNow, isPast, isFuture } from 'date-fns';
+import { format, formatDistanceToNow, isFuture, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,8 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useClientAppointments } from '@/hooks/useClientAppointments';
 import { useProfile } from '@/hooks/useProfile';
-
 import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
+
+const CANCELED_STATUSES = ['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'];
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -38,20 +37,17 @@ export default function ClientDashboard() {
   const { data: appointments = [], isLoading } = useClientAppointments();
   const { profile } = useProfile();
 
-  const now = new Date();
-
-  const canceledStatuses = ['canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'];
-
   const upcomingAppointments = appointments
-    .filter((a) => isFuture(new Date(a.start_at)) && !canceledStatuses.includes(a.status))
+    .filter((a) => isFuture(new Date(a.start_at)) && !CANCELED_STATUSES.includes(a.status))
     .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 
   const nextAppointment = upcomingAppointments[0];
-
   const completedTotal = appointments.filter((a) => a.status === 'completed').length;
 
-  const pastAppointments = appointments
-    .filter((a) => isPast(new Date(a.start_at)) || a.status === 'completed' || canceledStatuses.includes(a.status))
+  // History = past appointments only (not future canceled ones)
+  const recentHistory = appointments
+    .filter((a) => isPast(new Date(a.end_at)))
+    .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
     .slice(0, 5);
 
   const uniqueEstablishments = Array.from(
@@ -70,7 +66,7 @@ export default function ClientDashboard() {
         <Skeleton className="h-24 rounded-xl" />
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
         <Skeleton className="h-64 rounded-xl" />
@@ -80,10 +76,10 @@ export default function ClientDashboard() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Welcome Card */}
-      <Card className="border-0 bg-foreground text-background overflow-hidden relative">
+      {/* Welcome */}
+      <Card className="border-0 bg-foreground text-background">
         <CardContent className="p-6 md:p-8">
-          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <p className="text-sm opacity-70">{getGreeting()},</p>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{firstName}</h1>
@@ -108,71 +104,73 @@ export default function ClientDashboard() {
               </Link>
             </Button>
           </div>
-          <div className="absolute -right-8 -bottom-8 opacity-[0.04]">
-            <CalendarDays className="h-48 w-48" />
-          </div>
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — clickable */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card className="group hover:border-foreground/20 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-foreground/60" />
+        <Link to="/client/appointments">
+          <Card className="hover:border-foreground/20 transition-colors h-full">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-foreground/60" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold">{upcomingAppointments.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Próximos</p>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold">{upcomingAppointments.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Próximos</p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="group hover:border-foreground/20 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <CalendarCheck className="h-4 w-4 text-foreground/60" />
+        <Link to="/client/history">
+          <Card className="hover:border-foreground/20 transition-colors h-full">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
+                  <CalendarCheck className="h-4 w-4 text-foreground/60" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold">{completedTotal}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Realizados</p>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold">{completedTotal}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Realizados</p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="group hover:border-foreground/20 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-foreground/60" />
+        <Link to="/client/appointments">
+          <Card className="hover:border-foreground/20 transition-colors h-full">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-foreground/60" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold">{appointments.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Total</p>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold">{appointments.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total</p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="group hover:border-foreground/20 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-foreground/60" />
+        <Link to="/client/search">
+          <Card className="hover:border-foreground/20 transition-colors h-full">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-9 w-9 rounded-lg bg-foreground/5 flex items-center justify-center">
+                  <Building2 className="h-4 w-4 text-foreground/60" />
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold">{uniqueEstablishments.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Estabelecimentos</p>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold">{uniqueEstablishments.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Estabelecimentos</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
-      {/* Next Appointment - Featured */}
+      {/* Next Appointment */}
       {nextAppointment && (
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-foreground/50" />
-              <CardTitle className="text-base">Próximo Agendamento</CardTitle>
-            </div>
+            <CardTitle className="text-base">Próximo Agendamento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col md:flex-row gap-5">
@@ -203,18 +201,16 @@ export default function ClientDashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
-                <div className="text-right space-y-0.5">
-                  <p className="text-sm font-semibold capitalize">
-                    {format(new Date(nextAppointment.start_at), "EEEE, dd 'de' MMM", { locale: ptBR })}
-                  </p>
-                  <p className="text-2xl font-bold tracking-tight">
-                    {format(new Date(nextAppointment.start_at), 'HH:mm')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {nextAppointment.service.duration_minutes} min
-                  </p>
-                </div>
+              <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
+                <p className="text-sm font-semibold capitalize">
+                  {format(new Date(nextAppointment.start_at), "EEEE, dd 'de' MMM", { locale: ptBR })}
+                </p>
+                <p className="text-2xl font-bold tracking-tight">
+                  {format(new Date(nextAppointment.start_at), 'HH:mm')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {nextAppointment.service.duration_minutes} min
+                </p>
               </div>
             </div>
 
@@ -256,7 +252,7 @@ export default function ClientDashboard() {
         </Card>
       )}
 
-      {/* Two-column layout for history + quick actions */}
+      {/* History + Quick Actions */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
@@ -270,7 +266,7 @@ export default function ClientDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {pastAppointments.length === 0 ? (
+              {recentHistory.length === 0 ? (
                 <div className="text-center py-10 space-y-3">
                   <History className="h-10 w-10 text-muted-foreground/40 mx-auto" />
                   <div>
@@ -282,7 +278,7 @@ export default function ClientDashboard() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {pastAppointments.map((apt) => (
+                  {recentHistory.map((apt) => (
                     <Link
                       key={apt.id}
                       to={`/client/appointments?apt=${apt.id}`}
@@ -379,7 +375,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* Empty state */}
+      {/* Global empty state */}
       {appointments.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
