@@ -479,6 +479,20 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rating Dialog */}
+      {appointment.status === 'completed' && (
+        <RatingDialog
+          open={ratingDialogOpen}
+          onOpenChange={setRatingDialogOpen}
+          appointmentId={appointment.id}
+          establishmentId={appointment.establishment.id}
+          customerId={appointment.customer_id}
+          establishmentName={appointment.establishment.name}
+          professionalId={appointment.professional.id}
+          professionalName={appointment.professional.name}
+        />
+      )}
     </>
   );
 }
