@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, LogIn, AlertCircle, CheckCircle2, CreditCard, Clock, XCircle } from 'lucide-react';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Loader2, LogIn, AlertCircle, CheckCircle2, CreditCard, Clock, XCircle, Calendar } from 'lucide-react';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useServices, type Service } from '@/hooks/useServices';
 import { useProfessionalsByService, type Professional } from '@/hooks/useProfessionals';
