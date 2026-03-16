@@ -2077,6 +2077,15 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: Json
       }
+      client_reschedule_appointment: {
+        Args: {
+          p_appointment_id: string
+          p_new_end_at: string
+          p_new_professional_id?: string
+          p_new_start_at: string
+        }
+        Returns: Json
+      }
       consume_signup_invitation: { Args: { p_token: string }; Returns: Json }
       consume_signup_token: {
         Args: { p_token: string }

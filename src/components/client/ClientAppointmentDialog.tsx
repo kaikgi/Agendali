@@ -32,6 +32,7 @@ import { useCancelClientAppointment, type ClientAppointment } from '@/hooks/useC
 import { ClientRescheduleDialog } from './ClientRescheduleDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
+import { useProfile } from '@/hooks/useProfile';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
@@ -55,6 +56,7 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
   const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
+  const { profile } = useProfile();
 
   // Load accepted terms for this appointment
   useEffect(() => {
@@ -83,9 +85,10 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       establishmentName: appointment.establishment.name,
       serviceName: appointment.service.name,
       professionalName: appointment.professional.name,
+      customerName: profile?.full_name ?? undefined,
       appointmentStatus: appointment.status,
     });
-  }, [appointment, acceptedTerms]);
+  }, [appointment, acceptedTerms, profile]);
 
   if (!appointment) return null;
 
