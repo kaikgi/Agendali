@@ -84,9 +84,9 @@ export function ClientRescheduleDialog({
     professionalId: selectedProfessionalId,
     serviceDurationMinutes: appointment?.service.duration_minutes || 30,
     date: selectedDate,
-    slotIntervalMinutes: 15,
-    bufferMinutes: 0,
-    ignoreAppointmentId: appointment?.id, // Ignore current appointment
+    slotIntervalMinutes: appointment?.establishment.slot_interval_minutes ?? 15,
+    bufferMinutes: appointment?.establishment.buffer_minutes ?? 0,
+    ignoreAppointmentId: appointment?.id,
   });
 
   // Date limits - use establishment's max_future_days setting
