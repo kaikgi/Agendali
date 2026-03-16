@@ -190,8 +190,9 @@ export default function ClientHistory() {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="completed">Concluídos</SelectItem>
-              <SelectItem value="canceled">Cancelados</SelectItem>
+              <SelectItem value="canceled_all">Cancelados</SelectItem>
               <SelectItem value="no_show">Não compareceu</SelectItem>
+              <SelectItem value="rejected">Recusado</SelectItem>
             </SelectContent>
           </Select>
           {establishments.length > 1 && (
