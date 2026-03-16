@@ -490,63 +490,94 @@ export default function ManageAppointment() {
         )}
 
         {/* Actions */}
-        {canModify && !isRescheduling && (
+        {canModify && !isRescheduling && cancellationDecision && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsRescheduling(true)}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Reagendar
-                </Button>
+                {/* Reschedule - show if rules allow */}
+                {cancellationDecision.canReschedule && (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setIsRescheduling(true)}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Reagendar
+                  </Button>
+                )}
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="flex-1">
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Cancelar agendamento
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {appointment.establishment?.cancellation_policy_text || 
-                          'Esta ação não pode ser desfeita. Você precisará fazer um novo agendamento se mudar de ideia.'}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Voltar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleCancel}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        {cancelMutation.isPending ? 'Cancelando...' : 'Sim, cancelar'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Direct cancel */}
+                {cancellationDecision.canCancelDirectly && (
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancelar agendamento
+                  </Button>
+                )}
+
+                {/* WhatsApp contact */}
+                {cancellationDecision.showWhatsAppContact && cancellationDecision.whatsAppUrl && (
+                  <Button variant="outline" className="flex-1 gap-2" asChild>
+                    <a href={cancellationDecision.whatsAppUrl} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="h-4 w-4" />
+                      Falar com o estabelecimento
+                    </a>
+                  </Button>
+                )}
               </div>
 
+              {/* Out-of-deadline warning */}
+              {!cancellationDecision.canCancelDirectly && !cancellationDecision.showWhatsAppContact && (
+                <div className="flex items-center gap-3 text-muted-foreground mt-4">
+                  <AlertTriangle className="h-5 w-5" />
+                  <p className="text-sm">
+                    O prazo para cancelamento direto expirou. 
+                    Entre em contato com o estabelecimento para solicitar o cancelamento.
+                  </p>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground text-center mt-4">
-                Alterações permitidas até {appointment.establishment?.reschedule_min_hours || 2} horas antes do horário agendado
+                Alterações permitidas até {cancellationDecision.minHours} horas antes do horário agendado
               </p>
             </CardContent>
           </Card>
         )}
 
+        {/* Cancel Confirmation Dialog */}
+        <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{cancellationDecision?.cancelTitle ?? 'Cancelar agendamento?'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {cancellationDecision?.cancelDescription ?? 'Esta ação não pode ser desfeita.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelMutation.isPending}>Voltar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={handleCancel}
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {cancelMutation.isPending ? 'Cancelando...' : 'Sim, cancelar'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Cannot Modify Message */}
-        {!canModify && ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) && (
+        {!canModify && ['booked', 'confirmed', 'pending_approval', 'paid_confirmed'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <AlertTriangle className="h-5 w-5" />
                 <p className="text-sm">
-                  Não é possível alterar este agendamento. O prazo mínimo de{' '}
-                  {appointment.establishment?.reschedule_min_hours || 2} horas já passou.
+                  Não é possível alterar este agendamento. O horário já passou.
                 </p>
               </div>
             </CardContent>
