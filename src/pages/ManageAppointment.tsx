@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format, addMinutes, isBefore, addHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star } from 'lucide-react';
+import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
 import { getStatusLabel, getStatusVariant } from '@/lib/appointmentStatus';
@@ -14,15 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointmentByToken, useCancelAppointment, useRescheduleAppointment } from '@/hooks/useAppointmentByToken';
 import { useAvailableSlots } from '@/hooks/useAvailableSlots';
