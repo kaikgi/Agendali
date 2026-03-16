@@ -145,7 +145,7 @@ export function DateTimeStep({
                     key={time}
                     onClick={() => onSelectTime(time)}
                     className={cn(
-                      'py-3 px-3 rounded-md text-sm font-medium transition-colors',
+                      'py-3 px-3 rounded-md text-sm font-medium transition-colors touch-target',
                       'border',
                       selectedTime === time
                         ? 'bg-foreground text-background border-foreground'

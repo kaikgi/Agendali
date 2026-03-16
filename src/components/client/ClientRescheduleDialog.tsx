@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAvailableSlotsForReschedule } from '@/hooks/useAvailableSlotsForReschedule';
@@ -40,12 +39,10 @@ export function ClientRescheduleDialog({
   const { toast } = useToast();
   const rescheduleMutation = useClientReschedule();
 
-  // Fetch professionals for this service
   const { data: professionals = [], isLoading: professionalsLoading } = useProfessionalsByService(
     appointment?.service.id
   );
 
-  // Initialize state when dialog opens (handles both internal and external open)
   useEffect(() => {
     if (open && appointment) {
       setSelectedProfessionalId(appointment.professional.id);
@@ -66,19 +63,16 @@ export function ClientRescheduleDialog({
     }
   }, [open, appointment]);
 
-  // Reset state when dialog opens with new appointment
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
   };
 
-  // When professional changes, reset date/time
   const handleProfessionalChange = (professionalId: string) => {
     setSelectedProfessionalId(professionalId);
     setSelectedTime(undefined);
     setShowProfessionalSelector(false);
   };
 
-  // Fetch available slots based on selected professional - IGNORE current appointment
   const { data: availableSlots = [], isLoading: slotsLoading } = useAvailableSlotsForReschedule({
     establishmentId: appointment?.establishment.id,
     professionalId: selectedProfessionalId,
@@ -89,7 +83,6 @@ export function ClientRescheduleDialog({
     ignoreAppointmentId: appointment?.id,
   });
 
-  // Date limits - use establishment's max_future_days setting; allow today for future slots
   const maxFutureDays = appointment?.establishment?.max_future_days ?? 7;
   const minDate = startOfDay(new Date());
   const maxDate = addDays(new Date(), maxFutureDays);
@@ -98,13 +91,11 @@ export function ClientRescheduleDialog({
     return isBefore(date, minDate) || isAfter(date, maxDate);
   };
 
-  // Get selected professional details
   const selectedProfessional = useMemo(() => {
     if (!selectedProfessionalId) return appointment?.professional;
     return professionals.find((p) => p.id === selectedProfessionalId) || appointment?.professional;
   }, [selectedProfessionalId, professionals, appointment]);
 
-  // Check if professional changed
   const professionalChanged = selectedProfessionalId !== appointment?.professional.id;
 
   const handleReschedule = async () => {
@@ -146,7 +137,7 @@ export function ClientRescheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -157,7 +148,7 @@ export function ClientRescheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="space-y-4">
           {/* Current appointment info */}
           <div className="p-3 bg-muted/50 rounded-lg text-sm">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -208,7 +199,7 @@ export function ClientRescheduleDialog({
                         type="button"
                         onClick={() => handleProfessionalChange(professional.id)}
                         className={cn(
-                          'flex items-center gap-3 p-3 rounded-lg border transition-colors text-left w-full',
+                          'flex items-center gap-3 p-3 rounded-lg border transition-colors text-left w-full touch-target',
                           selectedProfessionalId === professional.id
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
@@ -258,82 +249,71 @@ export function ClientRescheduleDialog({
           </div>
 
           {/* Date selection */}
-          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-            <div className="flex items-center justify-center">
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  setSelectedDate(date);
-                  setSelectedTime(undefined);
-                }}
-                disabled={disabledDays}
-                locale={ptBR}
-                className="rounded-md border pointer-events-auto"
-                classNames={{
-                  months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
-                  month: 'space-y-4',
-                  nav_button: cn(
-                    'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100'
-                  ),
-                }}
-              />
-            </div>
-
-            {/* Time slots */}
-            {selectedDate && (
-              <div className="mt-4 flex-1 min-h-0">
-                <h4 className="text-sm font-medium mb-2">Horários disponíveis</h4>
-                {slotsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : availableSlots.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum horário disponível nesta data.
-                  </p>
-                ) : (
-                  <ScrollArea className="h-[120px]">
-                    <div className="grid grid-cols-4 gap-2 pr-4">
-                      {availableSlots.map((time) => (
-                        <Button
-                          key={time}
-                          type="button"
-                          variant={selectedTime === time ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTime(time)}
-                          className="text-xs"
-                        >
-                          {time}
-                        </Button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
-            )}
+          <div className="flex items-center justify-center">
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => {
+                setSelectedDate(date);
+                setSelectedTime(undefined);
+              }}
+              disabled={disabledDays}
+              locale={ptBR}
+              className="rounded-md border pointer-events-auto"
+            />
           </div>
+
+          {/* Time slots */}
+          {selectedDate && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Horários disponíveis</h4>
+              {slotsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum horário disponível nesta data.
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {availableSlots.map((time) => (
+                    <Button
+                      key={time}
+                      type="button"
+                      variant={selectedTime === time ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedTime(time)}
+                      className="text-xs touch-target"
+                    >
+                      {time}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t mt-4">
+        {/* Actions - sticky footer */}
+        <div className="flex gap-2 pt-4 border-t mt-2 sticky bottom-0 bg-background pb-1">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={() => onOpenChange(false)}
             disabled={rescheduleMutation.isPending}
           >
             Cancelar
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={handleReschedule}
             disabled={!selectedDate || !selectedTime || !selectedProfessionalId || rescheduleMutation.isPending}
           >
             {rescheduleMutation.isPending && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             )}
-            Confirmar Reagendamento
+            Confirmar
           </Button>
         </div>
       </DialogContent>
