@@ -18,6 +18,7 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { CustomerFormData } from '@/lib/validations/booking';
+import type { GeneratedTerms } from '@/lib/bookingTerms';
 import { getManageAppointmentUrl, buildPublicUrl } from '@/lib/publicUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
