@@ -193,6 +193,27 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
               </div>
             )}
 
+            {/* Accepted Terms */}
+            {acceptedTerms && (
+              <Collapsible open={termsOpen} onOpenChange={setTermsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">
+                      Termos aceitos em {format(new Date(acceptedTerms.accepted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ScrollArea className="max-h-48 mt-2">
+                    <div className="text-xs whitespace-pre-wrap bg-muted/50 p-3 rounded text-muted-foreground leading-relaxed">
+                      {acceptedTerms.terms_text}
+                    </div>
+                  </ScrollArea>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
             {/* Actions */}
             {canCancel && !isPast && (
               <div className="flex gap-2 pt-2">
