@@ -104,6 +104,8 @@ Deno.serve(async (req) => {
           accessToken = acc.access_token;
           establishmentId = acc.establishment_id;
           break;
+        } else {
+          await checkRes.text(); // consume body
         }
       }
     }
@@ -136,10 +138,31 @@ Deno.serve(async (req) => {
     const appointmentId = payment.external_reference;
     const mpStatus = payment.status;
 
+    // ── Fee calculation ──
+    // Sum ALL fee_details entries (MP may have multiple: mercadopago_fee, financing_fee, etc.)
+    const totalFeeCents = Math.round(
+      (payment.fee_details || []).reduce((sum: number, f: any) => sum + (f.amount || 0), 0) * 100
+    );
+    // Use transaction_details.net_received_amount as source of truth for net, fallback to calculation
+    const grossCents = Math.round((payment.transaction_amount || 0) * 100);
+    const netFromMP = payment.transaction_details?.net_received_amount;
+    const netCents = netFromMP != null
+      ? Math.round(netFromMP * 100)
+      : grossCents - totalFeeCents;
+
+    // Payment method (pix, credit_card, debit_card, etc.)
+    const paymentMethod = payment.payment_method_id || payment.payment_type_id || null;
+
     console.log("mercadopago-webhook: payment details", {
       appointmentId,
       mpStatus,
       statusDetail: payment.status_detail,
+      paymentMethod,
+      grossCents,
+      totalFeeCents,
+      netCents,
+      feeDetails: payment.fee_details,
+      netReceivedAmount: netFromMP,
     });
 
     // Map MP status to our status
@@ -164,13 +187,13 @@ Deno.serve(async (req) => {
           provider_payment_id: String(dataId),
           status: ourStatus,
           payer_email: payment.payer?.email || existingPayment.payer_email,
-          fee_cents: Math.round((payment.fee_details?.[0]?.amount || 0) * 100),
-          net_amount_cents: Math.round(
-            (payment.transaction_amount - (payment.fee_details?.[0]?.amount || 0)) * 100,
-          ),
+          fee_cents: totalFeeCents,
+          net_amount_cents: netCents,
+          payment_method: paymentMethod,
           paid_at: mpStatus === "approved" ? new Date().toISOString() : null,
           refunded_at: mpStatus === "refunded" ? new Date().toISOString() : null,
-          metadata: { mp_status: mpStatus, mp_status_detail: payment.status_detail },
+          metadata: { mp_status: mpStatus, mp_status_detail: payment.status_detail, payment_method: paymentMethod },
+          provider_raw_payload: payment,
         })
         .eq("id", existingPayment.id);
     } else if (appointmentId) {
@@ -180,19 +203,19 @@ Deno.serve(async (req) => {
         provider: "mercadopago",
         provider_payment_id: String(dataId),
         payment_type: "deposit",
-        amount_cents: Math.round((payment.transaction_amount || 0) * 100),
-        fee_cents: Math.round((payment.fee_details?.[0]?.amount || 0) * 100),
-        net_amount_cents: Math.round(
-          ((payment.transaction_amount || 0) - (payment.fee_details?.[0]?.amount || 0)) * 100,
-        ),
+        amount_cents: grossCents,
+        fee_cents: totalFeeCents,
+        net_amount_cents: netCents,
+        payment_method: paymentMethod,
         status: ourStatus,
         payer_email: payment.payer?.email || null,
         paid_at: mpStatus === "approved" ? new Date().toISOString() : null,
-        metadata: { mp_status: mpStatus, mp_status_detail: payment.status_detail },
+        metadata: { mp_status: mpStatus, mp_status_detail: payment.status_detail, payment_method: paymentMethod },
+        provider_raw_payload: payment,
       });
     }
 
-    // If payment approved and appointment exists, update appointment status
+    // ── If payment approved → ALWAYS confirm appointment immediately ──
     if (ourStatus === "approved" && appointmentId) {
       const { data: apt } = await supabase
         .from("appointments")
@@ -200,19 +223,11 @@ Deno.serve(async (req) => {
         .eq("id", appointmentId)
         .single();
 
-      if (apt && (apt.status === "pending_payment" || apt.status === "booked")) {
-        // Check if manual confirmation is required
-        const { data: settings } = await supabase
-          .from("payment_settings")
-          .select("require_manual_confirmation")
-          .eq("establishment_id", apt.establishment_id)
-          .single();
+      if (apt && (apt.status === "pending_payment" || apt.status === "booked" || apt.status === "pending_approval")) {
+        // Always confirm immediately when payment is approved (no more paid_pending_confirmation)
+        const newStatus = "confirmed";
 
-        const newStatus = settings?.require_manual_confirmation
-          ? "paid_pending_confirmation"
-          : "confirmed";
-
-        console.log("mercadopago-webhook: updating appointment status", {
+        console.log("mercadopago-webhook: auto-confirming appointment", {
           appointmentId,
           from: apt.status,
           to: newStatus,
@@ -223,10 +238,8 @@ Deno.serve(async (req) => {
           .update({ status: newStatus })
           .eq("id", appointmentId);
 
-        // Create email notification for payment received
+        // Create email notification
         const estId = apt.establishment_id;
-        
-        // Get customer email
         let customerEmail = apt.customer_email;
         if (!customerEmail) {
           const { data: customer } = await supabase
@@ -238,7 +251,6 @@ Deno.serve(async (req) => {
         }
 
         if (customerEmail && customerEmail.length >= 4) {
-          // Get appointment details for email payload
           const { data: aptFull } = await supabase
             .from("appointments")
             .select(`
@@ -262,75 +274,56 @@ Deno.serve(async (req) => {
               establishment_phone: (aptFull as any).establishments?.phone,
               establishment_address: (aptFull as any).establishments?.address,
               start_at: aptFull.start_at,
-              payment_status: newStatus,
+              payment_status: "paid_confirmed",
+              payment_method: paymentMethod,
             };
 
-            if (newStatus === "confirmed") {
-              // Payment approved + auto-confirm: send payment+confirmation email
-              const dedupeKey = `appointment_payment_confirmed:${appointmentId}`;
-              await supabase.from("appointment_email_jobs").insert({
-                appointment_id: appointmentId,
-                establishment_id: estId,
-                customer_email: customerEmail.toLowerCase().trim(),
-                customer_name: (aptFull as any).customers?.name || "Cliente",
-                email_type: "appointment_payment_confirmed_auto",
-                status: "pending",
-                payload,
-                scheduled_for: new Date().toISOString(),
-                dedupe_key: dedupeKey,
-              }).then(({ error }) => {
-                if (error && !error.message.includes("duplicate")) {
-                  console.error("Error creating confirmation email job:", error);
-                }
-              });
-
-              // Also schedule reminder if applicable
-              const reminderHours = aptFull.customer_reminder_hours;
-              if (reminderHours && reminderHours > 0) {
-                const reminderTime = new Date(new Date(aptFull.start_at).getTime() - reminderHours * 60 * 60 * 1000);
-                if (reminderTime > new Date()) {
-                  await supabase.from("appointment_email_jobs").insert({
-                    appointment_id: appointmentId,
-                    establishment_id: estId,
-                    customer_email: customerEmail.toLowerCase().trim(),
-                    customer_name: (aptFull as any).customers?.name || "Cliente",
-                    email_type: `appointment_reminder_${reminderHours}h`,
-                    status: "pending",
-                    payload,
-                    scheduled_for: reminderTime.toISOString(),
-                    dedupe_key: `appointment_reminder:${appointmentId}`,
-                  }).then(({ error }) => {
-                    if (error && !error.message.includes("duplicate")) {
-                      console.error("Error creating reminder email job:", error);
-                    }
-                  });
-                }
+            // Send payment+confirmation email
+            const dedupeKey = `appointment_payment_confirmed:${appointmentId}`;
+            await supabase.from("appointment_email_jobs").insert({
+              appointment_id: appointmentId,
+              establishment_id: estId,
+              customer_email: customerEmail.toLowerCase().trim(),
+              customer_name: (aptFull as any).customers?.name || "Cliente",
+              email_type: "appointment_payment_confirmed_auto",
+              status: "pending",
+              payload,
+              scheduled_for: new Date().toISOString(),
+              dedupe_key: dedupeKey,
+            }).then(({ error }: any) => {
+              if (error && !error.message.includes("duplicate")) {
+                console.error("Error creating confirmation email job:", error);
               }
-            } else if (newStatus === "paid_pending_confirmation") {
-              // Payment approved but manual confirmation required
-              const dedupeKey = `appointment_paid_pending:${appointmentId}`;
-              await supabase.from("appointment_email_jobs").insert({
-                appointment_id: appointmentId,
-                establishment_id: estId,
-                customer_email: customerEmail.toLowerCase().trim(),
-                customer_name: (aptFull as any).customers?.name || "Cliente",
-                email_type: "appointment_payment_received",
-                status: "pending",
-                payload: { ...payload, paid: true },
-                scheduled_for: new Date().toISOString(),
-                dedupe_key: dedupeKey,
-              }).then(({ error }) => {
-                if (error && !error.message.includes("duplicate")) {
-                  console.error("Error creating payment received email job:", error);
-                }
-              });
+            });
+
+            // Schedule reminder if applicable
+            const reminderHours = aptFull.customer_reminder_hours;
+            if (reminderHours && reminderHours > 0) {
+              const reminderTime = new Date(new Date(aptFull.start_at).getTime() - reminderHours * 60 * 60 * 1000);
+              if (reminderTime > new Date()) {
+                await supabase.from("appointment_email_jobs").insert({
+                  appointment_id: appointmentId,
+                  establishment_id: estId,
+                  customer_email: customerEmail.toLowerCase().trim(),
+                  customer_name: (aptFull as any).customers?.name || "Cliente",
+                  email_type: `appointment_reminder_${reminderHours}h`,
+                  status: "pending",
+                  payload,
+                  scheduled_for: reminderTime.toISOString(),
+                  dedupe_key: `appointment_reminder:${appointmentId}`,
+                }).then(({ error }: any) => {
+                  if (error && !error.message.includes("duplicate")) {
+                    console.error("Error creating reminder email job:", error);
+                  }
+                });
+              }
             }
           }
         }
       }
     }
 
-    // Handle payment failure: send email to customer
+    // Handle payment failure
     if ((ourStatus === "rejected" || ourStatus === "cancelled") && appointmentId) {
       const { data: apt } = await supabase
         .from("appointments")
@@ -363,7 +356,7 @@ Deno.serve(async (req) => {
             payload: failPayload,
             scheduled_for: new Date().toISOString(),
             dedupe_key: `appointment_payment_failed:${appointmentId}:${Date.now()}`,
-          }).then(({ error }) => {
+          }).then(({ error }: any) => {
             if (error) console.error("Error creating payment failed email:", error);
           });
         }

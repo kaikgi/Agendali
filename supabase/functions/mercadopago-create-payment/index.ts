@@ -71,16 +71,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use origin from frontend (most reliable), fallback to APP_URL env, then default
+    // Use origin from frontend, fallback to APP_URL env, then default
     const appUrl = origin || Deno.env.get("APP_URL") || "https://agendali.lovable.app";
     const webhookUrl = `${supabaseUrl}/functions/v1/mercadopago-webhook`;
 
-    // Build back URLs
-    const backSlug = slug || "";
+    // ── Back URLs: redirect to client appointments area after payment ──
     const backUrls = {
-      success: `${appUrl}/${backSlug}?payment=success&apt=${appointment_id}`,
-      failure: `${appUrl}/${backSlug}?payment=failure&apt=${appointment_id}`,
-      pending: `${appUrl}/${backSlug}?payment=pending&apt=${appointment_id}`,
+      success: `${appUrl}/client/appointments?payment=success&apt=${appointment_id}`,
+      failure: `${appUrl}/client/appointments?payment=failure&apt=${appointment_id}`,
+      pending: `${appUrl}/client/appointments?payment=pending&apt=${appointment_id}`,
     };
 
     console.log("mercadopago-create-payment: back_urls", backUrls);

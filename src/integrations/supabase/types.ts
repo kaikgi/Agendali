@@ -280,11 +280,13 @@ export type Database = {
           net_amount_cents: number
           paid_at: string | null
           payer_email: string | null
+          payment_method: string | null
           payment_type: string
           payment_url: string | null
           provider: string
           provider_payment_id: string | null
           provider_preference_id: string | null
+          provider_raw_payload: Json | null
           refunded_at: string | null
           status: string
           updated_at: string
@@ -300,11 +302,13 @@ export type Database = {
           net_amount_cents?: number
           paid_at?: string | null
           payer_email?: string | null
+          payment_method?: string | null
           payment_type?: string
           payment_url?: string | null
           provider?: string
           provider_payment_id?: string | null
           provider_preference_id?: string | null
+          provider_raw_payload?: Json | null
           refunded_at?: string | null
           status?: string
           updated_at?: string
@@ -320,11 +324,13 @@ export type Database = {
           net_amount_cents?: number
           paid_at?: string | null
           payer_email?: string | null
+          payment_method?: string | null
           payment_type?: string
           payment_url?: string | null
           provider?: string
           provider_payment_id?: string | null
           provider_preference_id?: string | null
+          provider_raw_payload?: Json | null
           refunded_at?: string | null
           status?: string
           updated_at?: string
