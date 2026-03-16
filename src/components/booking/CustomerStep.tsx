@@ -10,6 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PhoneInput } from '@/components/ui/phone-input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,18 +26,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, CheckCircle2, Bell, BellOff } from 'lucide-react';
+import { Loader2, FileText, CheckCircle2, Bell } from 'lucide-react';
 import type { Establishment } from '@/hooks/useEstablishment';
-
-const REMINDER_OPTIONS = [
-  { value: null, label: 'Não quero lembrete', icon: BellOff },
-  { value: 1, label: '1 hora antes', icon: Bell },
-  { value: 2, label: '2 horas antes', icon: Bell },
-  { value: 3, label: '3 horas antes', icon: Bell },
-  { value: 6, label: '6 horas antes', icon: Bell },
-  { value: 12, label: '12 horas antes', icon: Bell },
-  { value: 24, label: '24 horas antes', icon: Bell },
-] as const;
 
 export interface PaymentConfigForTerms {
   enabled: boolean;
@@ -63,7 +60,9 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
 
   const canonicalEmail = isGuest ? '' : (defaultValues?.email || '');
 
-  // Generate dynamic terms based on establishment config and payment mode
+  // Default reminder from establishment config
+  const defaultReminder = (establishment as any).reminder_hours_before ?? 3;
+
   const generatedTerms = useMemo<GeneratedTerms>(() => {
     const params: TermsParams = {
       establishmentName: establishment.name,
@@ -99,13 +98,12 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       email: canonicalEmail,
       notes: '',
       acceptPolicy: false,
-      reminderHours: 2,
+      reminderHours: defaultReminder > 0 ? defaultReminder : null,
     },
   });
 
   const acceptPolicy = watch('acceptPolicy');
   const reminderHours = watch('reminderHours');
-
   const watchedEmail = watch('email');
   const showReminderSection = isGuest ? !!watchedEmail : !!canonicalEmail;
 
@@ -131,7 +129,6 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     await onSubmit(finalData, generatedTerms);
   };
 
-  // Label for terms type
   const termsTypeLabel = generatedTerms.type === 'deposit'
     ? 'Termos de Agendamento (com sinal)'
     : generatedTerms.type === 'full_payment_online'
@@ -185,24 +182,12 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
           <Label htmlFor="email">Email</Label>
           {isGuest ? (
             <>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                {...register('email')}
-              />
-              <p className="text-xs text-muted-foreground">Opcional. Usado para enviar confirmação e lembretes.</p>
+              <Input id="email" type="email" placeholder="seu@email.com" {...register('email')} />
+              <p className="text-xs text-muted-foreground">Opcional. Usado para confirmação e lembretes.</p>
             </>
           ) : (
             <>
-              <Input
-                id="email"
-                type="email"
-                value={canonicalEmail}
-                readOnly
-                className="bg-muted cursor-not-allowed"
-                tabIndex={-1}
-              />
+              <Input id="email" type="email" value={canonicalEmail} readOnly className="bg-muted cursor-not-allowed" tabIndex={-1} />
               <p className="text-xs text-muted-foreground">Este email está vinculado à sua conta.</p>
             </>
           )}
@@ -211,51 +196,37 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
         {establishment.ask_notes && (
           <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              placeholder="Alguma informação adicional?"
-              rows={3}
-              {...register('notes')}
-            />
+            <Textarea id="notes" placeholder="Alguma informação adicional?" rows={3} {...register('notes')} />
             {errors.notes && <p className="text-sm text-destructive">{errors.notes.message}</p>}
           </div>
         )}
 
-        {/* Reminder preference */}
+        {/* Compact reminder preference */}
         {showReminderSection && (
-          <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-primary" />
-              <h3 className="font-medium text-sm">Lembrete por email</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Escolha com quanto tempo de antecedência deseja receber um lembrete.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {REMINDER_OPTIONS.map((option) => {
-                const isSelected = reminderHours === option.value;
-                const Icon = option.icon;
-                return (
-                  <button
-                    key={String(option.value)}
-                    type="button"
-                    onClick={() => setValue('reminderHours', option.value)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                      isSelected
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-3">
+            <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Label className="text-sm shrink-0">Lembrete:</Label>
+            <Select
+              value={reminderHours === null ? 'none' : String(reminderHours)}
+              onValueChange={(v) => setValue('reminderHours', v === 'none' ? null : Number(v))}
+            >
+              <SelectTrigger className="h-9 flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem lembrete</SelectItem>
+                <SelectItem value="1">1h antes</SelectItem>
+                <SelectItem value="2">2h antes</SelectItem>
+                <SelectItem value="3">3h antes</SelectItem>
+                <SelectItem value="6">6h antes</SelectItem>
+                <SelectItem value="12">12h antes</SelectItem>
+                <SelectItem value="24">24h antes</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
-        {/* Dynamic Terms of Service - Always shown */}
+        {/* Dynamic Terms of Service */}
         <div className="space-y-3 p-4 bg-muted/50 border rounded-lg">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
@@ -268,12 +239,7 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
 
           <Dialog open={termsModalOpen} onOpenChange={setTermsModalOpen}>
             <DialogTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
+              <Button type="button" variant="outline" size="sm" className="w-full">
                 <FileText className="mr-2 h-4 w-4" />
                 {termsRead ? 'Reler termos' : 'Ler termos de agendamento'}
               </Button>
@@ -284,31 +250,18 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
                   <FileText className="h-5 w-5 text-primary" />
                   {termsTypeLabel}
                 </DialogTitle>
-                <DialogDescription>
-                  {establishment.name}
-                </DialogDescription>
+                <DialogDescription>{establishment.name}</DialogDescription>
               </DialogHeader>
-
               <ScrollArea className="max-h-[60vh] pr-4">
                 <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed space-y-1">
                   {generatedTerms.text}
                 </div>
               </ScrollArea>
-
               <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setTermsModalOpen(false)}
-                  className="sm:flex-1"
-                >
+                <Button type="button" variant="outline" onClick={() => setTermsModalOpen(false)} className="sm:flex-1">
                   Fechar
                 </Button>
-                <Button
-                  type="button"
-                  onClick={handleTermsRead}
-                  className="sm:flex-1"
-                >
+                <Button type="button" onClick={handleTermsRead} className="sm:flex-1">
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                   Li e entendi
                 </Button>
