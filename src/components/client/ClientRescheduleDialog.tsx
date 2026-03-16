@@ -45,11 +45,10 @@ export function ClientRescheduleDialog({
     appointment?.service.id
   );
 
-  // Reset state when dialog opens with new appointment
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && appointment) {
+  // Initialize state when dialog opens (handles both internal and external open)
+  useEffect(() => {
+    if (open && appointment) {
       setSelectedProfessionalId(appointment.professional.id);
-      // Set default date to current appointment date if in the future
       const appointmentDate = new Date(appointment.start_at);
       if (isAfter(appointmentDate, new Date())) {
         setSelectedDate(startOfDay(appointmentDate));
@@ -58,12 +57,17 @@ export function ClientRescheduleDialog({
       }
       setSelectedTime(undefined);
       setShowProfessionalSelector(false);
-    } else {
+    }
+    if (!open) {
       setSelectedProfessionalId(undefined);
       setSelectedDate(undefined);
       setSelectedTime(undefined);
       setShowProfessionalSelector(false);
     }
+  }, [open, appointment]);
+
+  // Reset state when dialog opens with new appointment
+  const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
   };
 

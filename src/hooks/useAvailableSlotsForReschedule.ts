@@ -74,7 +74,7 @@ export function useAvailableSlotsForReschedule({
         .eq('professional_id', professionalId)
         .gte('start_at', dayStart.toISOString())
         .lt('start_at', dayEnd.toISOString())
-        .in('status', ['booked', 'confirmed', 'pending_approval']);
+        .in('status', ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation', 'pending_payment']);
       
       // Exclude the current appointment from conflict check
       if (ignoreAppointmentId) {
