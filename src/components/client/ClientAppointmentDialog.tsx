@@ -44,10 +44,23 @@ import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState<{ terms_type: string; terms_text: string; accepted_at: string } | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
 
-  if (!appointment) return null;
+  // Load accepted terms for this appointment
+  useEffect(() => {
+    if (!appointment || !open) return;
+    (supabase as any)
+      .from('appointment_accepted_terms')
+      .select('terms_type, terms_text, accepted_at')
+      .eq('appointment_id', appointment.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setAcceptedTerms(data || null);
+      });
+  }, [appointment?.id, open]);
 
   const canCancel = ['booked', 'confirmed', 'pending_approval'].includes(appointment.status);
   const isPast = new Date(appointment.start_at) < new Date();
