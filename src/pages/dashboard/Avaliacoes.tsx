@@ -339,11 +339,22 @@ export default function Avaliacoes() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Estabelecimento:</span>
                       {renderStars(rating.stars)}
                       <Badge variant={getStarBadgeVariant(rating.stars)}>
-                        {rating.stars} {rating.stars === 1 ? 'estrela' : 'estrelas'}
+                        {rating.stars}/5
                       </Badge>
                     </div>
+
+                    {rating.professional_stars != null && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground">Profissional:</span>
+                        {renderStars(rating.professional_stars)}
+                        <Badge variant={getStarBadgeVariant(rating.professional_stars)}>
+                          {rating.professional_stars}/5
+                        </Badge>
+                      </div>
+                    )}
 
                     {rating.comment && (
                       <p className="text-sm text-foreground">{rating.comment}</p>
