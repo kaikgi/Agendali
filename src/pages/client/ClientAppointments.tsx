@@ -328,6 +328,8 @@ export default function ClientAppointments() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="booked">Agendados</SelectItem>
                 <SelectItem value="confirmed">Confirmados</SelectItem>
+                <SelectItem value="paid_confirmed">Pago — confirmado</SelectItem>
+                <SelectItem value="pending_payment">Aguardando pagamento</SelectItem>
                 <SelectItem value="completed">Concluídos</SelectItem>
                 <SelectItem value="canceled">Cancelados</SelectItem>
               </SelectContent>

@@ -139,7 +139,7 @@ export function useClientAppointmentsByMonth(year: number, month: number) {
         .eq('customer_user_id', user.id)
         .gte('start_at', startDate.toISOString())
         .lte('start_at', endDate.toISOString())
-        .in('status', ['booked', 'confirmed', 'completed', 'pending_approval'])
+        .in('status', ['booked', 'confirmed', 'completed', 'pending_approval', 'paid_confirmed', 'pending_payment'])
         .order('start_at', { ascending: true });
 
       if (error) throw error;

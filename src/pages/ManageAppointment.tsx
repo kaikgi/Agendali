@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { format, addMinutes, isBefore, addHours } from 'date-fns';
+import { format, addMinutes, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star } from 'lucide-react';
+import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
 import { getStatusLabel, getStatusVariant } from '@/lib/appointmentStatus';
@@ -14,15 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointmentByToken, useCancelAppointment, useRescheduleAppointment } from '@/hooks/useAppointmentByToken';
 import { useAvailableSlots } from '@/hooks/useAvailableSlots';
@@ -189,8 +188,10 @@ export default function ManageAppointment() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const { toast } = useToast();
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState<{ terms_type: string; terms_params: Record<string, any> } | null>(null);
 
   const { data: appointment, isLoading, error } = useAppointmentByToken(slug, token);
   const cancelMutation = useCancelAppointment();
@@ -206,9 +207,39 @@ export default function ManageAppointment() {
   });
   const availableSlots = slotResult?.slots ?? [];
 
+  // Load accepted terms for this appointment
+  useEffect(() => {
+    if (!appointment) return;
+    (supabase as any)
+      .from('appointment_accepted_terms')
+      .select('terms_type, terms_params')
+      .eq('appointment_id', appointment.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setAcceptedTerms(data || null);
+      });
+  }, [appointment?.id]);
+
+  // Evaluate cancellation rules
+  const cancellationDecision = useMemo(() => {
+    if (!appointment) return null;
+    return evaluateCancellation({
+      termsType: (acceptedTerms?.terms_type as CancellationScenario) ?? null,
+      termsParams: acceptedTerms?.terms_params ?? null,
+      appointmentStartAt: appointment.start_at,
+      establishmentPhone: appointment.establishment?.phone ?? null,
+      establishmentName: appointment.establishment?.name ?? '',
+      serviceName: appointment.service?.name ?? '',
+      professionalName: appointment.professional?.name ?? '',
+      customerName: appointment.customer?.name,
+      appointmentStatus: appointment.status,
+    });
+  }, [appointment, acceptedTerms]);
+
+  const actionableStatuses = ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation'];
   const canModify = appointment && 
-    ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) &&
-    isBefore(new Date(), addHours(new Date(appointment.start_at), -(appointment.establishment?.reschedule_min_hours || 2)));
+    actionableStatuses.includes(appointment.status) &&
+    !isBefore(new Date(appointment.start_at), new Date());
 
   const handleCancel = async () => {
     if (!appointment || !token) return;
@@ -219,6 +250,7 @@ export default function ManageAppointment() {
         title: 'Agendamento cancelado',
         description: 'Seu agendamento foi cancelado com sucesso.',
       });
+      setCancelDialogOpen(false);
     } catch (err) {
       toast({
         title: 'Erro ao cancelar',
@@ -458,63 +490,94 @@ export default function ManageAppointment() {
         )}
 
         {/* Actions */}
-        {canModify && !isRescheduling && (
+        {canModify && !isRescheduling && cancellationDecision && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsRescheduling(true)}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Reagendar
-                </Button>
+                {/* Reschedule - show if rules allow */}
+                {cancellationDecision.canReschedule && (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setIsRescheduling(true)}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Reagendar
+                  </Button>
+                )}
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="flex-1">
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Cancelar agendamento
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {appointment.establishment?.cancellation_policy_text || 
-                          'Esta ação não pode ser desfeita. Você precisará fazer um novo agendamento se mudar de ideia.'}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Voltar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleCancel}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        {cancelMutation.isPending ? 'Cancelando...' : 'Sim, cancelar'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Direct cancel */}
+                {cancellationDecision.canCancelDirectly && (
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancelar agendamento
+                  </Button>
+                )}
+
+                {/* WhatsApp contact */}
+                {cancellationDecision.showWhatsAppContact && cancellationDecision.whatsAppUrl && (
+                  <Button variant="outline" className="flex-1 gap-2" asChild>
+                    <a href={cancellationDecision.whatsAppUrl} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="h-4 w-4" />
+                      Falar com o estabelecimento
+                    </a>
+                  </Button>
+                )}
               </div>
 
+              {/* Out-of-deadline warning */}
+              {!cancellationDecision.canCancelDirectly && !cancellationDecision.showWhatsAppContact && (
+                <div className="flex items-center gap-3 text-muted-foreground mt-4">
+                  <AlertTriangle className="h-5 w-5" />
+                  <p className="text-sm">
+                    O prazo para cancelamento direto expirou. 
+                    Entre em contato com o estabelecimento para solicitar o cancelamento.
+                  </p>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground text-center mt-4">
-                Alterações permitidas até {appointment.establishment?.reschedule_min_hours || 2} horas antes do horário agendado
+                Alterações permitidas até {cancellationDecision.minHours} horas antes do horário agendado
               </p>
             </CardContent>
           </Card>
         )}
 
+        {/* Cancel Confirmation Dialog */}
+        <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{cancellationDecision?.cancelTitle ?? 'Cancelar agendamento?'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {cancellationDecision?.cancelDescription ?? 'Esta ação não pode ser desfeita.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={cancelMutation.isPending}>Voltar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={handleCancel}
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {cancelMutation.isPending ? 'Cancelando...' : 'Sim, cancelar'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Cannot Modify Message */}
-        {!canModify && ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) && (
+        {!canModify && ['booked', 'confirmed', 'pending_approval', 'paid_confirmed'].includes(appointment.status) && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <AlertTriangle className="h-5 w-5" />
                 <p className="text-sm">
-                  Não é possível alterar este agendamento. O prazo mínimo de{' '}
-                  {appointment.establishment?.reschedule_min_hours || 2} horas já passou.
+                  Não é possível alterar este agendamento. O horário já passou.
                 </p>
               </div>
             </CardContent>
