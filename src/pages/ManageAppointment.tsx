@@ -188,8 +188,10 @@ export default function ManageAppointment() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const { toast } = useToast();
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState<{ terms_type: string; terms_params: Record<string, any> } | null>(null);
 
   const { data: appointment, isLoading, error } = useAppointmentByToken(slug, token);
   const cancelMutation = useCancelAppointment();
@@ -205,9 +207,39 @@ export default function ManageAppointment() {
   });
   const availableSlots = slotResult?.slots ?? [];
 
+  // Load accepted terms for this appointment
+  useEffect(() => {
+    if (!appointment) return;
+    (supabase as any)
+      .from('appointment_accepted_terms')
+      .select('terms_type, terms_params')
+      .eq('appointment_id', appointment.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setAcceptedTerms(data || null);
+      });
+  }, [appointment?.id]);
+
+  // Evaluate cancellation rules
+  const cancellationDecision = useMemo(() => {
+    if (!appointment) return null;
+    return evaluateCancellation({
+      termsType: (acceptedTerms?.terms_type as CancellationScenario) ?? null,
+      termsParams: acceptedTerms?.terms_params ?? null,
+      appointmentStartAt: appointment.start_at,
+      establishmentPhone: appointment.establishment?.phone ?? null,
+      establishmentName: appointment.establishment?.name ?? '',
+      serviceName: appointment.service?.name ?? '',
+      professionalName: appointment.professional?.name ?? '',
+      customerName: appointment.customer?.name,
+      appointmentStatus: appointment.status,
+    });
+  }, [appointment, acceptedTerms]);
+
+  const actionableStatuses = ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation'];
   const canModify = appointment && 
-    ['booked', 'confirmed', 'pending_approval'].includes(appointment.status) &&
-    isBefore(new Date(), addHours(new Date(appointment.start_at), -(appointment.establishment?.reschedule_min_hours || 2)));
+    actionableStatuses.includes(appointment.status) &&
+    !isBefore(new Date(appointment.start_at), new Date());
 
   const handleCancel = async () => {
     if (!appointment || !token) return;
@@ -218,6 +250,7 @@ export default function ManageAppointment() {
         title: 'Agendamento cancelado',
         description: 'Seu agendamento foi cancelado com sucesso.',
       });
+      setCancelDialogOpen(false);
     } catch (err) {
       toast({
         title: 'Erro ao cancelar',
