@@ -178,14 +178,24 @@ export default function Configuracoes() {
       const urlParts = logoUrl.split('/uploads/');
       if (urlParts.length > 1) {
         const rawPath = urlParts[1].split('?')[0];
-        await supabase.storage.from('uploads').remove([rawPath]);
+        console.log('[logo-upload] Removendo arquivo antigo do storage', { rawPath });
+        const { data: removeData, error: removeError } = await supabase.storage.from('uploads').remove([rawPath]);
+        console.log('[logo-upload] Retorno da remoção no storage', { removeData, removeError });
+        if (removeError) throw removeError;
       }
-      const { error } = await supabase.from('establishments').update({ logo_url: null }).eq('id', establishment.id);
+      const { data: updatedEstablishment, error } = await supabase
+        .from('establishments')
+        .update({ logo_url: null })
+        .eq('id', establishment.id)
+        .select('id, logo_url')
+        .single();
       if (error) throw error;
-      setLogoUrl(null);
+      setLogoUrl(updatedEstablishment.logo_url);
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
-      toast({ title: 'Logo removido!' });
+      queryClient.invalidateQueries({ queryKey: ['establishment'] });
+      toast({ title: 'Logo removida!', description: 'A logo atual foi removida com sucesso.' });
     } catch (err: any) {
+      console.error('[logo-upload] Erro ao remover logo', err);
       toast({ title: 'Erro ao remover logo', description: err?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setUploadingLogo(false);
