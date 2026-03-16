@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 interface RatingWithDetails {
   id: string;
   stars: number;
+  professional_stars: number | null;
   comment: string | null;
   created_at: string;
   customer: {
