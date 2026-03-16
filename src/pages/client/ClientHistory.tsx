@@ -104,7 +104,8 @@ export default function ClientHistory() {
 
   // Stats
   const completedCount = allHistory.filter((a) => a.status === 'completed').length;
-  const canceledCount = allHistory.filter((a) => a.status === 'canceled').length;
+  const canceledStatuses = ['canceled', 'canceled_by_customer', 'canceled_by_establishment'];
+  const canceledCount = allHistory.filter((a) => canceledStatuses.includes(a.status)).length;
 
   if (isLoading) {
     return (
