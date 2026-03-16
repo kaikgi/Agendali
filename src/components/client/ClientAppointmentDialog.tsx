@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -27,11 +26,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCancelClientAppointment, type ClientAppointment } from '@/hooks/useClientAppointments';
 import { ClientRescheduleDialog } from './ClientRescheduleDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
@@ -41,20 +41,30 @@ interface ClientAppointmentDialogProps {
 
 import { statusLabels, statusVariants } from '@/lib/appointmentStatus';
 
+interface AcceptedTermsData {
+  terms_type: string;
+  terms_text: string;
+  terms_params: Record<string, any>;
+  accepted_at: string;
+}
+
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState<{ terms_type: string; terms_text: string; accepted_at: string } | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
 
   // Load accepted terms for this appointment
   useEffect(() => {
-    if (!appointment || !open) return;
+    if (!appointment || !open) {
+      setAcceptedTerms(null);
+      return;
+    }
     (supabase as any)
       .from('appointment_accepted_terms')
-      .select('terms_type, terms_text, accepted_at')
+      .select('terms_type, terms_text, terms_params, accepted_at')
       .eq('appointment_id', appointment.id)
       .maybeSingle()
       .then(({ data }: any) => {
@@ -62,9 +72,25 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       });
   }, [appointment?.id, open]);
 
+  // Evaluate cancellation rules based on accepted terms
+  const cancellationDecision = useMemo(() => {
+    if (!appointment) return null;
+    return evaluateCancellation({
+      termsType: (acceptedTerms?.terms_type as CancellationScenario) ?? null,
+      termsParams: acceptedTerms?.terms_params ?? null,
+      appointmentStartAt: appointment.start_at,
+      establishmentPhone: appointment.establishment.phone,
+      establishmentName: appointment.establishment.name,
+      serviceName: appointment.service.name,
+      professionalName: appointment.professional.name,
+      appointmentStatus: appointment.status,
+    });
+  }, [appointment, acceptedTerms]);
+
   if (!appointment) return null;
 
-  const canCancel = ['booked', 'confirmed', 'pending_approval'].includes(appointment.status);
+  const actionableStatuses = ['booked', 'confirmed', 'pending_approval', 'paid_confirmed', 'paid_pending_confirmation'];
+  const canAct = actionableStatuses.includes(appointment.status);
   const isPast = new Date(appointment.start_at) < new Date();
 
   const handleCancel = async () => {
@@ -77,7 +103,7 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       toast({
         variant: 'destructive',
         title: 'Erro ao cancelar',
-        description: 'Não foi possível cancelar o agendamento',
+        description: error instanceof Error ? error.message : 'Não foi possível cancelar o agendamento',
       });
     }
   };
@@ -89,6 +115,8 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       currency: 'BRL',
     }).format(cents / 100);
   };
+
+  const showActions = canAct && !isPast;
 
   return (
     <>
@@ -215,23 +243,59 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
             )}
 
             {/* Actions */}
-            {canCancel && !isPast && (
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setRescheduleDialogOpen(true)}
-                >
-                  <CalendarClock className="h-4 w-4 mr-2" />
-                  Reagendar
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => setCancelDialogOpen(true)}
-                >
-                  Cancelar
-                </Button>
+            {showActions && cancellationDecision && (
+              <div className="space-y-2 pt-2">
+                {/* Reschedule button - always show if allowed */}
+                {cancellationDecision.canReschedule && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setRescheduleDialogOpen(true)}
+                  >
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Reagendar
+                  </Button>
+                )}
+
+                {/* Cancel button - direct cancel */}
+                {cancellationDecision.canCancelDirectly && (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    Cancelar Agendamento
+                  </Button>
+                )}
+
+                {/* WhatsApp contact - for paid or out-of-deadline */}
+                {cancellationDecision.showWhatsAppContact && cancellationDecision.whatsAppUrl && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    asChild
+                  >
+                    <a
+                      href={cancellationDecision.whatsAppUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Falar com o estabelecimento via WhatsApp
+                    </a>
+                  </Button>
+                )}
+
+                {/* Out-of-deadline warning without WhatsApp */}
+                {!cancellationDecision.canCancelDirectly && !cancellationDecision.showWhatsAppContact && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-200">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>
+                      O prazo para cancelamento direto expirou. 
+                      Entre em contato com o estabelecimento para solicitar o cancelamento.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -250,21 +314,21 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Agendamento?</AlertDialogTitle>
+            <AlertDialogTitle>{cancellationDecision?.cancelTitle ?? 'Cancelar Agendamento'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.
+              {cancellationDecision?.cancelDescription ?? 'Tem certeza que deseja cancelar este agendamento?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={cancelMutation.isPending}>Voltar</AlertDialogCancel>
+            <Button
+              variant="destructive"
               onClick={handleCancel}
               disabled={cancelMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {cancelMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmar Cancelamento
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
