@@ -119,6 +119,51 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_accepted_terms: {
+        Row: {
+          accepted_at: string
+          appointment_id: string
+          establishment_id: string
+          id: string
+          terms_params: Json
+          terms_text: string
+          terms_type: string
+        }
+        Insert: {
+          accepted_at?: string
+          appointment_id: string
+          establishment_id: string
+          id?: string
+          terms_params?: Json
+          terms_text: string
+          terms_type: string
+        }
+        Update: {
+          accepted_at?: string
+          appointment_id?: string
+          establishment_id?: string
+          id?: string
+          terms_params?: Json
+          terms_text?: string
+          terms_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_accepted_terms_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_accepted_terms_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_email_jobs: {
         Row: {
           appointment_id: string
