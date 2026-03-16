@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { format, addMinutes, isBefore, addHours } from 'date-fns';
+import { format, addMinutes, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, User, Scissors, MapPin, Phone, AlertTriangle, CheckCircle, XCircle, ArrowLeft, Star, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
