@@ -44,8 +44,8 @@ export default function ClientHistory() {
 
   const { data: appointments = [], isLoading } = useClientAppointments();
 
-  // History = completed, canceled, no_show
-  const historyStatuses = ['completed', 'canceled', 'no_show'];
+  // History = completed, canceled (all types), no_show, rejected
+  const historyStatuses = ['completed', 'canceled', 'canceled_by_customer', 'canceled_by_establishment', 'no_show', 'rejected'];
 
   const allHistory = useMemo(
     () => appointments.filter((a) => historyStatuses.includes(a.status)),
@@ -63,7 +63,9 @@ export default function ClientHistory() {
   const filtered = useMemo(() => {
     let list = [...allHistory];
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'canceled_all') {
+      list = list.filter((a) => ['canceled', 'canceled_by_customer', 'canceled_by_establishment'].includes(a.status));
+    } else if (statusFilter !== 'all') {
       list = list.filter((a) => a.status === statusFilter);
     }
 
@@ -104,7 +106,8 @@ export default function ClientHistory() {
 
   // Stats
   const completedCount = allHistory.filter((a) => a.status === 'completed').length;
-  const canceledCount = allHistory.filter((a) => a.status === 'canceled').length;
+  const canceledStatuses = ['canceled', 'canceled_by_customer', 'canceled_by_establishment'];
+  const canceledCount = allHistory.filter((a) => canceledStatuses.includes(a.status)).length;
 
   if (isLoading) {
     return (
@@ -189,8 +192,9 @@ export default function ClientHistory() {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="completed">Concluídos</SelectItem>
-              <SelectItem value="canceled">Cancelados</SelectItem>
+              <SelectItem value="canceled_all">Cancelados</SelectItem>
               <SelectItem value="no_show">Não compareceu</SelectItem>
+              <SelectItem value="rejected">Recusado</SelectItem>
             </SelectContent>
           </Select>
           {establishments.length > 1 && (

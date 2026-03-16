@@ -228,7 +228,9 @@ export default function ClientAppointments() {
   const all = useMemo(() => {
     let filtered = [...allAppointments];
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'canceled_all') {
+      filtered = filtered.filter((a) => ['canceled', 'canceled_by_customer', 'canceled_by_establishment'].includes(a.status));
+    } else if (statusFilter !== 'all') {
       filtered = filtered.filter((a) => a.status === statusFilter);
     }
 
@@ -342,9 +344,11 @@ export default function ClientAppointments() {
                 <SelectItem value="booked">Agendados</SelectItem>
                 <SelectItem value="confirmed">Confirmados</SelectItem>
                 <SelectItem value="paid_confirmed">Pago — confirmado</SelectItem>
+                <SelectItem value="pending_approval">Aguardando aprovação</SelectItem>
                 <SelectItem value="pending_payment">Aguardando pagamento</SelectItem>
                 <SelectItem value="completed">Concluídos</SelectItem>
-                <SelectItem value="canceled">Cancelados</SelectItem>
+                <SelectItem value="canceled_all">Cancelados</SelectItem>
+                <SelectItem value="no_show">Não compareceu</SelectItem>
               </SelectContent>
             </Select>
           </div>
