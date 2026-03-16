@@ -273,7 +273,11 @@ export default function PublicBooking() {
     }
   };
 
-  const handleConfirmedSubmit = async (customerData: CustomerFormData) => {
+  // Store terms for persistence after appointment creation
+  const [pendingTerms, setPendingTerms] = useState<GeneratedTerms | null>(null);
+
+  const handleConfirmedSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
+    if (terms) setPendingTerms(terms);
     if (isSubmitting) {
       console.warn('[Booking] handleConfirmedSubmit: already submitting, skipping');
       return;
