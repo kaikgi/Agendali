@@ -75,6 +75,7 @@ export function CompletionPromptDialog({
       setCurrentAppointment({
         id: apt.id,
         service_name: apt.service?.name || 'Serviço',
+        professional_id: apt.professional?.id || '',
         professional_name: apt.professional?.name || 'Profissional',
         customer_name: apt.customer?.name || 'Cliente',
         customer_id: apt.customer?.id || '',
