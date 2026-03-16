@@ -125,22 +125,45 @@ export default function ClientProfile() {
   };
 
   const handleAvatarUpload = async (croppedBlob: Blob) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.error('[avatar-upload] Upload cancelado: usuário não autenticado');
+      toast({ variant: 'destructive', title: 'Faça login para alterar a foto' });
+      return;
+    }
+
+    console.log('[avatar-upload] Iniciando upload', {
+      userId: user.id,
+      blobSize: croppedBlob.size,
+      blobType: croppedBlob.type,
+    });
+
     setIsUploadingAvatar(true);
     try {
+      const bucket = 'uploads';
       const filePath = `avatars/${user.id}/avatar.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(filePath, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
+      console.log('[avatar-upload] Upload para storage', { bucket, filePath });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, croppedBlob, { upsert: true, contentType: 'image/jpeg', cacheControl: '0' });
+
+      console.log('[avatar-upload] Retorno do storage', { uploadData, uploadError });
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
       const avatar_url = `${urlData.publicUrl}?t=${Date.now()}`;
+      console.log('[avatar-upload] URL final', { avatar_url });
 
       await updateProfile({ avatar_url });
+      console.log('[avatar-upload] Perfil atualizado no banco');
       toast({ title: 'Foto atualizada!' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Erro ao enviar foto' });
+    } catch (err: any) {
+      console.error('[avatar-upload] Erro no fluxo', err);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar foto',
+        description: err?.message || 'Tente novamente mais tarde.',
+      });
     } finally {
       setIsUploadingAvatar(false);
     }
