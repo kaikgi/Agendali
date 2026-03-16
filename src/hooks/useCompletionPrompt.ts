@@ -174,7 +174,7 @@ export function usePendingCompletionAppointments(
             end_at,
             status,
             service:services(name, duration_minutes),
-            professional:professionals(name),
+            professional:professionals(id, name),
             customer:customers(id, name),
             establishment:establishments(id, name)
           `)
