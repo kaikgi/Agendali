@@ -12,7 +12,7 @@ import {
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 interface ImageUploadButtonProps {
-  onImageCropped: (croppedBlob: Blob) => void;
+  onImageCropped: (croppedBlob: Blob) => Promise<void> | void;
   currentImageUrl?: string | null;
   buttonText?: string;
   changeButtonText?: string;
