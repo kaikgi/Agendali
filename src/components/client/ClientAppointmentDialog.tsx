@@ -56,6 +56,7 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
   const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
+  const { profile } = useProfile();
 
   // Load accepted terms for this appointment
   useEffect(() => {
