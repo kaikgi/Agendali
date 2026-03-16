@@ -705,6 +705,8 @@ export default function PublicBooking() {
             establishment={{...establishment, ask_email: true}} 
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting}
+            paymentConfig={paymentConfig}
+            servicePriceCents={selectedService?.price_cents}
             defaultValues={{
               name: profile?.full_name || user?.user_metadata?.full_name || '',
               phone: profile?.phone || user?.user_metadata?.phone || '',
