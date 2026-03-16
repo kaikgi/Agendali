@@ -688,6 +688,8 @@ export default function PublicBooking() {
               onSubmit={handleSubmit} 
               isSubmitting={isSubmitting}
               isGuest
+              paymentConfig={paymentConfig}
+              servicePriceCents={selectedService?.price_cents}
               defaultValues={{
                 name: '',
                 phone: '',
