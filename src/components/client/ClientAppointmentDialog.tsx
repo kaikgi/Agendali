@@ -79,12 +79,16 @@ const paymentTypeLabels: Record<string, string> = {
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
   const { profile } = useProfile();
+  
+  // Check if this appointment has been rated
+  const { data: isRated } = useAppointmentRated(appointment?.status === 'completed' ? appointment?.id : undefined);
 
   // Load accepted terms and payment data for this appointment
   useEffect(() => {
