@@ -9,7 +9,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Send email via Resend API
 async function sendEmail(to: string, subject: string, html: string, from: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -19,12 +18,12 @@ async function sendEmail(to: string, subject: string, html: string, from: string
     },
     body: JSON.stringify({ from, to: [to], subject, html }),
   });
-  
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Resend API error: ${error}`);
   }
-  
+
   return response.json();
 }
 
@@ -62,7 +61,7 @@ function getReminderEmailHtml(appointment: {
   const baseUrl = `https://www.agendali.online/${appointment.establishment_slug}`;
   const logoUrl = 'https://www.agendali.online/logo-512.png';
   const hoursText = appointment.reminder_hours === 1 ? '1 hora' : `${appointment.reminder_hours} horas`;
-  
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -71,9 +70,8 @@ function getReminderEmailHtml(appointment: {
       <table width="100%" style="max-width:560px;">
         <tr><td style="text-align:center;padding-bottom:32px;">
           <img src="${logoUrl}" alt="Agendali" width="48" height="48" style="display:inline-block;border-radius:10px;" />
-          <p style="margin:12px 0 0;font-size:20px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
+          <p style="margin:12px 0 0;font-size:20px;font-weight:700;"><span style="color:#000000;">Agenda</span><span style="color:#9CA3AF;">li</span></p>
         </td></tr>
-
         <tr><td align="center" style="padding-bottom:24px;">
           <table cellpadding="0" cellspacing="0"><tr>
             <td style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:100px;padding:8px 20px;">
@@ -81,12 +79,10 @@ function getReminderEmailHtml(appointment: {
             </td>
           </tr></table>
         </td></tr>
-
         <tr><td>
           <p style="margin:0 0 6px;font-size:16px;color:#374151;">Olá, <strong style="color:#111827;">${appointment.customer_name}</strong>!</p>
           <p style="margin:0;font-size:16px;line-height:1.6;color:#374151;">Seu agendamento em <strong>${appointment.establishment_name}</strong> é <strong>em ${hoursText}</strong>.</p>
         </td></tr>
-
         <tr><td style="padding:24px 0;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
             <tr><td style="padding:24px;">
@@ -101,7 +97,6 @@ function getReminderEmailHtml(appointment: {
             </td></tr>
           </table>
         </td></tr>
-
         <tr><td style="padding-bottom:24px;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
             <tr><td style="padding:14px 18px;font-size:14px;color:#92400e;line-height:1.5;">
@@ -109,7 +104,6 @@ function getReminderEmailHtml(appointment: {
             </td></tr>
           </table>
         </td></tr>
-
         <tr><td style="padding-top:24px;border-top:1px solid #e5e7eb;">
           <p style="margin:0;text-align:center;font-size:12px;color:#9ca3af;line-height:1.6;">
             Enviado por ${appointment.establishment_name} através do <a href="https://www.agendali.online" style="color:#9ca3af;text-decoration:underline;">Agendali</a>
@@ -123,7 +117,6 @@ function getReminderEmailHtml(appointment: {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -135,64 +128,51 @@ const handler = async (req: Request): Promise<Response> => {
 
     const now = new Date();
 
-    // Get all establishments with their reminder settings
-    const { data: establishments, error: estError } = await supabase
-      .from("establishments")
-      .select("id, reminder_hours_before")
-      .gt("reminder_hours_before", 0); // Only establishments with reminders enabled
+    // ============================================================
+    // Strategy: Use per-appointment customer_reminder_hours.
+    // This is the value the client chose during booking.
+    // We look for appointments where:
+    //   - customer_reminder_hours > 0
+    //   - reminder_sent_at IS NULL
+    //   - status is active (booked, confirmed, paid_confirmed)
+    //   - start_at is within the reminder window
+    // ============================================================
 
-    if (estError) {
-      console.error("Error fetching establishments:", estError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch establishments" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    // Get distinct reminder hours that appointments use
+    const distinctHours = [1, 2, 3, 6, 12, 24];
 
-    console.log(`Found ${establishments?.length || 0} establishments with reminders enabled`);
-
-    // Group establishments by reminder hours to minimize queries
-    const hourGroups = new Map<number, string[]>();
-    for (const est of establishments || []) {
-      const hours = est.reminder_hours_before;
-      if (!hourGroups.has(hours)) {
-        hourGroups.set(hours, []);
-      }
-      hourGroups.get(hours)!.push(est.id);
-    }
-
-    // Fetch appointments for each time window
     const allAppointments: Array<{
       id: string;
       start_at: string;
-      reminder_hours: number;
+      customer_reminder_hours: number;
+      customer_email: string | null;
       customer: { name: string; email: string | null; phone: string };
       professional: { name: string };
       service: { name: string; duration_minutes: number };
       establishment: { name: string; phone: string | null; address: string | null; slug: string };
     }> = [];
 
-    for (const [hours, establishmentIds] of hourGroups) {
-      // Calculate time window for this reminder setting (±30 min to account for cron timing)
+    for (const hours of distinctHours) {
+      // Window: appointments starting between (now + hours - 0.5h) and (now + hours + 0.5h)
       const startWindow = new Date(now.getTime() + (hours - 0.5) * 60 * 60 * 1000);
       const endWindow = new Date(now.getTime() + (hours + 0.5) * 60 * 60 * 1000);
-
-      console.log(`Looking for appointments ${hours}h before: ${startWindow.toISOString()} to ${endWindow.toISOString()}`);
 
       const { data: appointments, error: fetchError } = await supabase
         .from("appointments")
         .select(`
           id,
           start_at,
+          customer_reminder_hours,
+          customer_email,
           customer:customers(name, email, phone),
           professional:professionals(name),
           service:services(name, duration_minutes),
           establishment:establishments(name, phone, address, slug)
         `)
-        .in("establishment_id", establishmentIds)
+        .eq("customer_reminder_hours", hours)
         .gte("start_at", startWindow.toISOString())
         .lte("start_at", endWindow.toISOString())
-        .in("status", ["booked", "confirmed"])
+        .in("status", ["booked", "confirmed", "paid_confirmed"])
         .is("reminder_sent_at", null);
 
       if (fetchError) {
@@ -203,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
       for (const apt of appointments || []) {
         allAppointments.push({
           ...apt,
-          reminder_hours: hours,
+          customer_reminder_hours: hours,
           customer: apt.customer as unknown as { name: string; email: string | null; phone: string },
           professional: apt.professional as unknown as { name: string },
           service: apt.service as unknown as { name: string; duration_minutes: number },
@@ -222,18 +202,15 @@ const handler = async (req: Request): Promise<Response> => {
       details: [] as { appointmentId: string; status: string; reason?: string }[],
     };
 
-    // Send reminders for each appointment
     for (const appointment of allAppointments) {
-      const { customer, professional, service, establishment, reminder_hours } = appointment;
+      const { customer, professional, service, establishment, customer_reminder_hours } = appointment;
 
-      // Skip if no email
-      if (!customer?.email) {
+      // Use customer_email from appointment first, then customer record
+      const email = appointment.customer_email || customer?.email;
+
+      if (!email) {
         results.skipped++;
-        results.details.push({
-          appointmentId: appointment.id,
-          status: "skipped",
-          reason: "No customer email",
-        });
+        results.details.push({ appointmentId: appointment.id, status: "skipped", reason: "No email" });
         continue;
       }
 
@@ -243,10 +220,10 @@ const handler = async (req: Request): Promise<Response> => {
           .trim()
           .substring(0, 60) || 'Agendali';
         const fromAddress = `${sanitizedName} <${RESEND_FROM}>`;
-        const hoursText = reminder_hours === 1 ? 'em 1 hora' : `em ${reminder_hours} horas`;
+        const hoursText = customer_reminder_hours === 1 ? 'em 1 hora' : `em ${customer_reminder_hours} horas`;
         const emailHtml = getReminderEmailHtml({
           customer_name: customer.name,
-          customer_email: customer.email,
+          customer_email: email,
           professional_name: professional.name,
           service_name: service.name,
           service_duration: service.duration_minutes,
@@ -255,29 +232,26 @@ const handler = async (req: Request): Promise<Response> => {
           establishment_address: establishment.address,
           establishment_slug: establishment.slug,
           start_at: appointment.start_at,
-          reminder_hours: reminder_hours,
+          reminder_hours: customer_reminder_hours,
         });
 
         await sendEmail(
-          customer.email,
+          email,
           `⏰ Lembrete: Agendamento ${hoursText} - ${establishment.name}`,
           emailHtml,
           fromAddress
         );
 
         results.sent++;
-        results.details.push({
-          appointmentId: appointment.id,
-          status: "sent",
-        });
+        results.details.push({ appointmentId: appointment.id, status: "sent" });
 
-        // Mark reminder as sent to prevent duplicates
+        // Mark reminder as sent
         await supabase
           .from("appointments")
           .update({ reminder_sent_at: new Date().toISOString() })
           .eq("id", appointment.id);
 
-        console.log(`Reminder sent for appointment ${appointment.id} to ${customer.email}`);
+        console.log(`Reminder sent for appointment ${appointment.id} to ${email}`);
       } catch (emailError) {
         console.error(`Failed to send reminder for ${appointment.id}:`, emailError);
         results.failed++;

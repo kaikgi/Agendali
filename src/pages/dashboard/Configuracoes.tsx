@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Copy, Check, RefreshCw, AlertCircle, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
+import { Save, Copy, Check, RefreshCw, AlertCircle, CheckCircle2, Trash2, Loader2, Globe, Image, Building2, CalendarCog, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
@@ -7,8 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ImageUploadButton } from '@/components/ImageUploadButton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,11 +34,11 @@ function normalizeSlug(value: string): string {
   return value
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9-]/g, '') // Remove invalid chars
-    .replace(/-+/g, '-') // Replace multiple hyphens with single
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function validateSlug(slug: string): { valid: boolean; error?: string } {
@@ -47,19 +55,14 @@ export default function Configuracoes() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  
   const [copied, setCopied] = useState(false);
-  
-  // Logo upload state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  
-  // Slug state
   const [slug, setSlug] = useState('');
   const [slugError, setSlugError] = useState<string | null>(null);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
-  
+
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -70,13 +73,13 @@ export default function Configuracoes() {
     instagram: '',
     booking_enabled: true,
     auto_confirm_bookings: true,
-    reschedule_min_hours: '',
-    max_future_days: '',
-    slot_interval_minutes: '',
-    reminder_hours_before: '',
+    reschedule_min_hours: '2',
+    max_future_days: '7',
+    slot_interval_minutes: '15',
+    reminder_hours_before: '3',
+    buffer_minutes: '0',
   });
 
-  // Initialize form when establishment loads
   useEffect(() => {
     if (establishment) {
       setSlug(establishment.slug || '');
@@ -97,94 +100,53 @@ export default function Configuracoes() {
         max_future_days: String(establishment.max_future_days ?? 7),
         slot_interval_minutes: String(establishment.slot_interval_minutes ?? 15),
         reminder_hours_before: String((establishment as any).reminder_hours_before ?? 3),
+        buffer_minutes: String((establishment as any).buffer_minutes ?? 0),
       });
     }
   }, [establishment]);
 
-  // Handle logo upload from ImageUploadButton
   const handleLogoUpload = async (croppedBlob: Blob) => {
     if (!establishment) return;
-
     setUploadingLogo(true);
-
     try {
       const filePath = `logos/${establishment.id}/logo.jpg`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(filePath, croppedBlob, { 
-          upsert: true,
-          contentType: 'image/jpeg'
-        });
-
+      const { error: uploadError } = await supabase.storage.from('uploads').upload(filePath, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('uploads')
-        .getPublicUrl(filePath);
-
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(filePath);
       const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
-
-      const { error: updateError } = await supabase
-        .from('establishments')
-        .update({ logo_url: urlWithCacheBuster })
-        .eq('id', establishment.id);
-
+      const { error: updateError } = await supabase.from('establishments').update({ logo_url: urlWithCacheBuster }).eq('id', establishment.id);
       if (updateError) throw updateError;
-
       setLogoUrl(urlWithCacheBuster);
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
       toast({ title: 'Logo atualizado!' });
     } catch (err: any) {
-      toast({ 
-        title: 'Erro ao enviar logo', 
-        description: err?.message || 'Tente novamente',
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao enviar logo', description: err?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setUploadingLogo(false);
     }
   };
 
-  // Handle logo removal
   const handleRemoveLogo = async () => {
     if (!establishment || !logoUrl) return;
-
     setUploadingLogo(true);
-
     try {
-      // Extract file path from URL
       const urlParts = logoUrl.split('/uploads/');
       if (urlParts.length > 1) {
         const rawPath = urlParts[1].split('?')[0];
-        await supabase.storage
-          .from('uploads')
-          .remove([rawPath]);
+        await supabase.storage.from('uploads').remove([rawPath]);
       }
-
-      // Update establishment to remove logo URL
-      const { error } = await supabase
-        .from('establishments')
-        .update({ logo_url: null })
-        .eq('id', establishment.id);
-
+      const { error } = await supabase.from('establishments').update({ logo_url: null }).eq('id', establishment.id);
       if (error) throw error;
-
       setLogoUrl(null);
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
       toast({ title: 'Logo removido!' });
     } catch (err: any) {
-      toast({ 
-        title: 'Erro ao remover logo', 
-        description: err?.message || 'Tente novamente',
-        variant: 'destructive' 
-      });
+      toast({ title: 'Erro ao remover logo', description: err?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setUploadingLogo(false);
     }
   };
 
-  // Check slug availability with debounce using RPC
   const checkSlugAvailability = useCallback(async (slugToCheck: string) => {
     const normalized = normalizeSlug(slugToCheck);
     if (!establishment || normalized === establishment.slug) {
@@ -192,25 +154,20 @@ export default function Configuracoes() {
       setSlugError(null);
       return;
     }
-
     const validation = validateSlug(normalized);
     if (!validation.valid) {
       setSlugError(validation.error || null);
       setSlugAvailable(null);
       return;
     }
-
     setCheckingSlug(true);
     setSlugError(null);
-
     try {
       const { data, error } = await supabase.rpc('check_establishment_slug_available', {
         p_slug: normalized,
         p_current_establishment_id: establishment.id,
       });
-
       if (error) throw error;
-
       if (data) {
         setSlugAvailable(true);
         setSlugError(null);
@@ -218,7 +175,7 @@ export default function Configuracoes() {
         setSlugAvailable(false);
         setSlugError('Este link já está em uso');
       }
-    } catch (err) {
+    } catch {
       setSlugError('Erro ao verificar disponibilidade');
       setSlugAvailable(null);
     } finally {
@@ -226,21 +183,15 @@ export default function Configuracoes() {
     }
   }, [establishment]);
 
-  // Debounced slug check
   useEffect(() => {
     if (!slug || !establishment) return;
-    
-    const timer = setTimeout(() => {
-      checkSlugAvailability(slug);
-    }, 500);
-
+    const timer = setTimeout(() => checkSlugAvailability(slug), 500);
     return () => clearTimeout(timer);
   }, [slug, checkSlugAvailability, establishment]);
 
   const handleSlugChange = (value: string) => {
     const normalized = normalizeSlug(value);
     setSlug(normalized);
-    
     const validation = validateSlug(normalized);
     if (!validation.valid) {
       setSlugError(validation.error || null);
@@ -250,23 +201,16 @@ export default function Configuracoes() {
 
   const handleSave = async () => {
     if (!establishment) throw new Error('validation');
-
     const normalizedSlug = normalizeSlug(slug);
-
-    // Validate slug before saving
     const validation = validateSlug(normalizedSlug);
     if (!validation.valid) {
       toast({ title: validation.error || 'Slug inválido', variant: 'destructive' });
       throw new Error('validation');
     }
-
-    // Check if slug changed and is not available
     if (normalizedSlug !== establishment.slug && slugAvailable === false) {
       toast({ title: 'Este link já está em uso', variant: 'destructive' });
       throw new Error('validation');
     }
-
-    
     try {
       const { error } = await supabase
         .from('establishments')
@@ -285,9 +229,9 @@ export default function Configuracoes() {
           max_future_days: parseInt(form.max_future_days) || 30,
           slot_interval_minutes: parseInt(form.slot_interval_minutes) || 15,
           reminder_hours_before: parseInt(form.reminder_hours_before) || 0,
+          buffer_minutes: parseInt(form.buffer_minutes) || 0,
         } as any)
         .eq('id', establishment.id);
-
       if (error) {
         if (error.code === '23505') {
           setSlugAvailable(false);
@@ -298,20 +242,15 @@ export default function Configuracoes() {
         }
         throw error;
       }
-
       setSlug(normalizedSlug);
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
       toast({ title: 'Configurações salvas!' });
     } catch (err: any) {
-      // Already toasted above or by validation — just re-throw for ActionButton
-      if (err?.message !== 'validation') {
-        console.error('Erro ao salvar configurações:', err);
-      }
+      if (err?.message !== 'validation') console.error('Erro ao salvar configurações:', err);
       throw err;
     }
   };
 
-  // Use single source of truth for public link
   const handleCopyLink = () => {
     if (!slug) return;
     const link = getPublicUrl(slug);
@@ -361,10 +300,13 @@ export default function Configuracoes() {
         </p>
       </div>
 
-      {/* Public Link */}
+      {/* ========== PUBLIC LINK ========== */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Link Público</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg">Link Público</CardTitle>
+          </div>
           <CardDescription>
             Personalize o link que seus clientes usarão para agendar
           </CardDescription>
@@ -374,7 +316,7 @@ export default function Configuracoes() {
             <Label htmlFor="slug">Seu link personalizado</Label>
             <div className="flex gap-2">
               <div className="flex-1 flex items-center">
-              <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-sm text-muted-foreground whitespace-nowrap">
+                <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-sm text-muted-foreground whitespace-nowrap">
                   {PUBLIC_BASE_URL}/
                 </span>
                 <Input
@@ -389,29 +331,18 @@ export default function Configuracoes() {
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            
-            {/* Slug status indicator */}
             <div className="flex items-center gap-2 text-sm">
-              {checkingSlug && (
-                <span className="text-muted-foreground">Verificando disponibilidade...</span>
-              )}
+              {checkingSlug && <span className="text-muted-foreground">Verificando disponibilidade...</span>}
               {!checkingSlug && slugError && (
-                <span className="text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  {slugError}
-                </span>
+                <span className="text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{slugError}</span>
               )}
               {!checkingSlug && !slugError && slugAvailable === true && (
-                <span className="text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Link disponível!
-                </span>
+                <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" />Link disponível!</span>
               )}
               {!checkingSlug && !slugError && slug === establishment?.slug && (
                 <span className="text-muted-foreground">Link atual</span>
               )}
             </div>
-            
             <p className="text-xs text-muted-foreground">
               Use apenas letras minúsculas, números e hífens. Mínimo 3, máximo 40 caracteres.
             </p>
@@ -419,25 +350,22 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
 
-      {/* Logo Upload */}
+      {/* ========== LOGO ========== */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Logo do Estabelecimento</CardTitle>
-          <CardDescription>
-            Adicione uma logo para personalizar sua página de agendamento
-          </CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Image className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg">Logo</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-6">
-            <Avatar className="h-24 w-24">
-              {logoUrl ? (
-                <AvatarImage src={logoUrl} alt="Logo" />
-              ) : null}
+            <Avatar className="h-20 w-20">
+              {logoUrl ? <AvatarImage src={logoUrl} alt="Logo" /> : null}
               <AvatarFallback className="text-2xl bg-muted">
                 {form.name?.charAt(0)?.toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
-            
             <div className="flex-1 space-y-3">
               <div className="flex gap-2">
                 <ImageUploadButton
@@ -450,114 +378,79 @@ export default function Configuracoes() {
                   disabled={uploadingLogo}
                   isUploading={uploadingLogo}
                 />
-                
                 {logoUrl && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleRemoveLogo}
-                    disabled={uploadingLogo}
-                    className="text-destructive hover:text-destructive"
-                  >
+                  <Button type="button" variant="outline" onClick={handleRemoveLogo} disabled={uploadingLogo} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Remover
                   </Button>
                 )}
               </div>
-              
-              <p className="text-xs text-muted-foreground">
-                Formatos aceitos: JPG, PNG, GIF, WebP. Tamanho máximo: 5MB.
-              </p>
+              <p className="text-xs text-muted-foreground">JPG, PNG, GIF, WebP. Máximo 5MB.</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Basic Info */}
+      {/* ========== BASIC INFO ========== */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Informações Básicas</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg">Informações do Estabelecimento</CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nome do Estabelecimento</Label>
-            <Input
-              id="name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
+            <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
-            <Input
-              id="description"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Breve descrição do seu negócio"
-            />
+            <Input id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Breve descrição do seu negócio" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone / WhatsApp</Label>
-              <PhoneInput
-                id="phone"
-                value={form.phone}
-                onChange={(val) => setForm({ ...form, phone: val })}
-                placeholder="(11) 99999-9999"
-              />
+              <PhoneInput id="phone" value={form.phone} onChange={(val) => setForm({ ...form, phone: val })} placeholder="(11) 99999-9999" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="instagram">Instagram</Label>
-              <Input
-                id="instagram"
-                value={form.instagram}
-                onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-                placeholder="@seunegocio"
-              />
+              <Input id="instagram" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="@seunegocio" />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="address">Endereço</Label>
-            <Input
-              id="address"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Rua, número, bairro"
-            />
+            <Input id="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rua, número, bairro" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Cidade</Label>
-              <Input
-                id="city"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                placeholder="São Paulo"
-              />
+              <Input id="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="São Paulo" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="state">Estado</Label>
-              <Input
-                id="state"
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                placeholder="SP"
-                maxLength={2}
-              />
+              <Input id="state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="SP" maxLength={2} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Booking Settings */}
+      {/* ========== BOOKING SETTINGS ========== */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Configurações de Agendamento</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <CalendarCog className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg">Regras de Agendamento</CardTitle>
+          </div>
+          <CardDescription>
+            Configure como o agendamento online funciona para seus clientes
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Agendamento Online</Label>
+          {/* Online booking toggle */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label className="font-medium">Agendamento Online</Label>
               <p className="text-sm text-muted-foreground">
                 Permitir que clientes agendem pelo link público
               </p>
@@ -568,13 +461,16 @@ export default function Configuracoes() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Confirmação Automática</Label>
+          <Separator />
+
+          {/* Auto confirm */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label className="font-medium">Confirmação Automática</Label>
               <p className="text-sm text-muted-foreground">
-                {form.auto_confirm_bookings 
-                  ? 'Agendamentos são confirmados automaticamente'
-                  : 'Agendamentos ficam pendentes aguardando sua aprovação manual'}
+                {form.auto_confirm_bookings
+                  ? 'Agendamentos são confirmados automaticamente ao serem criados'
+                  : 'Agendamentos ficam pendentes até sua aprovação manual'}
               </p>
             </div>
             <Switch
@@ -583,68 +479,127 @@ export default function Configuracoes() {
             />
           </div>
 
+          <Separator />
+
+          {/* Scheduling window & interval */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="reschedule">Antecedência mínima (horas)</Label>
-              <Input
-                id="reschedule"
-                type="number"
-                min="0"
-                value={form.reschedule_min_hours}
-                onChange={(e) => setForm({ ...form, reschedule_min_hours: e.target.value })}
-                onFocus={(e) => e.target.select()}
-                placeholder="2"
-              />
+              <Label htmlFor="future">Janela de agendamento</Label>
+              <Select value={form.max_future_days} onValueChange={(v) => setForm({ ...form, max_future_days: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 dias</SelectItem>
+                  <SelectItem value="14">14 dias</SelectItem>
+                  <SelectItem value="15">15 dias</SelectItem>
+                  <SelectItem value="30">30 dias</SelectItem>
+                  <SelectItem value="60">60 dias</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Clientes poderão agendar até {form.max_future_days} dias à frente
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="future">Janela máxima de agendamento</Label>
-              <select
-                id="future"
-                value={form.max_future_days}
-                onChange={(e) => setForm({ ...form, max_future_days: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="7">7 dias (padrão)</option>
-                <option value="14">14 dias</option>
-                <option value="15">15 dias</option>
-                <option value="30">30 dias</option>
-                <option value="60">60 dias</option>
-              </select>
+              <Label htmlFor="interval">Intervalo entre horários</Label>
+              <Select value={form.slot_interval_minutes} onValueChange={(v) => setForm({ ...form, slot_interval_minutes: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 minutos</SelectItem>
+                  <SelectItem value="10">10 minutos</SelectItem>
+                  <SelectItem value="15">15 minutos</SelectItem>
+                  <SelectItem value="20">20 minutos</SelectItem>
+                  <SelectItem value="30">30 minutos</SelectItem>
+                  <SelectItem value="60">60 minutos</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                Se definido como {form.max_future_days || 7} dias, os clientes só poderão agendar até {form.max_future_days || 7} dias à frente a partir do momento atual.
+                Espaço entre os horários disponíveis na agenda
               </p>
             </div>
           </div>
 
+          <Separator />
+
+          {/* Cancellation & buffer */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="interval">Intervalo de horários (minutos)</Label>
-              <Input
-                id="interval"
-                type="number"
-                min="5"
-                step="5"
-                value={form.slot_interval_minutes}
-                onChange={(e) => setForm({ ...form, slot_interval_minutes: e.target.value })}
-                onFocus={(e) => e.target.select()}
-                placeholder="15"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reminder">Lembrete por e-mail (horas antes)</Label>
-              <Input
-                id="reminder"
-                type="number"
-                min="0"
-                value={form.reminder_hours_before}
-                onChange={(e) => setForm({ ...form, reminder_hours_before: e.target.value })}
-                onFocus={(e) => e.target.select()}
-                placeholder="3"
-              />
+              <Label htmlFor="reschedule">Antecedência mínima para cancelamento</Label>
+              <Select value={form.reschedule_min_hours} onValueChange={(v) => setForm({ ...form, reschedule_min_hours: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sem limite</SelectItem>
+                  <SelectItem value="1">1 hora</SelectItem>
+                  <SelectItem value="2">2 horas</SelectItem>
+                  <SelectItem value="3">3 horas</SelectItem>
+                  <SelectItem value="6">6 horas</SelectItem>
+                  <SelectItem value="12">12 horas</SelectItem>
+                  <SelectItem value="24">24 horas</SelectItem>
+                  <SelectItem value="48">48 horas</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                0 = desativado
+                Tempo mínimo antes do agendamento para permitir cancelamento ou reagendamento
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="buffer">Buffer entre agendamentos</Label>
+              <Select value={form.buffer_minutes} onValueChange={(v) => setForm({ ...form, buffer_minutes: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sem buffer</SelectItem>
+                  <SelectItem value="5">5 minutos</SelectItem>
+                  <SelectItem value="10">10 minutos</SelectItem>
+                  <SelectItem value="15">15 minutos</SelectItem>
+                  <SelectItem value="30">30 minutos</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Tempo de folga entre um agendamento e o próximo
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ========== REMINDERS ========== */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg">Lembretes</CardTitle>
+          </div>
+          <CardDescription>
+            O cliente escolhe se deseja receber lembrete ao agendar. Aqui você define o valor padrão sugerido.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Lembrete padrão por e-mail</Label>
+            <Select value={form.reminder_hours_before} onValueChange={(v) => setForm({ ...form, reminder_hours_before: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Desativado</SelectItem>
+                <SelectItem value="1">1 hora antes</SelectItem>
+                <SelectItem value="2">2 horas antes</SelectItem>
+                <SelectItem value="3">3 horas antes</SelectItem>
+                <SelectItem value="6">6 horas antes</SelectItem>
+                <SelectItem value="12">12 horas antes</SelectItem>
+                <SelectItem value="24">24 horas antes</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Este valor é sugerido como padrão no formulário de agendamento. O cliente pode alterar antes de confirmar.
+            </p>
           </div>
         </CardContent>
       </Card>
