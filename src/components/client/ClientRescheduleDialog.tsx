@@ -53,7 +53,7 @@ export function ClientRescheduleDialog({
       if (isAfter(appointmentDate, new Date())) {
         setSelectedDate(startOfDay(appointmentDate));
       } else {
-        setSelectedDate(startOfDay(addDays(new Date(), 1)));
+        setSelectedDate(startOfDay(new Date()));
       }
       setSelectedTime(undefined);
       setShowProfessionalSelector(false);
@@ -84,14 +84,14 @@ export function ClientRescheduleDialog({
     professionalId: selectedProfessionalId,
     serviceDurationMinutes: appointment?.service.duration_minutes || 30,
     date: selectedDate,
-    slotIntervalMinutes: 15,
-    bufferMinutes: 0,
-    ignoreAppointmentId: appointment?.id, // Ignore current appointment
+    slotIntervalMinutes: appointment?.establishment.slot_interval_minutes ?? 15,
+    bufferMinutes: appointment?.establishment.buffer_minutes ?? 0,
+    ignoreAppointmentId: appointment?.id,
   });
 
-  // Date limits - use establishment's max_future_days setting
+  // Date limits - use establishment's max_future_days setting; allow today for future slots
   const maxFutureDays = appointment?.establishment?.max_future_days ?? 7;
-  const minDate = addDays(new Date(), 1);
+  const minDate = startOfDay(new Date());
   const maxDate = addDays(new Date(), maxFutureDays);
 
   const disabledDays = (date: Date) => {
