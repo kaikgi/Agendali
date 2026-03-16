@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +22,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useState } from 'react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCancelClientAppointment, type ClientAppointment } from '@/hooks/useClientAppointments';
 import { ClientRescheduleDialog } from './ClientRescheduleDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
