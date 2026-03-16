@@ -63,7 +63,9 @@ export default function ClientHistory() {
   const filtered = useMemo(() => {
     let list = [...allHistory];
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'canceled_all') {
+      list = list.filter((a) => ['canceled', 'canceled_by_customer', 'canceled_by_establishment'].includes(a.status));
+    } else if (statusFilter !== 'all') {
       list = list.filter((a) => a.status === statusFilter);
     }
 
