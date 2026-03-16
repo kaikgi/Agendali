@@ -1512,6 +1512,8 @@ export type Database = {
           customer_user_id: string | null
           establishment_id: string
           id: string
+          professional_id: string | null
+          professional_stars: number | null
           stars: number
         }
         Insert: {
@@ -1522,6 +1524,8 @@ export type Database = {
           customer_user_id?: string | null
           establishment_id: string
           id?: string
+          professional_id?: string | null
+          professional_stars?: number | null
           stars: number
         }
         Update: {
@@ -1532,6 +1536,8 @@ export type Database = {
           customer_user_id?: string | null
           establishment_id?: string
           id?: string
+          professional_id?: string | null
+          professional_stars?: number | null
           stars?: number
         }
         Relationships: [
@@ -1554,6 +1560,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -2245,6 +2258,13 @@ export type Database = {
       get_professional_dashboard_stats: {
         Args: { p_token: string }
         Returns: Json
+      }
+      get_professional_rating: {
+        Args: { p_professional_id: string }
+        Returns: {
+          rating_avg: number
+          rating_count: number
+        }[]
       }
       get_professional_settlement_detail: {
         Args: { p_settlement_id: string; p_token: string }

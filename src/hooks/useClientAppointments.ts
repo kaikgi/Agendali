@@ -8,6 +8,7 @@ export interface ClientAppointment {
   start_at: string;
   end_at: string;
   status: string;
+  customer_id: string;
   customer_notes: string | null;
   customer_reminder_hours: number | null;
   service: {
@@ -58,6 +59,7 @@ export function useClientAppointments(filters?: UseClientAppointmentsFilters) {
           start_at,
           end_at,
           status,
+          customer_id,
           customer_notes,
           customer_reminder_hours,
           service:services(id, name, duration_minutes, price_cents),

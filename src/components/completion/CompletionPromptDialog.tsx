@@ -39,6 +39,7 @@ export function CompletionPromptDialog({
   const [currentAppointment, setCurrentAppointment] = useState<{
     id: string;
     service_name: string;
+    professional_id: string;
     professional_name: string;
     customer_name: string;
     customer_id: string;
@@ -74,6 +75,7 @@ export function CompletionPromptDialog({
       setCurrentAppointment({
         id: apt.id,
         service_name: apt.service?.name || 'Serviço',
+        professional_id: apt.professional?.id || '',
         professional_name: apt.professional?.name || 'Profissional',
         customer_name: apt.customer?.name || 'Cliente',
         customer_id: apt.customer?.id || '',
@@ -232,6 +234,8 @@ export function CompletionPromptDialog({
           establishmentId={currentAppointment.establishment_id}
           customerId={currentAppointment.customer_id}
           establishmentName={currentAppointment.establishment_name}
+          professionalId={currentAppointment.professional_id}
+          professionalName={currentAppointment.professional_name}
         />
       )}
     </>

@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle, Bell, CreditCard, BanknoteIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Phone, User, Building2, Loader2, CalendarClock, FileText, MessageCircle, AlertTriangle, Bell, CreditCard, BanknoteIcon, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,8 @@ import { ClientRescheduleDialog } from './ClientRescheduleDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { evaluateCancellation, type CancellationScenario } from '@/lib/cancellationRules';
 import { useProfile } from '@/hooks/useProfile';
+import { useAppointmentRated } from '@/hooks/useRatings';
+import { RatingDialog } from '@/components/ratings/RatingDialog';
 
 interface ClientAppointmentDialogProps {
   appointment: ClientAppointment | null;
@@ -77,12 +79,16 @@ const paymentTypeLabels: Record<string, string> = {
 export function ClientAppointmentDialog({ appointment, open, onOpenChange }: ClientAppointmentDialogProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState<AcceptedTermsData | null>(null);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const { toast } = useToast();
   const cancelMutation = useCancelClientAppointment();
   const { profile } = useProfile();
+  
+  // Check if this appointment has been rated
+  const { data: isRated } = useAppointmentRated(appointment?.status === 'completed' ? appointment?.id : undefined);
 
   // Load accepted terms and payment data for this appointment
   useEffect(() => {
@@ -418,6 +424,27 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
                 )}
               </div>
             )}
+
+            {/* Rating CTA for completed appointments */}
+            {appointment.status === 'completed' && !isRated && (
+              <div className="pt-2">
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => setRatingDialogOpen(true)}
+                >
+                  <Star className="h-4 w-4" />
+                  Avaliar Atendimento
+                </Button>
+              </div>
+            )}
+
+            {/* Already rated indicator */}
+            {appointment.status === 'completed' && isRated && (
+              <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span>Você já avaliou este atendimento</span>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -452,6 +479,20 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rating Dialog */}
+      {appointment.status === 'completed' && (
+        <RatingDialog
+          open={ratingDialogOpen}
+          onOpenChange={setRatingDialogOpen}
+          appointmentId={appointment.id}
+          establishmentId={appointment.establishment.id}
+          customerId={appointment.customer_id}
+          establishmentName={appointment.establishment.name}
+          professionalId={appointment.professional.id}
+          professionalName={appointment.professional.name}
+        />
+      )}
     </>
   );
 }
