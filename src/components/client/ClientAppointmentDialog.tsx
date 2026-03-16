@@ -85,9 +85,10 @@ export function ClientAppointmentDialog({ appointment, open, onOpenChange }: Cli
       establishmentName: appointment.establishment.name,
       serviceName: appointment.service.name,
       professionalName: appointment.professional.name,
+      customerName: profile?.full_name ?? undefined,
       appointmentStatus: appointment.status,
     });
-  }, [appointment, acceptedTerms]);
+  }, [appointment, acceptedTerms, profile]);
 
   if (!appointment) return null;
 

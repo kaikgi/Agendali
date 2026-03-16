@@ -44,16 +44,9 @@ export function useClientReschedule() {
       }
 
       const result = data as unknown as RescheduleResult;
-
-      // Create reschedule email jobs via server-side RPC (fire and forget)
-      if (result.success && result.appointment?.id) {
-        (supabase.rpc as any)('notify_appointment_status_change', {
-          p_appointment_id: result.appointment.id,
-          p_new_status: 'rescheduled',
-          p_old_status: result.appointment.status,
-        }).catch((err: any) => {
-          console.warn('Failed to create reschedule email job:', err);
-        });
+      
+      if (result && !result.success) {
+        throw new Error((result as any).error || 'Erro ao reagendar');
       }
 
       return result;
