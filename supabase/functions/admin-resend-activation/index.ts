@@ -184,6 +184,10 @@ serve(async (req) => {
 </body>
 </html>`
 
+    const rawFrom = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
+    const emailMatch = rawFrom.match(/<([^>]+)>/);
+    const pureEmail = emailMatch ? emailMatch[1] : rawFrom.trim();
+
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -191,7 +195,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `Agendali <${Deno.env.get("RESEND_FROM") || "noreply@agendali.online"}>`,
+        from: `Agendali <${pureEmail}>`,
         to: [normalizedEmail],
         subject: 'Ative sua conta do Agendali — Crie sua senha',
         html: emailHtml,
