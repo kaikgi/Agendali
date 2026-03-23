@@ -184,17 +184,16 @@ serve(async (req) => {
 </body>
 </html>`
 
+    const rawFrom = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
+    const emailMatch = rawFrom.match(/<([^>]+)>/);
+    const pureEmail = emailMatch ? emailMatch[1] : rawFrom.trim();
+
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
-      const rawFrom = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
-      // Extract pure email if wrapped in "Name <email>" format
-      const emailMatch = rawFrom.match(/<([^>]+)>/);
-      const pureEmail = emailMatch ? emailMatch[1] : rawFrom.trim();
-      
       body: JSON.stringify({
         from: `Agendali <${pureEmail}>`,
         to: [normalizedEmail],
