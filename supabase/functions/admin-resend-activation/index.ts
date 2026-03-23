@@ -190,8 +190,13 @@ serve(async (req) => {
         'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
+      const rawFrom = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
+      // Extract pure email if wrapped in "Name <email>" format
+      const emailMatch = rawFrom.match(/<([^>]+)>/);
+      const pureEmail = emailMatch ? emailMatch[1] : rawFrom.trim();
+      
       body: JSON.stringify({
-        from: `Agendali <${Deno.env.get("RESEND_FROM") || "noreply@agendali.online"}>`,
+        from: `Agendali <${pureEmail}>`,
         to: [normalizedEmail],
         subject: 'Ative sua conta do Agendali — Crie sua senha',
         html: emailHtml,
