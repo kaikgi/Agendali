@@ -166,7 +166,7 @@ export default function AdminAllowedEmails() {
         <div className="space-y-3">
           {signups.map((s) => (
             <Card key={s.email}>
-              <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4">
+              <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:py-4 sm:px-6">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Mail className="h-4 w-4 text-muted-foreground shrink-0" />

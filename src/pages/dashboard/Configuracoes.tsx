@@ -369,20 +369,20 @@ export default function Configuracoes() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="slug">Seu link personalizado</Label>
-            <div className="flex gap-2">
-              <div className="flex-1 flex items-center">
-                <span className="px-3 py-2 bg-muted rounded-l-md border border-r-0 text-sm text-muted-foreground whitespace-nowrap">
+          <div className="flex gap-2">
+              <div className="flex-1 flex items-center min-w-0">
+                <span className="px-2 sm:px-3 py-2 bg-muted rounded-l-md border border-r-0 text-xs sm:text-sm text-muted-foreground whitespace-nowrap truncate max-w-[120px] sm:max-w-none">
                   {PUBLIC_BASE_URL}/
                 </span>
                 <Input
                   id="slug"
                   value={slug}
                   onChange={(e) => handleSlugChange(e.target.value)}
-                  className="rounded-l-none"
+                  className="rounded-l-none min-w-0"
                   placeholder="seu-negocio"
                 />
               </div>
-              <Button variant="outline" onClick={handleCopyLink} disabled={!slug}>
+              <Button variant="outline" size="icon" className="shrink-0" onClick={handleCopyLink} disabled={!slug}>
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -414,7 +414,7 @@ export default function Configuracoes() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <Avatar className="h-20 w-20">
               {logoUrl ? <AvatarImage src={logoUrl} alt="Logo" /> : null}
               <AvatarFallback className="text-2xl bg-muted">
