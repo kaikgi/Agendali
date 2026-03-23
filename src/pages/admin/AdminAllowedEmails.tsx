@@ -184,7 +184,7 @@ export default function AdminAllowedEmails() {
                   <div className="text-xs text-muted-foreground mt-1">
                     Pago em {format(new Date(s.paid_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                     {" · "}
-                    Order: {s.kiwify_order_id.substring(0, 20)}...
+                    Order: {(s.kiwify_order_id || '—').substring(0, 20)}...
                     {s.activation_sent_at && (
                       <>
                         {" · "}
