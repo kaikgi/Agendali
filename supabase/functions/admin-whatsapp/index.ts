@@ -191,6 +191,93 @@ serve(async (req) => {
       console.log('New instance saved:', newInst?.id);
       return json({ instance: newInst, qrcode: qr, created: true });
     }
+    if (action === 'check_or_create_instance') {
+      // 1. Check DB first
+      const existing = await getInstanceFromDb();
+      if (existing) {
+        console.log('Instance already exists in DB:', existing.instance_name);
+        try {
+          const token = existing.instance_token || CREATE_TOKEN;
+          const statusRes = await apiFetch(
+            `/instance/connectionState/${existing.instance_name}`,
+            'GET',
+            { apikey: token }
+          );
+          const state = statusRes.data?.instance?.state || statusRes.data?.state || 'unknown';
+          const isConnected = state === 'open';
+          await adminClient.from('admin_whatsapp_instances').update({
+            status: state, is_connected: isConnected, updated_at: new Date().toISOString(),
+            ...(isConnected ? { last_connection_at: new Date().toISOString() } : {})
+          }).eq('id', existing.id);
+          return json({ instance: { ...existing, status: state, is_connected: isConnected }, exists: true });
+        } catch (e) {
+          console.error('Status sync failed:', e);
+          return json({ instance: existing, exists: true });
+        }
+      }
+
+      // 2. Create new instance via /functions/v1/create-instance-url
+      const instanceName = `agendali-${Date.now()}`;
+      const deviceName = 'Agendali Broadcast';
+      const createUrl = `${SERVER_URL}/functions/v1/create-instance-url`;
+
+      console.log('Creating new instance via correct endpoint:', createUrl);
+      console.log('Payload:', JSON.stringify({ token: '***', name: instanceName, deviceName }));
+
+      const createOpts: RequestInit = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: CREATE_TOKEN, name: instanceName, deviceName }),
+      };
+
+      const createResp = await fetch(createUrl, createOpts);
+      const createText = await createResp.text();
+      console.log(`Create response: status=${createResp.status}, body=${createText.substring(0, 1000)}`);
+
+      let rd: any = {};
+      try { rd = JSON.parse(createText); } catch { rd = { raw: createText }; }
+
+      if (!createResp.ok) {
+        const errMsg = rd?.error || rd?.message || createText;
+        let userMsg = `Falha ao criar instância (${createResp.status})`;
+        if (createResp.status === 400) userMsg = `Parâmetros faltando: ${errMsg}`;
+        else if (createResp.status === 401) userMsg = `Token inválido ou expirado: ${errMsg}`;
+        else if (createResp.status === 403) userMsg = `Saldo insuficiente ou acesso negado: ${errMsg}`;
+        else userMsg = `${userMsg}: ${errMsg}`;
+        console.error('Create instance failed:', userMsg);
+        return jsonErr(userMsg, createResp.status >= 400 && createResp.status < 500 ? createResp.status : 500);
+      }
+
+      // Parse response per documentation
+      const instanceToken = rd['Instance Token'] || rd?.instance_token || rd?.token || '';
+      const serverUrlFromResponse = rd?.server_url || SERVER_URL;
+      const instName = rd?.instance?.name || instanceName;
+      const instDeviceName = rd?.instance?.device_name || deviceName;
+      const instWebhook = rd?.webhook || '';
+      const instToken = rd?.token || '';
+
+      console.log('Parsed create response:', { instName, hasInstanceToken: !!instanceToken, serverUrl: serverUrlFromResponse });
+
+      const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
+        instance_name: instName,
+        server_url: serverUrlFromResponse,
+        instance_token: instanceToken,
+        token: instToken,
+        device_name: instDeviceName,
+        webhook: instWebhook,
+        api_key: '',
+        status: 'created',
+        is_connected: false,
+      }).select().single();
+
+      if (insertErr) {
+        console.error('DB insert error:', insertErr);
+        return jsonErr(`Instância criada mas falhou ao salvar: ${insertErr.message}`, 500);
+      }
+
+      console.log('New instance saved:', newInst?.id);
+      return json({ instance: newInst, created: true });
+    }
 
     if (action === 'connect_instance') {
       const inst = await getInstanceFromDb();
