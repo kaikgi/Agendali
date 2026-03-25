@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, WifiOff, QrCode, RefreshCw, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, QrCode, RefreshCw, Loader2, CheckCircle2 } from "lucide-react";
 import { useWhatsAppInstance, useCheckOrCreateInstance, useConnectInstance, useDisconnectInstance } from "@/hooks/useBroadcast";
 
 export default function BroadcastConnection() {
@@ -14,40 +14,19 @@ export default function BroadcastConnection() {
   const isConnected = instance?.is_connected;
   const qrCode = instance?.qr_code || instanceData?.qrcode;
 
-  const handleCreate = () => {
-    console.log('[BroadcastConnection] Criar Instância clicked');
-    checkOrCreate.mutate(undefined, {
-      onSuccess: (data) => {
-        console.log('[BroadcastConnection] Create success:', data);
-      },
-      onError: (error) => {
-        console.error('[BroadcastConnection] Create error:', error);
-      },
-    });
+  const getStatusLabel = () => {
+    if (!instance) return "Sem instância";
+    if (isConnected) return "Conectada";
+    if (instance.status === 'qr_ready') return "Aguardando QR Code";
+    if (instance.status === 'connecting') return "Conectando...";
+    if (instance.status === 'close' || instance.status === 'disconnected') return "Desconectada";
+    return instance.status || "Desconhecido";
   };
 
-  const handleConnect = () => {
-    console.log('[BroadcastConnection] Conectar clicked');
-    connect.mutate(undefined, {
-      onSuccess: (data) => {
-        console.log('[BroadcastConnection] Connect success:', data);
-      },
-      onError: (error) => {
-        console.error('[BroadcastConnection] Connect error:', error);
-      },
-    });
-  };
-
-  const handleDisconnect = () => {
-    console.log('[BroadcastConnection] Desconectar clicked');
-    disconnect.mutate(undefined, {
-      onSuccess: (data) => {
-        console.log('[BroadcastConnection] Disconnect success:', data);
-      },
-      onError: (error) => {
-        console.error('[BroadcastConnection] Disconnect error:', error);
-      },
-    });
+  const getStatusColor = () => {
+    if (isConnected) return "bg-green-600";
+    if (instance?.status === 'qr_ready' || instance?.status === 'connecting') return "bg-yellow-600";
+    return "";
   };
 
   return (
@@ -62,9 +41,13 @@ export default function BroadcastConnection() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm font-medium">Status:</span>
-            <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-600" : ""}>
-              {isConnected ? "Conectado" : instance?.status || "Sem instância"}
-            </Badge>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Badge variant={isConnected ? "default" : "secondary"} className={getStatusColor()}>
+                {getStatusLabel()}
+              </Badge>
+            )}
             {instance?.instance_name && (
               <span className="text-xs text-muted-foreground">({instance.instance_name})</span>
             )}
@@ -77,25 +60,33 @@ export default function BroadcastConnection() {
           )}
 
           <div className="flex gap-2 flex-wrap">
-            {!instance && (
-              <Button onClick={handleCreate} disabled={checkOrCreate.isPending}>
+            {/* No instance at all — show create/sync button */}
+            {!instance && !isLoading && (
+              <Button onClick={() => checkOrCreate.mutate()} disabled={checkOrCreate.isPending}>
                 {checkOrCreate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <QrCode className="h-4 w-4 mr-2" />}
-                Criar Instância
+                Criar / Sincronizar Instância
               </Button>
             )}
 
+            {/* Instance exists but not connected — show connect */}
             {instance && !isConnected && (
-              <Button onClick={handleConnect} disabled={connect.isPending}>
+              <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
                 {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wifi className="h-4 w-4 mr-2" />}
                 Conectar
               </Button>
             )}
 
+            {/* Connected — show disconnect */}
             {instance && isConnected && (
-              <Button variant="destructive" onClick={handleDisconnect} disabled={disconnect.isPending}>
-                {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <WifiOff className="h-4 w-4 mr-2" />}
-                Desconectar
-              </Button>
+              <>
+                <Badge variant="outline" className="gap-1 text-green-600 border-green-600 py-1.5 px-3">
+                  <CheckCircle2 className="h-4 w-4" /> Instância Conectada
+                </Badge>
+                <Button variant="destructive" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
+                  {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <WifiOff className="h-4 w-4 mr-2" />}
+                  Desconectar
+                </Button>
+              </>
             )}
 
             {instance && (

@@ -23,16 +23,13 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    // Validate user session
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
-      console.error('Auth error:', userErr?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check admin access
     const { data: adminUser } = await adminClient
       .from('admin_users')
       .select('id')
@@ -41,14 +38,13 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!adminUser) {
-      console.error('User is not admin:', user.id);
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 
     const SERVER_URL = (Deno.env.get('WHATSAPI_SERVER_URL') || '').replace(/\/$/, '');
     const CREATE_TOKEN = Deno.env.get('WHATSAPI_CREATE_TOKEN') || '';
 
-    console.log('Config check:', { hasServerUrl: !!SERVER_URL, hasCreateToken: !!CREATE_TOKEN, serverUrl: SERVER_URL });
+    console.log('Config:', { hasServerUrl: !!SERVER_URL, hasCreateToken: !!CREATE_TOKEN, serverUrl: SERVER_URL });
 
     if (!SERVER_URL || !CREATE_TOKEN) {
       return new Response(JSON.stringify({ error: 'WhatsApp API not configured. Set WHATSAPI_SERVER_URL and WHATSAPI_CREATE_TOKEN.' }), { status: 500, headers: corsHeaders });
@@ -61,13 +57,11 @@ serve(async (req) => {
     const json = (d: any) => new Response(JSON.stringify(d), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const jsonErr = (msg: string, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders });
 
-    // Helper: get saved instance from DB
     const getInstanceFromDb = async () => {
       const { data } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
       return data;
     };
 
-    // Generic fetch helper with logging
     const apiFetch = async (path: string, method: string, headers: Record<string, string>, payload?: any) => {
       const url = `${SERVER_URL}${path}`;
       console.log(`API call: ${method} ${url}`);
@@ -88,11 +82,11 @@ serve(async (req) => {
     // ========== ACTIONS ==========
 
     if (action === 'check_or_create_instance') {
+      // 1. Check DB first
       const existing = await getInstanceFromDb();
-
       if (existing) {
-        console.log('Existing instance found:', existing.instance_name);
-        // Check status
+        console.log('Instance already exists in DB:', existing.instance_name);
+        // Sync status with remote API
         try {
           const token = existing.instance_token || CREATE_TOKEN;
           const statusRes = await apiFetch(
@@ -106,24 +100,65 @@ serve(async (req) => {
             status: state, is_connected: isConnected, updated_at: new Date().toISOString(),
             ...(isConnected ? { last_connection_at: new Date().toISOString() } : {})
           }).eq('id', existing.id);
-          return json({ instance: { ...existing, status: state, is_connected: isConnected } });
+          return json({ instance: { ...existing, status: state, is_connected: isConnected }, exists: true });
         } catch (e) {
-          console.error('Status check failed:', e);
-          return json({ instance: existing });
+          console.error('Status sync failed:', e);
+          return json({ instance: existing, exists: true });
         }
       }
 
-      // Create new instance
+      // 2. Check remote API for existing instances before creating
+      console.log('No instance in DB. Checking remote API for existing instances...');
+      try {
+        const lookupRes = await apiFetch('/instance/fetchInstances', 'GET', { apikey: CREATE_TOKEN });
+        if (lookupRes.ok) {
+          const instances = Array.isArray(lookupRes.data) ? lookupRes.data : (lookupRes.data?.instances || []);
+          console.log(`Found ${instances.length} remote instance(s)`);
+          
+          // Find any agendali instance or just use the first one
+          const remote = instances.find((i: any) => i.name?.startsWith('agendali')) || instances[0];
+          if (remote) {
+            console.log('Found existing remote instance:', remote.name || remote.instance?.instanceName);
+            const instName = remote.name || remote.instance?.instanceName || 'agendali-synced';
+            const instToken = remote.token || remote.instance_token || remote.hash?.apikey || remote.instance?.apikey || '';
+            const instStatus = remote.connectionStatus || remote.instance?.state || 'synced';
+            const isConnected = instStatus === 'open' || instStatus === 'connected';
+
+            const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
+              instance_name: instName,
+              server_url: remote.server_url || SERVER_URL,
+              instance_token: instToken,
+              api_key: '',
+              status: instStatus,
+              is_connected: isConnected,
+              ...(isConnected ? { last_connection_at: new Date().toISOString() } : {}),
+            }).select().single();
+
+            if (insertErr) {
+              console.error('DB insert error on sync:', insertErr);
+              return jsonErr(`Falha ao salvar instância sincronizada: ${insertErr.message}`, 500);
+            }
+
+            console.log('Remote instance synced to DB:', newInst?.id);
+            return json({ instance: newInst, exists: true, synced: true });
+          }
+        } else {
+          console.log('fetchInstances returned non-ok, proceeding to create. Status:', lookupRes.status);
+        }
+      } catch (e) {
+        console.error('fetchInstances lookup failed, proceeding to create:', e);
+      }
+
+      // 3. No instance anywhere — create new
       const instanceName = `agendali-${Date.now()}`;
       const deviceName = 'Agendali Broadcast';
 
-      console.log('Creating instance:', { name: instanceName, deviceName, tokenPrefix: CREATE_TOKEN.substring(0, 6) + '...' });
+      console.log('Creating new instance:', { name: instanceName, deviceName });
 
-      const createRes = await apiFetch('/instance/create', 'POST', { 'Content-Type': 'application/json' }, {
-        token: CREATE_TOKEN,
-        name: instanceName,
-        deviceName: deviceName,
-      });
+      const createRes = await apiFetch('/instance/create', 'POST', 
+        { apikey: CREATE_TOKEN },
+        { token: CREATE_TOKEN, name: instanceName, deviceName }
+      );
 
       if (!createRes.ok) {
         console.error('Create instance failed:', createRes.status, JSON.stringify(createRes.data));
@@ -131,29 +166,18 @@ serve(async (req) => {
       }
 
       const rd = createRes.data;
-      console.log('Create response data:', JSON.stringify(rd).substring(0, 1000));
+      console.log('Create response:', JSON.stringify(rd).substring(0, 1000));
 
-      // Extract instance token from various possible response shapes
       const instanceToken = rd?.instance_token || rd?.token || rd?.hash?.apikey || rd?.instance?.apikey || rd?.instanceToken || '';
       const serverUrlFromResponse = rd?.server_url || SERVER_URL;
       const instName = rd?.instance?.name || rd?.instance?.instance_name || instanceName;
-      const instDeviceName = rd?.instance?.device_name || deviceName;
-      const webhook = rd?.webhook || null;
       const qr = rd?.qrcode?.base64 || rd?.qrcode || rd?.qr_code || null;
-
-      console.log('Extracted data:', {
-        hasInstanceToken: !!instanceToken,
-        instanceTokenPrefix: instanceToken ? instanceToken.substring(0, 6) + '...' : 'EMPTY',
-        instName,
-        instDeviceName,
-        hasQR: !!qr,
-      });
 
       const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
         instance_name: instName,
         server_url: serverUrlFromResponse,
         instance_token: instanceToken,
-        api_key: '', 
+        api_key: '',
         status: qr ? 'qr_ready' : 'created',
         qr_code: qr,
         is_connected: false,
@@ -161,11 +185,11 @@ serve(async (req) => {
 
       if (insertErr) {
         console.error('DB insert error:', insertErr);
-        return jsonErr(`Instância criada na API mas falhou ao salvar no banco: ${insertErr.message}`, 500);
+        return jsonErr(`Instância criada mas falhou ao salvar: ${insertErr.message}`, 500);
       }
 
-      console.log('Instance saved to DB:', newInst?.id);
-      return json({ instance: newInst, qrcode: qr });
+      console.log('New instance saved:', newInst?.id);
+      return json({ instance: newInst, qrcode: qr, created: true });
     }
 
     if (action === 'connect_instance') {
@@ -173,14 +197,9 @@ serve(async (req) => {
       if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
 
       const token = inst.instance_token || CREATE_TOKEN;
-      const connectRes = await apiFetch(
-        `/instance/connect/${inst.instance_name}`,
-        'GET',
-        { apikey: token }
-      );
+      const connectRes = await apiFetch(`/instance/connect/${inst.instance_name}`, 'GET', { apikey: token });
 
       const qr = connectRes.data?.base64 || connectRes.data?.qrcode?.base64 || connectRes.data?.qrcode || null;
-
       await adminClient.from('admin_whatsapp_instances').update({
         status: qr ? 'qr_ready' : 'connecting', qr_code: qr, updated_at: new Date().toISOString()
       }).eq('id', inst.id);
@@ -194,11 +213,7 @@ serve(async (req) => {
 
       try {
         const token = inst.instance_token || CREATE_TOKEN;
-        const statusRes = await apiFetch(
-          `/instance/connectionState/${inst.instance_name}`,
-          'GET',
-          { apikey: token }
-        );
+        const statusRes = await apiFetch(`/instance/connectionState/${inst.instance_name}`, 'GET', { apikey: token });
         const state = statusRes.data?.instance?.state || statusRes.data?.state || 'unknown';
         const isConnected = state === 'open';
         await adminClient.from('admin_whatsapp_instances').update({
@@ -226,18 +241,11 @@ serve(async (req) => {
     if (action === 'send_text') {
       const { phone, message } = body;
       if (!phone || !message) return jsonErr('Missing phone or message');
-
       const inst = await getInstanceFromDb();
       if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
       if (!inst.instance_token) return jsonErr('Instance token não disponível. Recrie a instância.', 400);
 
-      const sendRes = await apiFetch(
-        `/message/sendText/${inst.instance_name}`,
-        'POST',
-        { apikey: inst.instance_token },
-        { number: phone, text: message }
-      );
-
+      const sendRes = await apiFetch(`/message/sendText/${inst.instance_name}`, 'POST', { apikey: inst.instance_token }, { number: phone, text: message });
       return json({ ok: sendRes.ok, data: sendRes.data });
     }
 
@@ -287,12 +295,7 @@ serve(async (req) => {
         }).eq('id', cc.id);
 
         try {
-          const sendRes = await apiFetch(
-            `/message/sendText/${inst.instance_name}`,
-            'POST',
-            { apikey: inst.instance_token },
-            { number: contact.normalized_phone, text: campaign.message }
-          );
+          const sendRes = await apiFetch(`/message/sendText/${inst.instance_name}`, 'POST', { apikey: inst.instance_token }, { number: contact.normalized_phone, text: campaign.message });
 
           if (sendRes.ok) {
             const msgId = sendRes.data?.key?.id || sendRes.data?.messageId || null;
