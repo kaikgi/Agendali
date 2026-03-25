@@ -278,13 +278,19 @@ export type Database = {
       admin_whatsapp_instances: {
         Row: {
           api_key: string | null
+          connected_at: string | null
+          connected_phone: string | null
           created_at: string
           device_name: string | null
           id: string
           instance_name: string
           instance_token: string | null
+          is_active: boolean
           is_connected: boolean
           last_connection_at: string | null
+          last_validated_at: string | null
+          notes: string | null
+          provider: string
           qr_code: string | null
           server_url: string
           status: string
@@ -294,13 +300,19 @@ export type Database = {
         }
         Insert: {
           api_key?: string | null
+          connected_at?: string | null
+          connected_phone?: string | null
           created_at?: string
           device_name?: string | null
           id?: string
           instance_name: string
           instance_token?: string | null
+          is_active?: boolean
           is_connected?: boolean
           last_connection_at?: string | null
+          last_validated_at?: string | null
+          notes?: string | null
+          provider?: string
           qr_code?: string | null
           server_url: string
           status?: string
@@ -310,13 +322,19 @@ export type Database = {
         }
         Update: {
           api_key?: string | null
+          connected_at?: string | null
+          connected_phone?: string | null
           created_at?: string
           device_name?: string | null
           id?: string
           instance_name?: string
           instance_token?: string | null
+          is_active?: boolean
           is_connected?: boolean
           last_connection_at?: string | null
+          last_validated_at?: string | null
+          notes?: string | null
+          provider?: string
           qr_code?: string | null
           server_url?: string
           status?: string
