@@ -26,161 +26,177 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    // Check admin
     const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: adminUser } = await adminClient.from('admin_users').select('id').eq('user_id', claims.claims.sub).eq('status', 'ativo').maybeSingle();
     if (!adminUser) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
     }
 
-    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')!;
-    const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')!;
+    const SERVER_URL = (Deno.env.get('WHATSAPI_SERVER_URL') || '').replace(/\/$/, '');
+    const CREATE_TOKEN = Deno.env.get('WHATSAPI_CREATE_TOKEN') || '';
+
+    if (!SERVER_URL || !CREATE_TOKEN) {
+      return new Response(JSON.stringify({ error: 'WhatsApp API not configured. Set WHATSAPI_SERVER_URL and WHATSAPI_CREATE_TOKEN.' }), { status: 500, headers: corsHeaders });
+    }
+
     const body = await req.json();
     const { action } = body;
 
-    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
+    const json = (d: any) => new Response(JSON.stringify(d), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const jsonErr = (msg: string, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders });
 
-    // Helper for Evolution API calls
-    const evoFetch = async (path: string, method = 'GET', payload?: any, useAdminToken = true) => {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (useAdminToken) {
-        headers['apikey'] = EVOLUTION_API_KEY;
-      } else if (body.instanceToken) {
-        headers['apikey'] = body.instanceToken;
-      }
+    // Fetch with create token (admin-level operations)
+    const fetchWithCreateToken = async (path: string, method = 'GET', payload?: any) => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'apikey': CREATE_TOKEN };
       const opts: RequestInit = { method, headers };
       if (payload) opts.body = JSON.stringify(payload);
-      const res = await fetch(`${baseUrl}${path}`, opts);
+      const res = await fetch(`${SERVER_URL}${path}`, opts);
       const text = await res.text();
       try { return { ok: res.ok, status: res.status, data: JSON.parse(text) }; } catch { return { ok: res.ok, status: res.status, data: text }; }
     };
 
-    // ---- ACTIONS ----
+    // Fetch with instance token (per-instance operations)
+    const fetchWithInstanceToken = async (instanceToken: string, path: string, method = 'GET', payload?: any) => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'apikey': instanceToken };
+      const opts: RequestInit = { method, headers };
+      if (payload) opts.body = JSON.stringify(payload);
+      const res = await fetch(`${SERVER_URL}${path}`, opts);
+      const text = await res.text();
+      try { return { ok: res.ok, status: res.status, data: JSON.parse(text) }; } catch { return { ok: res.ok, status: res.status, data: text }; }
+    };
+
+    // Helper: get saved instance from DB
+    const getInstanceFromDb = async () => {
+      const { data } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      return data;
+    };
+
+    // ========== ACTIONS ==========
 
     if (action === 'check_or_create_instance') {
-      // Check if we already have an instance saved
-      const { data: existing } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const existing = await getInstanceFromDb();
 
       if (existing) {
-        // Check status on the server
+        // Check status using instance token if available, otherwise create token
         try {
-          const statusRes = await evoFetch(`/instance/connectionState/${existing.instance_name}`);
+          const token = existing.instance_token || CREATE_TOKEN;
+          const statusRes = await fetchWithInstanceToken(token, `/instance/connectionState/${existing.instance_name}`);
           const state = statusRes.data?.instance?.state || statusRes.data?.state || 'unknown';
           const isConnected = state === 'open';
           await adminClient.from('admin_whatsapp_instances').update({
             status: state, is_connected: isConnected, updated_at: new Date().toISOString(),
             ...(isConnected ? { last_connection_at: new Date().toISOString() } : {})
           }).eq('id', existing.id);
-          return new Response(JSON.stringify({ instance: { ...existing, status: state, is_connected: isConnected } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return json({ instance: { ...existing, status: state, is_connected: isConnected } });
         } catch {
-          return new Response(JSON.stringify({ instance: existing }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return json({ instance: existing });
         }
       }
 
-      // Create new instance
+      // Create new instance using CREATE_TOKEN
       const instanceName = `agendali-admin-${Date.now()}`;
-      const createRes = await evoFetch('/instance/create', 'POST', {
+      const createRes = await fetchWithCreateToken('/instance/create', 'POST', {
         instanceName,
         integration: 'WHATSAPP-BAILEYS',
         qrcode: true,
       });
 
       if (!createRes.ok) {
-        return new Response(JSON.stringify({ error: 'Failed to create instance', details: createRes.data }), { status: 500, headers: corsHeaders });
+        return jsonErr(`Failed to create instance: ${JSON.stringify(createRes.data)}`, 500);
       }
 
       const instanceData = createRes.data;
-      const token = instanceData?.hash?.apikey || instanceData?.token || instanceData?.instance?.apikey || '';
+      // Extract the instance token from the response
+      const instanceToken = instanceData?.hash?.apikey || instanceData?.token || instanceData?.instance?.apikey || instanceData?.instanceToken || instanceData?.instance_token || '';
       const qr = instanceData?.qrcode?.base64 || instanceData?.qrcode || null;
 
       const { data: newInst } = await adminClient.from('admin_whatsapp_instances').insert({
         instance_name: instanceName,
-        server_url: baseUrl,
-        instance_token: token,
-        api_key: EVOLUTION_API_KEY,
+        server_url: SERVER_URL,
+        instance_token: instanceToken, // Save the per-instance token
+        api_key: '', // Not storing create token in DB
         status: qr ? 'qr_ready' : 'created',
         qr_code: qr,
       }).select().single();
 
-      return new Response(JSON.stringify({ instance: newInst, qrcode: qr }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ instance: newInst, qrcode: qr });
     }
 
     if (action === 'connect_instance') {
-      const { data: inst } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!inst) return new Response(JSON.stringify({ error: 'No instance found' }), { status: 404, headers: corsHeaders });
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr('No instance found', 404);
 
-      const connectRes = await evoFetch(`/instance/connect/${inst.instance_name}`);
+      const token = inst.instance_token || CREATE_TOKEN;
+      const connectRes = await fetchWithInstanceToken(token, `/instance/connect/${inst.instance_name}`);
       const qr = connectRes.data?.base64 || connectRes.data?.qrcode?.base64 || connectRes.data?.qrcode || null;
 
       await adminClient.from('admin_whatsapp_instances').update({
         status: qr ? 'qr_ready' : 'connecting', qr_code: qr, updated_at: new Date().toISOString()
       }).eq('id', inst.id);
 
-      return new Response(JSON.stringify({ qrcode: qr, instance: { ...inst, qr_code: qr } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ qrcode: qr, instance: { ...inst, qr_code: qr } });
     }
 
     if (action === 'get_status') {
-      const { data: inst } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!inst) return new Response(JSON.stringify({ instance: null }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const inst = await getInstanceFromDb();
+      if (!inst) return json({ instance: null });
 
       try {
-        const statusRes = await evoFetch(`/instance/connectionState/${inst.instance_name}`);
+        const token = inst.instance_token || CREATE_TOKEN;
+        const statusRes = await fetchWithInstanceToken(token, `/instance/connectionState/${inst.instance_name}`);
         const state = statusRes.data?.instance?.state || statusRes.data?.state || 'unknown';
         const isConnected = state === 'open';
         await adminClient.from('admin_whatsapp_instances').update({
           status: state, is_connected: isConnected, updated_at: new Date().toISOString(),
           ...(isConnected ? { last_connection_at: new Date().toISOString() } : {})
         }).eq('id', inst.id);
-        return new Response(JSON.stringify({ instance: { ...inst, status: state, is_connected: isConnected } }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return json({ instance: { ...inst, status: state, is_connected: isConnected } });
       } catch {
-        return new Response(JSON.stringify({ instance: inst }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return json({ instance: inst });
       }
     }
 
     if (action === 'disconnect_instance') {
-      const { data: inst } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!inst) return new Response(JSON.stringify({ error: 'No instance' }), { status: 404, headers: corsHeaders });
-      await evoFetch(`/instance/logout/${inst.instance_name}`, 'DELETE');
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr('No instance', 404);
+      const token = inst.instance_token || CREATE_TOKEN;
+      await fetchWithInstanceToken(token, `/instance/logout/${inst.instance_name}`, 'DELETE');
       await adminClient.from('admin_whatsapp_instances').update({ status: 'disconnected', is_connected: false, qr_code: null, updated_at: new Date().toISOString() }).eq('id', inst.id);
-      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ ok: true });
     }
 
     if (action === 'send_text') {
-      const { phone, message, instanceName, instanceToken } = body;
-      if (!phone || !message) return new Response(JSON.stringify({ error: 'Missing phone or message' }), { status: 400, headers: corsHeaders });
+      const { phone, message } = body;
+      if (!phone || !message) return jsonErr('Missing phone or message');
 
-      const { data: inst } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!inst) return new Response(JSON.stringify({ error: 'No instance' }), { status: 404, headers: corsHeaders });
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr('No instance', 404);
+      if (!inst.instance_token) return jsonErr('Instance token not available. Recreate instance.', 400);
 
-      const sendRes = await evoFetch(`/message/sendText/${inst.instance_name}`, 'POST', {
+      const sendRes = await fetchWithInstanceToken(inst.instance_token, `/message/sendText/${inst.instance_name}`, 'POST', {
         number: phone,
         text: message,
       });
 
-      return new Response(JSON.stringify({ ok: sendRes.ok, data: sendRes.data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ ok: sendRes.ok, data: sendRes.data });
     }
 
     if (action === 'process_campaign') {
       const { campaignId } = body;
-      if (!campaignId) return new Response(JSON.stringify({ error: 'Missing campaignId' }), { status: 400, headers: corsHeaders });
+      if (!campaignId) return jsonErr('Missing campaignId');
 
-      // Get campaign
       const { data: campaign } = await adminClient.from('admin_broadcast_campaigns').select('*').eq('id', campaignId).single();
-      if (!campaign) return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: corsHeaders });
-      if (campaign.status !== 'draft' && campaign.status !== 'paused') {
-        return new Response(JSON.stringify({ error: 'Campaign not in valid state to start' }), { status: 400, headers: corsHeaders });
-      }
+      if (!campaign) return jsonErr('Campaign not found', 404);
+      if (campaign.status !== 'draft' && campaign.status !== 'paused') return jsonErr('Campaign not in valid state to start');
 
-      // Get instance
-      const { data: inst } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!inst || !inst.is_connected) return new Response(JSON.stringify({ error: 'WhatsApp not connected' }), { status: 400, headers: corsHeaders });
+      const inst = await getInstanceFromDb();
+      if (!inst || !inst.is_connected) return jsonErr('WhatsApp not connected');
+      if (!inst.instance_token) return jsonErr('Instance token not available');
 
-      // Mark campaign as running
       await adminClient.from('admin_broadcast_campaigns').update({
         status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString()
       }).eq('id', campaignId);
 
-      // Get pending contacts
       const { data: campaignContacts } = await adminClient
         .from('admin_broadcast_campaign_contacts')
         .select('*, contact:admin_broadcast_contacts(*)')
@@ -192,7 +208,7 @@ serve(async (req) => {
         await adminClient.from('admin_broadcast_campaigns').update({
           status: 'completed', finished_at: new Date().toISOString(), updated_at: new Date().toISOString()
         }).eq('id', campaignId);
-        return new Response(JSON.stringify({ ok: true, message: 'No contacts to process' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return json({ ok: true, message: 'No contacts to process' });
       }
 
       let totalSent = campaign.total_sent || 0;
@@ -207,11 +223,10 @@ serve(async (req) => {
         const { data: currentCampaign } = await adminClient.from('admin_broadcast_campaigns').select('status').eq('id', campaignId).single();
         if (currentCampaign?.status === 'canceled' || currentCampaign?.status === 'paused') break;
 
-        // Mark as sending
         await adminClient.from('admin_broadcast_campaign_contacts').update({ status: 'sending', attempt_count: cc.attempt_count + 1, updated_at: new Date().toISOString() }).eq('id', cc.id);
 
         try {
-          const sendRes = await evoFetch(`/message/sendText/${inst.instance_name}`, 'POST', {
+          const sendRes = await fetchWithInstanceToken(inst.instance_token, `/message/sendText/${inst.instance_name}`, 'POST', {
             number: contact.normalized_phone,
             text: campaign.message,
           });
@@ -221,7 +236,6 @@ serve(async (req) => {
             await adminClient.from('admin_broadcast_campaign_contacts').update({
               status: 'sent', sent_at: new Date().toISOString(), provider_message_id: msgId, updated_at: new Date().toISOString()
             }).eq('id', cc.id);
-
             await adminClient.from('admin_broadcast_logs').insert({
               campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
               establishment_name: contact.establishment_name, message: campaign.message,
@@ -233,7 +247,6 @@ serve(async (req) => {
             await adminClient.from('admin_broadcast_campaign_contacts').update({
               status: 'failed', failed_at: new Date().toISOString(), error_message: errMsg.substring(0, 500), updated_at: new Date().toISOString()
             }).eq('id', cc.id);
-
             await adminClient.from('admin_broadcast_logs').insert({
               campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
               establishment_name: contact.establishment_name, message: campaign.message,
@@ -246,7 +259,6 @@ serve(async (req) => {
           await adminClient.from('admin_broadcast_campaign_contacts').update({
             status: 'failed', failed_at: new Date().toISOString(), error_message: errMsg.substring(0, 500), updated_at: new Date().toISOString()
           }).eq('id', cc.id);
-
           await adminClient.from('admin_broadcast_logs').insert({
             campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
             establishment_name: contact.establishment_name, message: campaign.message,
@@ -255,18 +267,16 @@ serve(async (req) => {
           totalFailed++;
         }
 
-        // Update campaign counters
         await adminClient.from('admin_broadcast_campaigns').update({
           total_sent: totalSent, total_failed: totalFailed, updated_at: new Date().toISOString()
         }).eq('id', campaignId);
 
-        // Delay between messages (skip delay for last message)
+        // Delay between messages
         if (i < campaignContacts.length - 1 && campaign.delay_seconds > 0) {
           await new Promise(resolve => setTimeout(resolve, campaign.delay_seconds * 1000));
         }
       }
 
-      // Mark as completed
       const { data: finalCampaign } = await adminClient.from('admin_broadcast_campaigns').select('status').eq('id', campaignId).single();
       if (finalCampaign?.status === 'running') {
         await adminClient.from('admin_broadcast_campaigns').update({
@@ -274,10 +284,10 @@ serve(async (req) => {
         }).eq('id', campaignId);
       }
 
-      return new Response(JSON.stringify({ ok: true, totalSent, totalFailed }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ ok: true, totalSent, totalFailed });
     }
 
-    return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: corsHeaders });
+    return jsonErr('Unknown action');
   } catch (error) {
     console.error('admin-whatsapp error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }), { status: 500, headers: corsHeaders });
