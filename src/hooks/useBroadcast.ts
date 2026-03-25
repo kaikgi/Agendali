@@ -2,20 +2,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// ---- WhatsApp Instance ----
 async function callWhatsApp(action: string, payload: Record<string, any> = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   if (!session) throw new Error("Not authenticated");
+
   console.log(`[callWhatsApp] action=${action}`, payload);
   const res = await supabase.functions.invoke("admin-whatsapp", {
     body: { action, ...payload },
   });
+
   if (res.error) {
-    console.error(`[callWhatsApp] error for action=${action}:`, res.error);
-    // Try to extract meaningful error from the response data
+    console.error(`[callWhatsApp] error for action=${action}:`, res.error, res.data);
     const errorDetail = (res.data as any)?.error || res.error.message;
     throw new Error(errorDetail);
   }
+
   console.log(`[callWhatsApp] success for action=${action}:`, res.data);
   return res.data;
 }
@@ -31,6 +35,7 @@ export function useWhatsAppInstance() {
 export function useCheckOrCreateInstance() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: () => callWhatsApp("check_or_create_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -40,6 +45,7 @@ export function useCheckOrCreateInstance() {
 
 export function useConnectInstance() {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => callWhatsApp("connect_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -48,6 +54,7 @@ export function useConnectInstance() {
 
 export function useDisconnectInstance() {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: () => callWhatsApp("disconnect_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -57,6 +64,7 @@ export function useDisconnectInstance() {
 export function useUpdateInstanceToken() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: (newToken: string) => callWhatsApp("update_instance_token", { newToken }),
     onSuccess: () => {
@@ -70,9 +78,16 @@ export function useUpdateInstanceToken() {
 export function useConnectExistingInstance() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
-    mutationFn: (data: { instance_name: string; instance_token: string; server_url: string; device_name?: string; connected_phone?: string; notes?: string }) =>
-      callWhatsApp("connect_existing_instance", data),
+    mutationFn: (data: {
+      instance_name: string;
+      instance_token: string;
+      server_url: string;
+      device_name?: string;
+      connected_phone?: string;
+      notes?: string;
+    }) => callWhatsApp("connect_existing_instance", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["whatsapp-instance"] });
       toast({ title: "Instância conectada com sucesso" });
@@ -84,12 +99,16 @@ export function useConnectExistingInstance() {
 export function useTestConnection() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: () => callWhatsApp("test_connection"),
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["whatsapp-instance"] });
       if (data?.ok) {
-        toast({ title: data.status === 'connected' ? "Conectada ✓" : "Instância desconectada", description: `Estado: ${data.state}` });
+        toast({
+          title: data.status === "connected" ? "Conectada ✓" : "Instância desconectada",
+          description: `Estado: ${data.state}`,
+        });
       } else {
         toast({ title: "Teste falhou", description: data?.message || "Erro desconhecido", variant: "destructive" });
       }
@@ -98,17 +117,16 @@ export function useTestConnection() {
   });
 }
 
-// ---- Contacts ----
 export function normalizePhone(phone: string): string {
-  let cleaned = phone.replace(/[\s\-\(\)\+\.]/g, '');
-  if (cleaned.startsWith('0')) cleaned = '55' + cleaned.substring(1);
-  if (cleaned.length === 10 || cleaned.length === 11) cleaned = '55' + cleaned;
+  let cleaned = phone.replace(/[\s\-\(\)\+\.]/g, "");
+  if (cleaned.startsWith("0")) cleaned = "55" + cleaned.substring(1);
+  if (cleaned.length === 10 || cleaned.length === 11) cleaned = "55" + cleaned;
   return cleaned;
 }
 
 export function isValidPhone(phone: string): boolean {
-  const n = normalizePhone(phone);
-  return /^[1-9]\d{10,14}$/.test(n);
+  const normalized = normalizePhone(phone);
+  return /^[1-9]\d{10,14}$/.test(normalized);
 }
 
 export function useBroadcastContacts() {
@@ -128,24 +146,36 @@ export function useBroadcastContacts() {
 export function useAddContact() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (contact: { establishment_name: string; phone: string; source?: string }) => {
       const normalized = normalizePhone(contact.phone);
       if (!isValidPhone(contact.phone)) throw new Error("Telefone inválido");
+
       const { data, error } = await supabase
         .from("admin_broadcast_contacts" as any)
-        .insert({ establishment_name: contact.establishment_name, phone: contact.phone, normalized_phone: normalized, source: contact.source || 'manual' })
+        .insert({
+          establishment_name: contact.establishment_name,
+          phone: contact.phone,
+          normalized_phone: normalized,
+          source: contact.source || "manual",
+        })
         .select();
+
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["broadcast-contacts"] }); toast({ title: "Contato adicionado" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      toast({ title: "Contato adicionado" });
+    },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 }
 
 export function useDeleteContact() {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("admin_broadcast_contacts" as any).delete().eq("id", id);
@@ -158,24 +188,28 @@ export function useDeleteContact() {
 export function useImportContacts() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (contacts: { establishment_name: string; phone: string }[]) => {
-      const rows = contacts.map(c => ({
-        establishment_name: c.establishment_name,
-        phone: c.phone,
-        normalized_phone: normalizePhone(c.phone),
-        source: 'excel',
+      const rows = contacts.map((contact) => ({
+        establishment_name: contact.establishment_name,
+        phone: contact.phone,
+        normalized_phone: normalizePhone(contact.phone),
+        source: "excel",
       }));
+
       const { data, error } = await supabase.from("admin_broadcast_contacts" as any).insert(rows).select();
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => { qc.invalidateQueries({ queryKey: ["broadcast-contacts"] }); toast({ title: `${(data as any[])?.length || 0} contatos importados` }); },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      toast({ title: `${(data as any[])?.length || 0} contatos importados` });
+    },
     onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
   });
 }
 
-// ---- Campaigns ----
 export function useBroadcastCampaigns() {
   return useQuery({
     queryKey: ["broadcast-campaigns"],
@@ -185,8 +219,10 @@ export function useBroadcastCampaigns() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
+      console.log("[useBroadcastCampaigns] campaigns refreshed", data);
       return data as any[];
     },
+    refetchInterval: 3000,
   });
 }
 
@@ -201,19 +237,25 @@ export function useCampaignDetails(campaignId: string | null) {
         .eq("campaign_id", campaignId)
         .order("created_at", { ascending: true });
       if (error) throw error;
+      console.log("[useCampaignDetails] details refreshed", { campaignId, count: data?.length || 0, data });
       return data as any[];
     },
     enabled: !!campaignId,
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 }
 
 export function useCreateCampaign() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (campaign: { name: string; message: string; delay_seconds: number; contactIds: string[] }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log("[useCreateCampaign] creating campaign", campaign);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const { data: newCampaign, error } = await supabase
         .from("admin_broadcast_campaigns" as any)
         .insert({
@@ -227,16 +269,23 @@ export function useCreateCampaign() {
         .single();
       if (error) throw error;
 
-      const ccs = campaign.contactIds.map(cid => ({
+      const campaignContacts = campaign.contactIds.map((contactId) => ({
         campaign_id: (newCampaign as any).id,
-        contact_id: cid,
+        contact_id: contactId,
       }));
-      const { error: ccErr } = await supabase.from("admin_broadcast_campaign_contacts" as any).insert(ccs);
-      if (ccErr) throw ccErr;
 
+      const { error: campaignContactsError } = await supabase
+        .from("admin_broadcast_campaign_contacts" as any)
+        .insert(campaignContacts);
+      if (campaignContactsError) throw campaignContactsError;
+
+      console.log("[useCreateCampaign] campaign created", newCampaign);
       return newCampaign;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] }); toast({ title: "Campanha criada" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+      toast({ title: "Campanha criada" });
+    },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 }
@@ -244,38 +293,63 @@ export function useCreateCampaign() {
 export function useStartCampaign() {
   const qc = useQueryClient();
   const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (campaignId: string) => {
+      console.log("[useStartCampaign] start clicked", { campaignId });
       const result = await callWhatsApp("process_campaign", { campaignId });
+      console.log("[useStartCampaign] start response", { campaignId, result });
       return result;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] }); toast({ title: "Campanha iniciada" }); },
+    onSuccess: (result: any) => {
+      qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
+      qc.invalidateQueries({ queryKey: ["campaign-details"] });
+      toast({
+        title: "Campanha processada",
+        description: `${result?.sent ?? result?.totalSent ?? 0} enviados • ${result?.failed ?? result?.totalFailed ?? 0} falhas`,
+      });
+    },
     onError: (e: Error) => toast({ title: "Erro ao iniciar", description: e.message, variant: "destructive" }),
   });
 }
 
 export function useCancelCampaign() {
   const qc = useQueryClient();
+  const { toast } = useToast();
+
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      const { error } = await supabase.from("admin_broadcast_campaigns" as any).update({ status: 'canceled', updated_at: new Date().toISOString() }).eq("id", campaignId);
+      console.log("[useCancelCampaign] cancel clicked", { campaignId });
+      const { error } = await supabase
+        .from("admin_broadcast_campaigns" as any)
+        .update({ status: "canceled", updated_at: new Date().toISOString() })
+        .eq("id", campaignId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+      toast({ title: "Campanha cancelada" });
+    },
   });
 }
 
-// ---- Logs ----
 export function useBroadcastLogs(campaignId?: string) {
   return useQuery({
     queryKey: ["broadcast-logs", campaignId],
     queryFn: async () => {
-      let query = supabase.from("admin_broadcast_logs" as any).select("*").order("created_at", { ascending: false }).limit(200);
+      let query = supabase
+        .from("admin_broadcast_logs" as any)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
       if (campaignId) query = query.eq("campaign_id", campaignId);
       const { data, error } = await query;
       if (error) throw error;
+      console.log("[useBroadcastLogs] logs refreshed", { campaignId, count: data?.length || 0, data });
       return data as any[];
     },
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
 }

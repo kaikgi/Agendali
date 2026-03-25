@@ -5,6 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useBroadcastLogs, useBroadcastCampaigns } from "@/hooks/useBroadcast";
 
+const LOG_STATUS_META: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  sent: { label: "Sucesso", variant: "default" },
+  failed: { label: "Falha", variant: "destructive" },
+};
+
 export default function BroadcastLogs() {
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const { data: campaigns } = useBroadcastCampaigns();
@@ -15,18 +20,28 @@ export default function BroadcastLogs() {
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium">Filtrar por campanha:</span>
         <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-          <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-64">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            {campaigns?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            {campaigns?.map((campaign: any) => (
+              <SelectItem key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Logs de Envio ({logs?.length || 0})</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Logs de Envio ({logs?.length || 0})</CardTitle>
+        </CardHeader>
         <CardContent>
-          {isLoading ? <p className="text-sm text-muted-foreground">Carregando...</p> : !logs?.length ? (
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : !logs?.length ? (
             <p className="text-sm text-muted-foreground">Nenhum log encontrado.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -37,25 +52,28 @@ export default function BroadcastLogs() {
                     <TableHead>Estabelecimento</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Erro</TableHead>
+                    <TableHead>Erro / Retorno</TableHead>
                     <TableHead>ID Provedor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((l: any) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="text-xs whitespace-nowrap">{new Date(l.created_at).toLocaleString("pt-BR")}</TableCell>
-                      <TableCell className="text-sm">{l.establishment_name || '—'}</TableCell>
-                      <TableCell className="text-xs">{l.phone}</TableCell>
-                      <TableCell>
-                        <Badge variant={l.status === 'sent' ? 'default' : 'destructive'} className={l.status === 'sent' ? 'bg-green-600' : ''}>
-                          {l.status === 'sent' ? 'Sucesso' : 'Falha'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-destructive max-w-[200px] truncate">{l.error || '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[100px] truncate">{l.provider_message_id || '—'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {logs.map((log: any) => {
+                    const statusMeta = LOG_STATUS_META[log.status] || LOG_STATUS_META.failed;
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="whitespace-nowrap text-xs">{new Date(log.created_at).toLocaleString("pt-BR")}</TableCell>
+                        <TableCell className="text-sm">{log.establishment_name || "—"}</TableCell>
+                        <TableCell className="text-xs">{log.phone}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[360px] whitespace-pre-wrap break-words text-xs">
+                          {log.error || "—"}
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">{log.provider_message_id || "—"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
