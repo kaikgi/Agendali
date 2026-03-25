@@ -12,7 +12,9 @@ async function callWhatsApp(action: string, payload: Record<string, any> = {}) {
   });
   if (res.error) {
     console.error(`[callWhatsApp] error for action=${action}:`, res.error);
-    throw new Error(res.error.message);
+    // Try to extract meaningful error from the response data
+    const errorDetail = (res.data as any)?.error || res.error.message;
+    throw new Error(errorDetail);
   }
   console.log(`[callWhatsApp] success for action=${action}:`, res.data);
   return res.data;

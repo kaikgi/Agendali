@@ -279,6 +279,7 @@ export type Database = {
         Row: {
           api_key: string | null
           created_at: string
+          device_name: string | null
           id: string
           instance_name: string
           instance_token: string | null
@@ -287,11 +288,14 @@ export type Database = {
           qr_code: string | null
           server_url: string
           status: string
+          token: string | null
           updated_at: string
+          webhook: string | null
         }
         Insert: {
           api_key?: string | null
           created_at?: string
+          device_name?: string | null
           id?: string
           instance_name: string
           instance_token?: string | null
@@ -300,11 +304,14 @@ export type Database = {
           qr_code?: string | null
           server_url: string
           status?: string
+          token?: string | null
           updated_at?: string
+          webhook?: string | null
         }
         Update: {
           api_key?: string | null
           created_at?: string
+          device_name?: string | null
           id?: string
           instance_name?: string
           instance_token?: string | null
@@ -313,7 +320,9 @@ export type Database = {
           qr_code?: string | null
           server_url?: string
           status?: string
+          token?: string | null
           updated_at?: string
+          webhook?: string | null
         }
         Relationships: []
       }

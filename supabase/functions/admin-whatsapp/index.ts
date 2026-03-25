@@ -86,7 +86,6 @@ serve(async (req) => {
       const existing = await getInstanceFromDb();
       if (existing) {
         console.log('Instance already exists in DB:', existing.instance_name);
-        // Sync status with remote API
         try {
           const token = existing.instance_token || CREATE_TOKEN;
           const statusRes = await apiFetch(
@@ -107,79 +106,57 @@ serve(async (req) => {
         }
       }
 
-      // 2. Check remote API for existing instances before creating
-      console.log('No instance in DB. Checking remote API for existing instances...');
-      try {
-        const lookupRes = await apiFetch('/instance/fetchInstances', 'GET', { apikey: CREATE_TOKEN });
-        if (lookupRes.ok) {
-          const instances = Array.isArray(lookupRes.data) ? lookupRes.data : (lookupRes.data?.instances || []);
-          console.log(`Found ${instances.length} remote instance(s)`);
-          
-          // Find any agendali instance or just use the first one
-          const remote = instances.find((i: any) => i.name?.startsWith('agendali')) || instances[0];
-          if (remote) {
-            console.log('Found existing remote instance:', remote.name || remote.instance?.instanceName);
-            const instName = remote.name || remote.instance?.instanceName || 'agendali-synced';
-            const instToken = remote.token || remote.instance_token || remote.hash?.apikey || remote.instance?.apikey || '';
-            const instStatus = remote.connectionStatus || remote.instance?.state || 'synced';
-            const isConnected = instStatus === 'open' || instStatus === 'connected';
-
-            const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
-              instance_name: instName,
-              server_url: remote.server_url || SERVER_URL,
-              instance_token: instToken,
-              api_key: '',
-              status: instStatus,
-              is_connected: isConnected,
-              ...(isConnected ? { last_connection_at: new Date().toISOString() } : {}),
-            }).select().single();
-
-            if (insertErr) {
-              console.error('DB insert error on sync:', insertErr);
-              return jsonErr(`Falha ao salvar instância sincronizada: ${insertErr.message}`, 500);
-            }
-
-            console.log('Remote instance synced to DB:', newInst?.id);
-            return json({ instance: newInst, exists: true, synced: true });
-          }
-        } else {
-          console.log('fetchInstances returned non-ok, proceeding to create. Status:', lookupRes.status);
-        }
-      } catch (e) {
-        console.error('fetchInstances lookup failed, proceeding to create:', e);
-      }
-
-      // 3. No instance anywhere — create new
+      // 2. Create new instance via /functions/v1/create-instance-url
       const instanceName = `agendali-${Date.now()}`;
       const deviceName = 'Agendali Broadcast';
+      const createUrl = `${SERVER_URL}/functions/v1/create-instance-url`;
 
-      console.log('Creating new instance:', { name: instanceName, deviceName });
+      console.log('Creating new instance via correct endpoint:', createUrl);
+      console.log('Payload:', JSON.stringify({ token: '***', name: instanceName, deviceName }));
 
-      const createRes = await apiFetch('/instance/create', 'POST', 
-        { apikey: CREATE_TOKEN },
-        { token: CREATE_TOKEN, name: instanceName, deviceName }
-      );
+      const createOpts: RequestInit = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: CREATE_TOKEN, name: instanceName, deviceName }),
+      };
 
-      if (!createRes.ok) {
-        console.error('Create instance failed:', createRes.status, JSON.stringify(createRes.data));
-        return jsonErr(`Falha ao criar instância: status ${createRes.status} - ${typeof createRes.data === 'string' ? createRes.data : JSON.stringify(createRes.data)}`, 500);
+      const createResp = await fetch(createUrl, createOpts);
+      const createText = await createResp.text();
+      console.log(`Create response: status=${createResp.status}, body=${createText.substring(0, 1000)}`);
+
+      let rd: any = {};
+      try { rd = JSON.parse(createText); } catch { rd = { raw: createText }; }
+
+      if (!createResp.ok) {
+        const errMsg = rd?.error || rd?.message || createText;
+        let userMsg = `Falha ao criar instância (${createResp.status})`;
+        if (createResp.status === 400) userMsg = `Parâmetros faltando: ${errMsg}`;
+        else if (createResp.status === 401) userMsg = `Token inválido ou expirado: ${errMsg}`;
+        else if (createResp.status === 403) userMsg = `Saldo insuficiente ou acesso negado: ${errMsg}`;
+        else userMsg = `${userMsg}: ${errMsg}`;
+        console.error('Create instance failed:', userMsg);
+        return jsonErr(userMsg, createResp.status >= 400 && createResp.status < 500 ? createResp.status : 500);
       }
 
-      const rd = createRes.data;
-      console.log('Create response:', JSON.stringify(rd).substring(0, 1000));
-
-      const instanceToken = rd?.instance_token || rd?.token || rd?.hash?.apikey || rd?.instance?.apikey || rd?.instanceToken || '';
+      // Parse response per documentation
+      const instanceToken = rd['Instance Token'] || rd?.instance_token || rd?.token || '';
       const serverUrlFromResponse = rd?.server_url || SERVER_URL;
-      const instName = rd?.instance?.name || rd?.instance?.instance_name || instanceName;
-      const qr = rd?.qrcode?.base64 || rd?.qrcode || rd?.qr_code || null;
+      const instName = rd?.instance?.name || instanceName;
+      const instDeviceName = rd?.instance?.device_name || deviceName;
+      const instWebhook = rd?.webhook || '';
+      const instToken = rd?.token || '';
+
+      console.log('Parsed create response:', { instName, hasInstanceToken: !!instanceToken, serverUrl: serverUrlFromResponse });
 
       const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
         instance_name: instName,
         server_url: serverUrlFromResponse,
         instance_token: instanceToken,
+        token: instToken,
+        device_name: instDeviceName,
+        webhook: instWebhook,
         api_key: '',
-        status: qr ? 'qr_ready' : 'created',
-        qr_code: qr,
+        status: 'created',
         is_connected: false,
       }).select().single();
 
@@ -189,7 +166,7 @@ serve(async (req) => {
       }
 
       console.log('New instance saved:', newInst?.id);
-      return json({ instance: newInst, qrcode: qr, created: true });
+      return json({ instance: newInst, created: true });
     }
 
     if (action === 'connect_instance') {
