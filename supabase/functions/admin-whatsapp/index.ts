@@ -2,523 +2,997 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+type WhatsAppInstance = {
+  id: string;
+  instance_name: string;
+  instance_token: string | null;
+  server_url: string;
+  connected_phone?: string | null;
+  status?: string | null;
+  is_connected?: boolean | null;
+  is_active?: boolean | null;
+  device_name?: string | null;
+  token?: string | null;
+  qr_code?: string | null;
+  notes?: string | null;
+};
+
+const truncate = (value: unknown, max = 500) => {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+};
+
+const maskToken = (token?: string | null) => {
+  if (!token) return "not-set";
+  if (token.length <= 8) return "********";
+  return `${token.slice(0, 4)}***${token.slice(-4)}`;
+};
+
+const safeJsonParse = (value: string) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const normalizePhone = (phone: string) => {
+  let normalized = String(phone || "").replace(/\D/g, "").replace(/^0+/, "");
+  if (/^\d{10,11}$/.test(normalized)) {
+    normalized = `55${normalized}`;
+  }
+  return normalized;
+};
+
+const isValidNormalizedPhone = (phone: string) => /^\d{12,15}$/.test(phone);
+
+const extractConnectedPhone = (payload: any, fallback?: string | null) => {
+  return payload?.instance?.owner || payload?.instance?.ownerJid || payload?.owner || payload?.ownerJid || fallback || null;
+};
+
+const isSuccessfulSendResponse = (payload: any) => {
+  return Boolean(
+    payload?.status === "success" ||
+    payload?.success === true ||
+    payload?.key ||
+    payload?.messageId ||
+    payload?.data?.key ||
+    payload?.data?.messageId ||
+    payload?.response?.key ||
+    payload?.response?.messageId,
+  );
+};
+
+const extractProviderMessageId = (payload: any) => {
+  const candidate =
+    payload?.key?.id ||
+    payload?.key ||
+    payload?.messageId ||
+    payload?.data?.key?.id ||
+    payload?.data?.key ||
+    payload?.data?.messageId ||
+    payload?.response?.key?.id ||
+    payload?.response?.key ||
+    payload?.response?.messageId ||
+    null;
+
+  return candidate ? String(candidate) : null;
+};
+
+const formatApiError = (status: number, payload: any, rawText: string) => {
+  const message =
+    payload?.message ||
+    payload?.error ||
+    payload?.data?.message ||
+    payload?.response?.message ||
+    rawText ||
+    "Erro desconhecido";
+
+  return `Erro ${status}: ${truncate(message, 260)}`;
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: adminUser } = await adminClient
-      .from('admin_users')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('status', 'ativo')
+      .from("admin_users")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "ativo")
       .maybeSingle();
 
     if (!adminUser) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
 
-    const CREATE_INSTANCE_URL = (Deno.env.get('WHATSAPI_SERVER_URL') || '').replace(/\/+$/, '');
-    const CREATE_TOKEN = Deno.env.get('WHATSAPI_CREATE_TOKEN') || '';
+    const CREATE_INSTANCE_URL = (Deno.env.get("WHATSAPI_SERVER_URL") || "").replace(/\/+$/, "");
+    const CREATE_TOKEN = Deno.env.get("WHATSAPI_CREATE_TOKEN") || "";
 
-    console.log('Config:', { hasCreateUrl: !!CREATE_INSTANCE_URL, hasCreateToken: !!CREATE_TOKEN });
+    console.log("Config:", { hasCreateUrl: !!CREATE_INSTANCE_URL, hasCreateToken: !!CREATE_TOKEN });
 
     if (!CREATE_INSTANCE_URL || !CREATE_TOKEN) {
-      return new Response(JSON.stringify({ error: 'WhatsApp API not configured. Set WHATSAPI_SERVER_URL and WHATSAPI_CREATE_TOKEN.' }), { status: 500, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: "WhatsApp API not configured. Set WHATSAPI_SERVER_URL and WHATSAPI_CREATE_TOKEN." }),
+        { status: 500, headers: corsHeaders },
+      );
     }
 
     const body = await req.json();
     const { action } = body;
-    console.log('Action:', action);
+    console.log("Action:", action);
 
-    const json = (d: any) => new Response(JSON.stringify(d), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    const jsonErr = (msg: string, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders });
+    const json = (data: unknown) =>
+      new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    const jsonErr = (message: string, status = 400) =>
+      new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
-    const getInstanceFromDb = async () => {
-      const { data: active } = await adminClient.from('admin_whatsapp_instances').select('*').eq('is_active', true).limit(1).maybeSingle();
-      if (active) return active;
-      const { data } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
-      return data;
+    const getInstanceFromDb = async (): Promise<WhatsAppInstance | null> => {
+      const { data: active } = await adminClient
+        .from("admin_whatsapp_instances")
+        .select("*")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (active) return active as WhatsAppInstance;
+
+      const { data } = await adminClient
+        .from("admin_whatsapp_instances")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return (data as WhatsAppInstance | null) ?? null;
     };
 
-    // =====================================================
-    // Check instance status via POST {server_url}/instance/connect
-    // uazapi uses "token" header (NOT "apikey")
-    // This endpoint returns either:
-    //   - { connected: true, instance: { status: "connected" } }
-    //   - { connected: false, instance: { qrcode: "...", status: "connecting" } }
-    // =====================================================
-    const checkInstanceStatus = async (inst: any): Promise<{
-      state: string; isConnected: boolean; phone: string | null; error: string | null; qrcode: string | null;
-    }> => {
-      const base = String(inst.server_url).replace(/\/+$/, '');
-      const token = inst.instance_token;
-      const result = { state: 'unknown', isConnected: false, phone: inst.connected_phone || null, error: null as string | null, qrcode: null as string | null };
+    const checkInstanceStatus = async (inst: WhatsAppInstance) => {
+      const result = {
+        state: "unknown",
+        isConnected: false,
+        phone: inst.connected_phone || null,
+        error: null as string | null,
+        qrcode: null as string | null,
+      };
 
-      if (!token) {
-        result.state = 'missing_token';
-        result.error = 'Instance token não configurado';
+      if (!inst.instance_token) {
+        result.state = "missing_token";
+        result.error = "Instance token não configurado";
         return result;
       }
 
-      try {
-        const url = `${base}/instance/connect`;
-        console.log(`[checkStatus] POST ${url}`);
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', token },
-          body: '{}',
-        });
-        const text = await res.text();
-        console.log(`[checkStatus] Response: ${res.status} ${text.substring(0, 800)}`);
+      const base = String(inst.server_url || "").replace(/\/+$/, "");
+      const endpoint = `${base}/instance/connect`;
 
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            result.state = 'invalid_token';
-            result.error = `Token inválido ou sem permissão (${res.status})`;
+      try {
+        console.log("[checkStatus] Request", {
+          instance_name: inst.instance_name,
+          endpoint,
+          token_masked: maskToken(inst.instance_token),
+        });
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", token: inst.instance_token },
+          body: "{}",
+        });
+
+        const rawText = await response.text();
+        const payload = safeJsonParse(rawText) ?? { raw: rawText };
+
+        console.log("[checkStatus] Response", {
+          status: response.status,
+          body: truncate(payload, 800),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            result.state = "invalid_token";
+            result.error = `Token inválido ou sem permissão (${response.status})`;
             return result;
           }
-          result.state = 'api_error';
-          result.error = `API retornou ${res.status}: ${text.substring(0, 200)}`;
+
+          result.state = "api_error";
+          result.error = formatApiError(response.status, payload, rawText);
           return result;
         }
 
-        let data: any;
-        try { data = JSON.parse(text); } catch { data = null; }
+        result.phone = extractConnectedPhone(payload, inst.connected_phone);
 
-        if (!data) {
-          result.state = 'api_error';
-          result.error = 'Resposta inválida da API';
-          return result;
-        }
-
-        // Check if already connected
-        const isConnected = data.connected === true || data.instance?.status === 'connected';
-        if (isConnected) {
-          result.state = 'connected';
+        if (payload?.connected === true || payload?.instance?.status === "connected") {
+          result.state = "connected";
           result.isConnected = true;
           return result;
         }
 
-        // Not connected — might have QR code
-        const qr = data.instance?.qrcode || data.qrcode || null;
-        if (qr) {
-          result.state = 'connecting';
-          result.qrcode = qr;
+        const qrCode = payload?.instance?.qrcode || payload?.qrcode || null;
+        if (qrCode) {
+          result.state = "connecting";
+          result.qrcode = qrCode;
           return result;
         }
 
-        // Fallback — check instance status field
-        const instStatus = data.instance?.status || data.status;
-        if (instStatus === 'disconnected' || instStatus === 'close') {
-          result.state = 'disconnected';
-        } else {
-          result.state = instStatus || 'disconnected';
-        }
+        const providerState = payload?.instance?.status || payload?.status || "disconnected";
+        result.state = providerState === "close" ? "disconnected" : providerState;
         return result;
-      } catch (fetchErr) {
-        result.state = 'communication_error';
-        result.error = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-        console.error(`[checkStatus] Fetch error:`, result.error);
+      } catch (error) {
+        result.state = "communication_error";
+        result.error = error instanceof Error ? error.message : String(error);
+        console.error("[checkStatus] Fetch error", result.error);
         return result;
       }
     };
 
-    // ========== ACTIONS ==========
+    const sendWhatsAppMessage = async (inst: WhatsAppInstance, rawPhone: string, message: string) => {
+      const normalizedPhone = normalizePhone(rawPhone);
+      if (!isValidNormalizedPhone(normalizedPhone)) {
+        return {
+          ok: false,
+          normalizedPhone,
+          providerMessageId: null,
+          error: `Telefone inválido após normalização: ${normalizedPhone || "vazio"}`,
+          httpStatus: 0,
+          payload: null,
+          endpoint: null,
+        };
+      }
 
-    if (action === 'check_or_create_instance') {
+      if (!inst.instance_token) {
+        return {
+          ok: false,
+          normalizedPhone,
+          providerMessageId: null,
+          error: "Instance token não configurado",
+          httpStatus: 0,
+          payload: null,
+          endpoint: null,
+        };
+      }
+
+      const endpoint = `${String(inst.server_url || "").replace(/\/+$/, "")}/send/text`;
+      const payload = { phone: normalizedPhone, message };
+
+      console.log("[send_message] Request", {
+        instance_name: inst.instance_name,
+        endpoint,
+        token_masked: maskToken(inst.instance_token),
+        normalized_phone: normalizedPhone,
+        payload: { ...payload, message: truncate(message, 120) },
+      });
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: inst.instance_token,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const rawText = await response.text();
+        const parsedPayload = safeJsonParse(rawText) ?? { raw: rawText };
+        const providerMessageId = extractProviderMessageId(parsedPayload);
+        const ok = response.ok && isSuccessfulSendResponse(parsedPayload);
+
+        console.log("[send_message] Response", {
+          endpoint,
+          http_status: response.status,
+          body: truncate(parsedPayload, 800),
+          interpreted_ok: ok,
+          provider_message_id: providerMessageId,
+        });
+
+        return {
+          ok,
+          normalizedPhone,
+          providerMessageId,
+          error: ok ? null : formatApiError(response.status, parsedPayload, rawText),
+          httpStatus: response.status,
+          payload: parsedPayload,
+          endpoint,
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[send_message] Fetch error", {
+          endpoint,
+          normalized_phone: normalizedPhone,
+          error: errorMessage,
+        });
+
+        return {
+          ok: false,
+          normalizedPhone,
+          providerMessageId: null,
+          error: errorMessage,
+          httpStatus: 0,
+          payload: null,
+          endpoint,
+        };
+      }
+    };
+
+    const finalizeCampaign = async (campaignId: string, fallbackTotals?: { sent: number; failed: number }) => {
+      const { data: campaignStatus } = await adminClient
+        .from("admin_broadcast_campaigns")
+        .select("status")
+        .eq("id", campaignId)
+        .single();
+
+      if (!campaignStatus || campaignStatus.status !== "running") {
+        console.log("[process_campaign] Finalization skipped", {
+          campaign_id: campaignId,
+          current_status: campaignStatus?.status,
+        });
+        return { finalStatus: campaignStatus?.status ?? null };
+      }
+
+      const { data: rows } = await adminClient
+        .from("admin_broadcast_campaign_contacts")
+        .select("status")
+        .eq("campaign_id", campaignId);
+
+      const sent = rows?.filter((row) => row.status === "sent").length ?? fallbackTotals?.sent ?? 0;
+      const failed = rows?.filter((row) => row.status === "failed").length ?? fallbackTotals?.failed ?? 0;
+      const pending = rows?.filter((row) => ["pending", "sending"].includes(row.status)).length ?? 0;
+
+      if (pending > 0) {
+        console.log("[process_campaign] Campaign still has pending contacts", {
+          campaign_id: campaignId,
+          sent,
+          failed,
+          pending,
+        });
+        return { finalStatus: "running", sent, failed, pending };
+      }
+
+      const finalStatus = failed > 0 ? (sent > 0 ? "completed_with_failures" : "failed") : "completed";
+      const finishedAt = new Date().toISOString();
+
+      await adminClient
+        .from("admin_broadcast_campaigns")
+        .update({
+          status: finalStatus,
+          finished_at: finishedAt,
+          total_sent: sent,
+          total_failed: failed,
+          updated_at: finishedAt,
+        })
+        .eq("id", campaignId);
+
+      console.log("[process_campaign] Campaign finalized", {
+        campaign_id: campaignId,
+        final_status: finalStatus,
+        sent,
+        failed,
+        finished_at: finishedAt,
+      });
+
+      return { finalStatus, sent, failed, pending: 0 };
+    };
+
+    if (action === "check_or_create_instance") {
       const existing = await getInstanceFromDb();
       if (existing) {
-        console.log('Instance already exists in DB:', existing.instance_name);
+        console.log("Instance already exists in DB:", existing.instance_name);
         return json({ instance: existing, exists: true });
       }
 
-      // Create new instance
       const instanceName = `agendali-${Date.now()}`;
-      const deviceName = 'Agendali';
+      const deviceName = "Agendali";
       const createUrl = `${CREATE_INSTANCE_URL}/functions/v1/create-instance-url`;
 
-      console.log('Creating new instance:', createUrl);
+      console.log("Creating new instance:", createUrl);
       const createResp = await fetch(createUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: CREATE_TOKEN, name: instanceName, deviceName,
-          systemName: 'Agendali', system_name: 'Agendali', system: 'Agendali',
-          profileName: 'Agendali', browser: 'chrome', fingerprintProfile: 'chrome',
+          token: CREATE_TOKEN,
+          name: instanceName,
+          deviceName,
+          systemName: "Agendali",
+          system_name: "Agendali",
+          system: "Agendali",
+          profileName: "Agendali",
+          browser: "chrome",
+          fingerprintProfile: "chrome",
         }),
       });
       const createText = await createResp.text();
       console.log(`Create response: status=${createResp.status}, body=${createText.substring(0, 1000)}`);
 
-      let rd: any = {};
-      try { rd = JSON.parse(createText); } catch { rd = { raw: createText }; }
-
+      const responseData: any = safeJsonParse(createText) ?? { raw: createText };
       if (!createResp.ok) {
-        const errMsg = rd?.error || rd?.message || createText;
-        return jsonErr(`Falha ao criar instância (${createResp.status}): ${errMsg}`, 500);
+        const errorMessage = responseData?.error || responseData?.message || createText;
+        return jsonErr(`Falha ao criar instância (${createResp.status}): ${errorMessage}`, 500);
       }
 
-      const instanceToken = rd['Instance Token'] || rd?.instance_token || rd?.token || '';
-      const serverUrlFromResponse = rd?.server_url || CREATE_INSTANCE_URL;
-      const instName = rd?.instance?.name || instanceName;
+      const instanceToken = responseData["Instance Token"] || responseData?.instance_token || responseData?.token || "";
+      const serverUrlFromResponse = responseData?.server_url || CREATE_INSTANCE_URL;
+      const instanceNameFromResponse = responseData?.instance?.name || instanceName;
 
-      const { data: newInst, error: insertErr } = await adminClient.from('admin_whatsapp_instances').insert({
-        instance_name: instName, server_url: serverUrlFromResponse.replace(/\/+$/, ''),
-        instance_token: instanceToken, token: rd?.token || '',
-        device_name: rd?.instance?.device_name || deviceName,
-        webhook: rd?.webhook || '', api_key: '',
-        status: 'created', is_connected: false, is_active: true,
-      }).select().single();
+      const { data: newInst, error: insertErr } = await adminClient
+        .from("admin_whatsapp_instances")
+        .insert({
+          instance_name: instanceNameFromResponse,
+          server_url: serverUrlFromResponse.replace(/\/+$/, ""),
+          instance_token: instanceToken,
+          token: responseData?.token || "",
+          device_name: responseData?.instance?.device_name || deviceName,
+          webhook: responseData?.webhook || "",
+          api_key: "",
+          status: "created",
+          is_connected: false,
+          is_active: true,
+        })
+        .select()
+        .single();
 
-      if (insertErr) return jsonErr(`Instância criada mas falhou ao salvar: ${insertErr.message}`, 500);
+      if (insertErr) {
+        return jsonErr(`Instância criada mas falhou ao salvar: ${insertErr.message}`, 500);
+      }
+
       return json({ instance: newInst, created: true });
     }
 
-    if (action === 'connect_instance') {
+    if (action === "connect_instance") {
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
-      if (!inst.instance_token) return jsonErr('Instance token não configurado', 400);
+      if (!inst) return jsonErr("Nenhuma instância encontrada", 404);
+      if (!inst.instance_token) return jsonErr("Instance token não configurado", 400);
 
-      const base = String(inst.server_url).replace(/\/+$/, '');
+      const base = String(inst.server_url).replace(/\/+$/, "");
       console.log(`[connect_instance] POST ${base}/instance/connect`);
       const connectRes = await fetch(`${base}/instance/connect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', token: inst.instance_token },
-        body: '{}',
+        method: "POST",
+        headers: { "Content-Type": "application/json", token: inst.instance_token },
+        body: "{}",
       });
       const connectText = await connectRes.text();
       console.log(`[connect_instance] Response: ${connectRes.status} ${connectText.substring(0, 500)}`);
-      let connectData: any;
-      try { connectData = JSON.parse(connectText); } catch { connectData = { raw: connectText }; }
+      const connectData: any = safeJsonParse(connectText) ?? { raw: connectText };
 
       if (!connectRes.ok) {
         return jsonErr(`Erro ao conectar: ${connectData?.error || connectData?.message || connectText}`, connectRes.status);
       }
 
-      const isConnected = connectData.connected === true || connectData.instance?.status === 'connected';
-      const qr = connectData.instance?.qrcode || connectData.qrcode || null;
+      const isConnected = connectData.connected === true || connectData.instance?.status === "connected";
+      const qrCode = connectData.instance?.qrcode || connectData.qrcode || null;
+      const connectedPhone = extractConnectedPhone(connectData, inst.connected_phone);
 
-      await adminClient.from('admin_whatsapp_instances').update({
-        status: isConnected ? 'connected' : (qr ? 'connecting' : 'disconnected'),
-        is_connected: isConnected,
-        qr_code: qr, updated_at: new Date().toISOString(),
-        ...(isConnected ? { last_connection_at: new Date().toISOString() } : {}),
-      }).eq('id', inst.id);
+      await adminClient
+        .from("admin_whatsapp_instances")
+        .update({
+          status: isConnected ? "connected" : qrCode ? "connecting" : "disconnected",
+          is_connected: isConnected,
+          qr_code: qrCode,
+          connected_phone: connectedPhone,
+          updated_at: new Date().toISOString(),
+          ...(isConnected ? { last_connection_at: new Date().toISOString() } : {}),
+        })
+        .eq("id", inst.id);
 
-      return json({ qrcode: qr, connected: isConnected, instance: { ...inst, qr_code: qr, is_connected: isConnected } });
+      return json({
+        qrcode: qrCode,
+        connected: isConnected,
+        instance: { ...inst, qr_code: qrCode, is_connected: isConnected, connected_phone: connectedPhone },
+      });
     }
 
-    if (action === 'get_status') {
+    if (action === "get_status") {
       const inst = await getInstanceFromDb();
       if (!inst) return json({ instance: null });
 
       const statusResult = await checkInstanceStatus(inst);
       const now = new Date().toISOString();
-      await adminClient.from('admin_whatsapp_instances').update({
-        status: statusResult.state, is_connected: statusResult.isConnected,
-        updated_at: now, last_validated_at: now,
-        ...(statusResult.phone ? { connected_phone: statusResult.phone } : {}),
-        ...(statusResult.isConnected ? { last_connection_at: now } : {}),
-      }).eq('id', inst.id);
+      await adminClient
+        .from("admin_whatsapp_instances")
+        .update({
+          status: statusResult.state,
+          is_connected: statusResult.isConnected,
+          updated_at: now,
+          last_validated_at: now,
+          ...(statusResult.phone ? { connected_phone: statusResult.phone } : {}),
+          ...(statusResult.qrcode ? { qr_code: statusResult.qrcode } : {}),
+          ...(statusResult.isConnected ? { last_connection_at: now } : {}),
+        })
+        .eq("id", inst.id);
+
       return json({
-        instance: { ...inst, status: statusResult.state, is_connected: statusResult.isConnected, last_validated_at: now },
+        instance: {
+          ...inst,
+          status: statusResult.state,
+          is_connected: statusResult.isConnected,
+          last_validated_at: now,
+          connected_phone: statusResult.phone,
+          qr_code: statusResult.qrcode,
+        },
         validation_error: statusResult.error,
       });
     }
 
-    if (action === 'disconnect_instance') {
+    if (action === "disconnect_instance") {
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
-      // uazapi: just update DB status (as per docs, disconnect is DB-only)
-      await adminClient.from('admin_whatsapp_instances').update({
-        status: 'disconnected', is_connected: false, qr_code: null, updated_at: new Date().toISOString()
-      }).eq('id', inst.id);
+      if (!inst) return jsonErr("Nenhuma instância encontrada", 404);
+
+      await adminClient
+        .from("admin_whatsapp_instances")
+        .update({ status: "disconnected", is_connected: false, qr_code: null, updated_at: new Date().toISOString() })
+        .eq("id", inst.id);
+
       return json({ ok: true });
     }
 
-    if (action === 'send_text') {
+    if (action === "send_text") {
       const { phone, message } = body;
-      if (!phone || !message) return jsonErr('Missing phone or message');
+      if (!phone || !message) return jsonErr("Missing phone or message");
+
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
-      if (!inst.instance_token) return jsonErr('Instance token não disponível.', 400);
-      const base = String(inst.server_url).replace(/\/+$/, '');
-      console.log(`[send_text] POST ${base}/message/sendText/${inst.instance_name}`);
-      const sendRes = await fetch(`${base}/message/sendText/${inst.instance_name}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', token: inst.instance_token },
-        body: JSON.stringify({ number: phone, text: message }),
+      if (!inst) return jsonErr("Nenhuma instância encontrada", 404);
+
+      const sendResult = await sendWhatsAppMessage(inst, phone, message);
+      return json({
+        ok: sendResult.ok,
+        endpoint: sendResult.endpoint,
+        normalized_phone: sendResult.normalizedPhone,
+        provider_message_id: sendResult.providerMessageId,
+        error: sendResult.error,
+        data: sendResult.payload,
       });
-      const sendText = await sendRes.text();
-      let sendData: any;
-      try { sendData = JSON.parse(sendText); } catch { sendData = { raw: sendText }; }
-      console.log(`[send_text] Response: ${sendRes.status}`);
-      return json({ ok: sendRes.ok, data: sendData });
     }
 
-    if (action === 'process_campaign') {
+    if (action === "process_campaign") {
       const { campaignId } = body;
-      if (!campaignId) return jsonErr('Missing campaignId');
+      if (!campaignId) return jsonErr("Missing campaignId");
 
-      const { data: campaign } = await adminClient.from('admin_broadcast_campaigns').select('*').eq('id', campaignId).single();
-      if (!campaign) return jsonErr('Campaign not found', 404);
-      if (campaign.status !== 'draft' && campaign.status !== 'paused') return jsonErr('Campaign not in valid state to start');
+      const { data: campaign } = await adminClient
+        .from("admin_broadcast_campaigns")
+        .select("*")
+        .eq("id", campaignId)
+        .single();
 
-      const inst = await getInstanceFromDb();
-      if (!inst || !inst.is_connected) return jsonErr('WhatsApp não conectado');
-      if (!inst.instance_token) return jsonErr('Instance token não disponível');
-
-      await adminClient.from('admin_broadcast_campaigns').update({
-        status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString()
-      }).eq('id', campaignId);
-
-      const { data: campaignContacts } = await adminClient
-        .from('admin_broadcast_campaign_contacts')
-        .select('*, contact:admin_broadcast_contacts(*)')
-        .eq('campaign_id', campaignId)
-        .in('status', ['pending', 'failed'])
-        .order('created_at', { ascending: true });
-
-      if (!campaignContacts || campaignContacts.length === 0) {
-        await adminClient.from('admin_broadcast_campaigns').update({
-          status: 'completed', finished_at: new Date().toISOString(), updated_at: new Date().toISOString()
-        }).eq('id', campaignId);
-        return json({ ok: true, message: 'No contacts to process' });
+      if (!campaign) return jsonErr("Campaign not found", 404);
+      if (!["draft", "paused"].includes(campaign.status)) {
+        return jsonErr("Campaign not in valid state to start");
+      }
+      if (!campaign.message || !String(campaign.message).trim()) {
+        return jsonErr("Campanha sem mensagem configurada");
       }
 
-      const base = String(inst.server_url).replace(/\/+$/, '');
+      console.log("[process_campaign] Campaign start requested", {
+        campaign_id: campaignId,
+        campaign_name: campaign.name,
+        total_contacts: campaign.total_contacts,
+        delay_seconds: campaign.delay_seconds,
+      });
+
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr("Nenhuma instância ativa encontrada", 404);
+
+      console.log("[process_campaign] Instance loaded", {
+        instance_id: inst.id,
+        instance_name: inst.instance_name,
+        server_url: inst.server_url,
+        token_masked: maskToken(inst.instance_token),
+        status: inst.status,
+        is_connected: inst.is_connected,
+      });
+
+      const connectionState = await checkInstanceStatus(inst);
+      const now = new Date().toISOString();
+      await adminClient
+        .from("admin_whatsapp_instances")
+        .update({
+          status: connectionState.state,
+          is_connected: connectionState.isConnected,
+          last_validated_at: now,
+          updated_at: now,
+          ...(connectionState.phone ? { connected_phone: connectionState.phone } : {}),
+        })
+        .eq("id", inst.id);
+
+      if (!connectionState.isConnected) {
+        return jsonErr(
+          connectionState.error || `A instância ativa não está conectada. Estado atual: ${connectionState.state}`,
+          400,
+        );
+      }
+
+      await adminClient
+        .from("admin_broadcast_campaigns")
+        .update({ status: "running", started_at: now, finished_at: null, updated_at: now })
+        .eq("id", campaignId);
+
+      const { data: campaignContacts } = await adminClient
+        .from("admin_broadcast_campaign_contacts")
+        .select("*, contact:admin_broadcast_contacts(*)")
+        .eq("campaign_id", campaignId)
+        .in("status", ["pending", "failed"])
+        .order("created_at", { ascending: true });
+
+      if (!campaignContacts || campaignContacts.length === 0) {
+        const finalization = await finalizeCampaign(campaignId, {
+          sent: campaign.total_sent || 0,
+          failed: campaign.total_failed || 0,
+        });
+        return json({ ok: true, message: "No contacts to process", ...finalization });
+      }
+
       let totalSent = campaign.total_sent || 0;
       let totalFailed = campaign.total_failed || 0;
 
-      for (let i = 0; i < campaignContacts.length; i++) {
-        const cc = campaignContacts[i];
-        const contact = cc.contact;
-        if (!contact) continue;
+      for (let index = 0; index < campaignContacts.length; index += 1) {
+        const campaignContact = campaignContacts[index] as any;
+        const contact = campaignContact.contact;
 
-        const { data: currentCampaign } = await adminClient.from('admin_broadcast_campaigns').select('status').eq('id', campaignId).single();
-        if (currentCampaign?.status === 'canceled' || currentCampaign?.status === 'paused') break;
+        const { data: currentCampaign } = await adminClient
+          .from("admin_broadcast_campaigns")
+          .select("status")
+          .eq("id", campaignId)
+          .single();
 
-        await adminClient.from('admin_broadcast_campaign_contacts').update({
-          status: 'sending', attempt_count: cc.attempt_count + 1, updated_at: new Date().toISOString()
-        }).eq('id', cc.id);
-
-        try {
-          const sendRes = await fetch(`${base}/message/sendText/${inst.instance_name}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', token: inst.instance_token },
-            body: JSON.stringify({ number: contact.normalized_phone, text: campaign.message }),
+        if (["canceled", "paused"].includes(currentCampaign?.status || "")) {
+          console.log("[process_campaign] Campaign interrupted", {
+            campaign_id: campaignId,
+            current_status: currentCampaign?.status,
+            processed_index: index,
           });
-          const sendText = await sendRes.text();
-          let sendData: any;
-          try { sendData = JSON.parse(sendText); } catch { sendData = { raw: sendText }; }
+          break;
+        }
 
-          if (sendRes.ok) {
-            const msgId = sendData?.key?.id || sendData?.messageId || null;
-            await adminClient.from('admin_broadcast_campaign_contacts').update({
-              status: 'sent', sent_at: new Date().toISOString(), provider_message_id: msgId, updated_at: new Date().toISOString()
-            }).eq('id', cc.id);
-            await adminClient.from('admin_broadcast_logs').insert({
-              campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
-              establishment_name: contact.establishment_name, message: campaign.message,
-              status: 'sent', provider_message_id: msgId,
+        if (!contact) {
+          const errorMessage = "Contato da campanha não encontrado";
+          console.log("[process_campaign] Missing contact", { campaign_contact_id: campaignContact.id, error: errorMessage });
+
+          await adminClient
+            .from("admin_broadcast_campaign_contacts")
+            .update({
+              status: "failed",
+              failed_at: new Date().toISOString(),
+              error_message: errorMessage,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", campaignContact.id);
+
+          totalFailed += 1;
+        } else {
+          await adminClient
+            .from("admin_broadcast_campaign_contacts")
+            .update({
+              status: "sending",
+              attempt_count: (campaignContact.attempt_count || 0) + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", campaignContact.id);
+
+          const sendResult = await sendWhatsAppMessage(inst, contact.normalized_phone || contact.phone, campaign.message);
+          console.log("[process_campaign] Contact result", {
+            campaign_contact_id: campaignContact.id,
+            contact_id: contact.id,
+            normalized_phone: sendResult.normalizedPhone,
+            http_status: sendResult.httpStatus,
+            interpreted_ok: sendResult.ok,
+            provider_message_id: sendResult.providerMessageId,
+            error: sendResult.error,
+          });
+
+          if (sendResult.ok) {
+            const sentAt = new Date().toISOString();
+            await adminClient
+              .from("admin_broadcast_campaign_contacts")
+              .update({
+                status: "sent",
+                sent_at: sentAt,
+                failed_at: null,
+                error_message: null,
+                provider_message_id: sendResult.providerMessageId,
+                updated_at: sentAt,
+              })
+              .eq("id", campaignContact.id);
+
+            await adminClient.from("admin_broadcast_logs").insert({
+              campaign_id: campaignId,
+              contact_id: contact.id,
+              phone: sendResult.normalizedPhone,
+              establishment_name: contact.establishment_name,
+              message: campaign.message,
+              status: "sent",
+              provider_message_id: sendResult.providerMessageId,
             });
-            totalSent++;
+
+            totalSent += 1;
           } else {
-            const errMsg = typeof sendData === 'string' ? sendData : JSON.stringify(sendData);
-            await adminClient.from('admin_broadcast_campaign_contacts').update({
-              status: 'failed', failed_at: new Date().toISOString(), error_message: errMsg.substring(0, 500), updated_at: new Date().toISOString()
-            }).eq('id', cc.id);
-            await adminClient.from('admin_broadcast_logs').insert({
-              campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
-              establishment_name: contact.establishment_name, message: campaign.message,
-              status: 'failed', error: errMsg.substring(0, 500),
+            const failedAt = new Date().toISOString();
+            const errorMessage = sendResult.error || "Falha desconhecida ao enviar mensagem";
+
+            await adminClient
+              .from("admin_broadcast_campaign_contacts")
+              .update({
+                status: "failed",
+                failed_at: failedAt,
+                error_message: truncate(errorMessage, 500),
+                provider_message_id: sendResult.providerMessageId,
+                updated_at: failedAt,
+              })
+              .eq("id", campaignContact.id);
+
+            await adminClient.from("admin_broadcast_logs").insert({
+              campaign_id: campaignId,
+              contact_id: contact.id,
+              phone: sendResult.normalizedPhone || normalizePhone(contact.phone || ""),
+              establishment_name: contact.establishment_name,
+              message: campaign.message,
+              status: "failed",
+              error: truncate({
+                error: errorMessage,
+                endpoint: sendResult.endpoint,
+                http_status: sendResult.httpStatus,
+                provider_response: sendResult.payload,
+              }, 500),
+              provider_message_id: sendResult.providerMessageId,
             });
-            totalFailed++;
+
+            totalFailed += 1;
           }
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          await adminClient.from('admin_broadcast_campaign_contacts').update({
-            status: 'failed', failed_at: new Date().toISOString(), error_message: errMsg.substring(0, 500), updated_at: new Date().toISOString()
-          }).eq('id', cc.id);
-          await adminClient.from('admin_broadcast_logs').insert({
-            campaign_id: campaignId, contact_id: contact.id, phone: contact.normalized_phone,
-            establishment_name: contact.establishment_name, message: campaign.message,
-            status: 'failed', error: errMsg.substring(0, 500),
+        }
+
+        const countersUpdatedAt = new Date().toISOString();
+        await adminClient
+          .from("admin_broadcast_campaigns")
+          .update({
+            total_sent: totalSent,
+            total_failed: totalFailed,
+            updated_at: countersUpdatedAt,
+          })
+          .eq("id", campaignId);
+
+        console.log("[process_campaign] Counters updated", {
+          campaign_id: campaignId,
+          total_sent: totalSent,
+          total_failed: totalFailed,
+        });
+
+        if (index < campaignContacts.length - 1 && campaign.delay_seconds > 0) {
+          console.log("[process_campaign] Waiting delay", {
+            campaign_id: campaignId,
+            delay_seconds: campaign.delay_seconds,
+            next_index: index + 1,
           });
-          totalFailed++;
-        }
-
-        await adminClient.from('admin_broadcast_campaigns').update({
-          total_sent: totalSent, total_failed: totalFailed, updated_at: new Date().toISOString()
-        }).eq('id', campaignId);
-
-        if (i < campaignContacts.length - 1 && campaign.delay_seconds > 0) {
-          await new Promise(resolve => setTimeout(resolve, campaign.delay_seconds * 1000));
+          await new Promise((resolve) => setTimeout(resolve, campaign.delay_seconds * 1000));
         }
       }
 
-      const { data: finalCampaign } = await adminClient.from('admin_broadcast_campaigns').select('status').eq('id', campaignId).single();
-      if (finalCampaign?.status === 'running') {
-        await adminClient.from('admin_broadcast_campaigns').update({
-          status: 'completed', finished_at: new Date().toISOString(), total_sent: totalSent, total_failed: totalFailed, updated_at: new Date().toISOString()
-        }).eq('id', campaignId);
-      }
-
-      return json({ ok: true, totalSent, totalFailed });
+      const finalization = await finalizeCampaign(campaignId, { sent: totalSent, failed: totalFailed });
+      return json({ ok: true, totalSent, totalFailed, ...finalization });
     }
 
-    if (action === 'update_instance_token') {
+    if (action === "update_instance_token") {
       const { newToken } = body;
-      if (!newToken || typeof newToken !== 'string' || newToken.trim().length < 10) {
-        return jsonErr('Token inválido. Deve ter pelo menos 10 caracteres.');
+      if (!newToken || typeof newToken !== "string" || newToken.trim().length < 10) {
+        return jsonErr("Token inválido. Deve ter pelo menos 10 caracteres.");
       }
+
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância encontrada para atualizar', 404);
-      const { error: updErr } = await adminClient.from('admin_whatsapp_instances').update({
-        instance_token: newToken.trim(), updated_at: new Date().toISOString(),
-      }).eq('id', inst.id);
-      if (updErr) return jsonErr(`Erro ao atualizar token: ${updErr.message}`, 500);
-      await adminClient.from('admin_audit_logs').insert({
-        admin_user_id: adminUser.id, action: 'whatsapp_token_updated',
-        metadata: { instance_id: inst.id, instance_name: inst.instance_name },
-      }).catch(e => console.error('Audit log failed:', e));
+      if (!inst) return jsonErr("Nenhuma instância encontrada para atualizar", 404);
+
+      const { error: updateError } = await adminClient
+        .from("admin_whatsapp_instances")
+        .update({
+          instance_token: newToken.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", inst.id);
+
+      if (updateError) return jsonErr(`Erro ao atualizar token: ${updateError.message}`, 500);
+
+      await adminClient
+        .from("admin_audit_logs")
+        .insert({
+          admin_user_id: adminUser.id,
+          action: "whatsapp_token_updated",
+          metadata: { instance_id: inst.id, instance_name: inst.instance_name },
+        })
+        .catch((error) => console.error("Audit log failed:", error));
+
       return json({ ok: true, instance_name: inst.instance_name });
     }
 
-    // ===== CONNECT EXISTING INSTANCE =====
-    if (action === 'connect_existing_instance') {
+    if (action === "connect_existing_instance") {
       const { instance_name, instance_token, server_url, device_name, connected_phone, notes } = body;
       if (!instance_name || !instance_token || !server_url) {
-        return jsonErr('Campos obrigatórios: instance_name, instance_token, server_url');
+        return jsonErr("Campos obrigatórios: instance_name, instance_token, server_url");
       }
-      console.log(`[connect_existing] Validating instance: ${instance_name} at ${server_url}`);
 
-      // Validate using POST {server_url}/instance/connect with token header
-      const tempInst = { instance_name, instance_token, server_url, connected_phone };
-      const statusResult = await checkInstanceStatus(tempInst);
+      console.log("[connect_existing] Validating instance", {
+        instance_name,
+        server_url,
+        token_masked: maskToken(instance_token),
+      });
 
-      // Only block on auth errors
-      if (statusResult.state === 'invalid_token') {
-        return jsonErr(statusResult.error || 'Token inválido ou sem permissão', 401);
+      const statusResult = await checkInstanceStatus({
+        id: "temp",
+        instance_name,
+        instance_token,
+        server_url,
+        connected_phone,
+      });
+
+      if (statusResult.state === "invalid_token") {
+        return jsonErr(statusResult.error || "Token inválido ou sem permissão", 401);
       }
 
       const now = new Date().toISOString();
+      await adminClient.from("admin_whatsapp_instances").update({ is_active: false, updated_at: now }).neq("is_active", false);
 
-      // Deactivate all other instances
-      await adminClient.from('admin_whatsapp_instances').update({ is_active: false, updated_at: now }).neq('is_active', false);
+      const { data: existingByName } = await adminClient
+        .from("admin_whatsapp_instances")
+        .select("id")
+        .eq("instance_name", instance_name)
+        .maybeSingle();
 
-      // Upsert by instance_name
-      const { data: existingByName } = await adminClient.from('admin_whatsapp_instances')
-        .select('id').eq('instance_name', instance_name).maybeSingle();
-
-      const upsertData: any = {
-        instance_name, instance_token, server_url: server_url.replace(/\/+$/, ''),
-        device_name: device_name || null, connected_phone: connected_phone || null,
-        notes: notes || null, provider: 'whatsapi',
-        status: statusResult.state, is_connected: statusResult.isConnected, is_active: true,
+      const upsertData = {
+        instance_name,
+        instance_token,
+        server_url: server_url.replace(/\/+$/, ""),
+        device_name: device_name || null,
+        connected_phone: statusResult.phone || connected_phone || null,
+        notes: notes || null,
+        provider: "whatsapi",
+        status: statusResult.state,
+        is_connected: statusResult.isConnected,
+        is_active: true,
         connected_at: statusResult.isConnected ? now : null,
-        last_validated_at: now, updated_at: now,
+        last_validated_at: now,
+        updated_at: now,
       };
 
-      let savedInst: any;
+      let savedInstance: any;
       if (existingByName) {
-        const { data, error } = await adminClient.from('admin_whatsapp_instances')
-          .update(upsertData).eq('id', existingByName.id).select().single();
+        const { data, error } = await adminClient
+          .from("admin_whatsapp_instances")
+          .update(upsertData)
+          .eq("id", existingByName.id)
+          .select()
+          .single();
         if (error) return jsonErr(`Erro ao atualizar instância: ${error.message}`, 500);
-        savedInst = data;
+        savedInstance = data;
       } else {
-        const { data, error } = await adminClient.from('admin_whatsapp_instances')
-          .insert(upsertData).select().single();
+        const { data, error } = await adminClient.from("admin_whatsapp_instances").insert(upsertData).select().single();
         if (error) return jsonErr(`Erro ao salvar instância: ${error.message}`, 500);
-        savedInst = data;
+        savedInstance = data;
       }
 
-      await adminClient.from('admin_audit_logs').insert({
-        admin_user_id: adminUser.id, action: 'whatsapp_instance_connected_manually',
-        metadata: { instance_id: savedInst.id, instance_name, state: statusResult.state, is_connected: statusResult.isConnected },
-      }).catch(e => console.error('Audit log failed:', e));
+      await adminClient
+        .from("admin_audit_logs")
+        .insert({
+          admin_user_id: adminUser.id,
+          action: "whatsapp_instance_connected_manually",
+          metadata: {
+            instance_id: savedInstance.id,
+            instance_name,
+            state: statusResult.state,
+            is_connected: statusResult.isConnected,
+          },
+        })
+        .catch((error) => console.error("Audit log failed:", error));
 
-      console.log(`[connect_existing] Instance saved: id=${savedInst.id}, state=${statusResult.state}, connected=${statusResult.isConnected}`);
-      return json({ ok: true, instance: savedInst, validation: { state: statusResult.state, is_connected: statusResult.isConnected, validation_error: statusResult.error } });
+      return json({
+        ok: true,
+        instance: savedInstance,
+        validation: {
+          state: statusResult.state,
+          is_connected: statusResult.isConnected,
+          validation_error: statusResult.error,
+        },
+      });
     }
 
-    // ===== TEST CONNECTION =====
-    if (action === 'test_connection') {
+    if (action === "test_connection") {
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância ativa encontrada', 404);
-      if (!inst.instance_token || !inst.server_url) return jsonErr('Instância sem token ou server_url configurado', 400);
+      if (!inst) return jsonErr("Nenhuma instância ativa encontrada", 404);
+      if (!inst.instance_token || !inst.server_url) {
+        return jsonErr("Instância sem token ou server_url configurado", 400);
+      }
 
-      console.log(`[test_connection] Testing ${inst.instance_name} at ${inst.server_url}`);
+      console.log("[test_connection] Testing instance", {
+        instance_name: inst.instance_name,
+        server_url: inst.server_url,
+        token_masked: maskToken(inst.instance_token),
+      });
+
       const statusResult = await checkInstanceStatus(inst);
       const now = new Date().toISOString();
-
-      await adminClient.from('admin_whatsapp_instances').update({
-        status: statusResult.state, is_connected: statusResult.isConnected,
-        last_validated_at: now, updated_at: now,
-        ...(statusResult.phone ? { connected_phone: statusResult.phone } : {}),
-        ...(statusResult.isConnected ? { last_connection_at: now } : {}),
-      }).eq('id', inst.id);
+      await adminClient
+        .from("admin_whatsapp_instances")
+        .update({
+          status: statusResult.state,
+          is_connected: statusResult.isConnected,
+          last_validated_at: now,
+          updated_at: now,
+          ...(statusResult.phone ? { connected_phone: statusResult.phone } : {}),
+          ...(statusResult.isConnected ? { last_connection_at: now } : {}),
+        })
+        .eq("id", inst.id);
 
       if (statusResult.error) {
         return json({ ok: false, status: statusResult.state, state: statusResult.state, message: statusResult.error });
       }
 
       return json({
-        ok: statusResult.isConnected, status: statusResult.isConnected ? 'connected' : statusResult.state,
+        ok: statusResult.isConnected,
+        status: statusResult.isConnected ? "connected" : statusResult.state,
         state: statusResult.state,
-        instance: { ...inst, status: statusResult.state, is_connected: statusResult.isConnected, last_validated_at: now },
+        instance: {
+          ...inst,
+          status: statusResult.state,
+          is_connected: statusResult.isConnected,
+          last_validated_at: now,
+        },
       });
     }
 
-    // ===== DELETE INSTANCE =====
-    if (action === 'delete_instance') {
+    if (action === "delete_instance") {
       const inst = await getInstanceFromDb();
-      if (!inst) return jsonErr('Nenhuma instância encontrada', 404);
+      if (!inst) return jsonErr("Nenhuma instância encontrada", 404);
 
-      // Try to delete on remote API (resilient)
       if (inst.server_url && inst.instance_token) {
         try {
-          const base = String(inst.server_url).replace(/\/+$/, '');
+          const base = String(inst.server_url).replace(/\/+$/, "");
           await fetch(`${base}/instance`, {
-            method: 'DELETE',
+            method: "DELETE",
             headers: { token: inst.instance_token },
           });
-        } catch (e) {
-          console.error('Remote delete failed (continuing):', e);
+        } catch (error) {
+          console.error("Remote delete failed (continuing):", error);
         }
       }
 
-      await adminClient.from('admin_whatsapp_instances').delete().eq('id', inst.id);
+      await adminClient.from("admin_whatsapp_instances").delete().eq("id", inst.id);
       return json({ ok: true, deleted: true });
     }
 
-    return jsonErr('Unknown action');
+    return jsonErr("Unknown action");
   } catch (error) {
-    console.error('admin-whatsapp error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }), { status: 500, headers: corsHeaders });
+    console.error("admin-whatsapp error:", error);
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
