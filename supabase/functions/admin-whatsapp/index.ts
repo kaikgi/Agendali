@@ -806,13 +806,18 @@ serve(async (req) => {
           total_failed: totalFailed,
         });
 
-        if (index < campaignContacts.length - 1 && campaign.delay_seconds > 0) {
+        const effectiveDelay = Math.min(campaign.delay_seconds || 0, 30);
+        if (index < campaignContacts.length - 1 && effectiveDelay > 0) {
+          const totalRemainingTime = effectiveDelay * (campaignContacts.length - 1 - index);
           console.log("[process_campaign] Waiting delay", {
             campaign_id: campaignId,
-            delay_seconds: campaign.delay_seconds,
+            configured_delay: campaign.delay_seconds,
+            effective_delay: effectiveDelay,
+            remaining_contacts: campaignContacts.length - 1 - index,
+            estimated_remaining_seconds: totalRemainingTime,
             next_index: index + 1,
           });
-          await new Promise((resolve) => setTimeout(resolve, campaign.delay_seconds * 1000));
+          await new Promise((resolve) => setTimeout(resolve, effectiveDelay * 1000));
         }
       }
 
