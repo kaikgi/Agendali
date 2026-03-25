@@ -358,9 +358,10 @@ serve(async (req) => {
       }
       console.log(`[connect_existing] Validating instance: ${instance_name} at ${server_url}`);
 
-      // Validate by calling connectionState
-      let state = 'unknown';
+      // Try to validate via connectionState — but don't block if endpoint doesn't exist
+      let state = 'pending_validation';
       let validationBody: any = {};
+      let validationError: string | null = null;
       try {
         const valUrl = `${server_url.replace(/\/$/, '')}/instance/connectionState/${encodeURIComponent(instance_name)}`;
         console.log(`[connect_existing] GET ${valUrl}`);
@@ -373,14 +374,21 @@ serve(async (req) => {
         try { validationBody = JSON.parse(valText); } catch { validationBody = { raw: valText }; }
         if (!valRes.ok) {
           const errDetail = validationBody?.error || validationBody?.message || valText;
-          if (valRes.status === 401) return jsonErr(`Token inválido ou sem permissão: ${errDetail}`, 401);
-          if (valRes.status === 404) return jsonErr(`Instância não encontrada na API: ${errDetail}`, 404);
-          return jsonErr(`Falha na validação (${valRes.status}): ${errDetail}`, valRes.status);
+          if (valRes.status === 401 || valRes.status === 403) {
+            return jsonErr(`Token inválido ou sem permissão: ${errDetail}`, 401);
+          }
+          // For 404 or other errors, save anyway with pending status
+          validationError = `Validação retornou ${valRes.status}: ${errDetail}`;
+          console.log(`[connect_existing] Validation not available (${valRes.status}), saving anyway`);
+          state = 'pending_validation';
+        } else {
+          state = validationBody?.instance?.state || validationBody?.state || 'validated';
         }
-        state = validationBody?.instance?.state || validationBody?.state || 'unknown';
       } catch (fetchErr) {
-        console.error('[connect_existing] Fetch error:', fetchErr);
-        return jsonErr(`Erro de comunicação com a API: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`, 502);
+        // Network error — still save, mark as pending
+        validationError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.log(`[connect_existing] Fetch error (saving anyway): ${validationError}`);
+        state = 'pending_validation';
       }
 
       const isConnected = ['open', 'connected'].includes(String(state).toLowerCase());
@@ -398,7 +406,9 @@ serve(async (req) => {
         device_name: device_name || null, connected_phone: connected_phone || null,
         notes: notes || null, provider: 'whatsapi',
         status: state, is_connected: isConnected, is_active: true,
-        connected_at: isConnected ? now : null, last_validated_at: now, updated_at: now,
+        connected_at: isConnected ? now : null,
+        last_validated_at: validationError ? null : now,
+        updated_at: now,
       };
 
       let savedInst: any;
@@ -421,7 +431,7 @@ serve(async (req) => {
       }).catch(e => console.error('Audit log failed:', e));
 
       console.log(`[connect_existing] Instance saved: id=${savedInst.id}, state=${state}, connected=${isConnected}`);
-      return json({ ok: true, instance: savedInst, validation: { state, is_connected: isConnected } });
+      return json({ ok: true, instance: savedInst, validation: { state, is_connected: isConnected, validation_error: validationError } });
     }
 
     // ===== TEST CONNECTION =====
