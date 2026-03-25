@@ -58,6 +58,9 @@ serve(async (req) => {
     const jsonErr = (msg: string, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: corsHeaders });
 
     const getInstanceFromDb = async () => {
+      // Prefer active instance, fallback to most recent
+      const { data: active } = await adminClient.from('admin_whatsapp_instances').select('*').eq('is_active', true).limit(1).maybeSingle();
+      if (active) return active;
       const { data } = await adminClient.from('admin_whatsapp_instances').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
       return data;
     };
@@ -334,30 +337,131 @@ serve(async (req) => {
       if (!newToken || typeof newToken !== 'string' || newToken.trim().length < 10) {
         return jsonErr('Token inválido. Deve ter pelo menos 10 caracteres.');
       }
-
       const inst = await getInstanceFromDb();
       if (!inst) return jsonErr('Nenhuma instância encontrada para atualizar', 404);
-
       const { error: updErr } = await adminClient.from('admin_whatsapp_instances').update({
-        instance_token: newToken.trim(),
-        updated_at: new Date().toISOString(),
+        instance_token: newToken.trim(), updated_at: new Date().toISOString(),
       }).eq('id', inst.id);
+      if (updErr) return jsonErr(`Erro ao atualizar token: ${updErr.message}`, 500);
+      await adminClient.from('admin_audit_logs').insert({
+        admin_user_id: adminUser.id, action: 'whatsapp_token_updated',
+        metadata: { instance_id: inst.id, instance_name: inst.instance_name },
+      }).catch(e => console.error('Audit log failed:', e));
+      return json({ ok: true, instance_name: inst.instance_name });
+    }
 
-      if (updErr) {
-        console.error('Failed to update instance token:', updErr);
-        return jsonErr(`Erro ao atualizar token: ${updErr.message}`, 500);
+    // ===== CONNECT EXISTING INSTANCE =====
+    if (action === 'connect_existing_instance') {
+      const { instance_name, instance_token, server_url, device_name, connected_phone, notes } = body;
+      if (!instance_name || !instance_token || !server_url) {
+        return jsonErr('Campos obrigatórios: instance_name, instance_token, server_url');
+      }
+      console.log(`[connect_existing] Validating instance: ${instance_name} at ${server_url}`);
+
+      // Validate by calling connectionState
+      let state = 'unknown';
+      let validationBody: any = {};
+      try {
+        const valUrl = `${server_url.replace(/\/$/, '')}/instance/connectionState/${encodeURIComponent(instance_name)}`;
+        console.log(`[connect_existing] GET ${valUrl}`);
+        const valRes = await fetch(valUrl, {
+          method: 'GET',
+          headers: { apikey: instance_token, 'Content-Type': 'application/json' },
+        });
+        const valText = await valRes.text();
+        console.log(`[connect_existing] Validation response: ${valRes.status} ${valText.substring(0, 500)}`);
+        try { validationBody = JSON.parse(valText); } catch { validationBody = { raw: valText }; }
+        if (!valRes.ok) {
+          const errDetail = validationBody?.error || validationBody?.message || valText;
+          if (valRes.status === 401) return jsonErr(`Token inválido ou sem permissão: ${errDetail}`, 401);
+          if (valRes.status === 404) return jsonErr(`Instância não encontrada na API: ${errDetail}`, 404);
+          return jsonErr(`Falha na validação (${valRes.status}): ${errDetail}`, valRes.status);
+        }
+        state = validationBody?.instance?.state || validationBody?.state || 'unknown';
+      } catch (fetchErr) {
+        console.error('[connect_existing] Fetch error:', fetchErr);
+        return jsonErr(`Erro de comunicação com a API: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`, 502);
       }
 
-      console.log(`Instance token updated for ${inst.instance_name} by admin ${user.id}`);
+      const isConnected = ['open', 'connected'].includes(String(state).toLowerCase());
+      const now = new Date().toISOString();
 
-      // Log to audit
+      // Deactivate all other instances
+      await adminClient.from('admin_whatsapp_instances').update({ is_active: false, updated_at: now }).neq('is_active', false);
+
+      // Upsert by instance_name
+      const { data: existingByName } = await adminClient.from('admin_whatsapp_instances')
+        .select('id').eq('instance_name', instance_name).maybeSingle();
+
+      const upsertData: any = {
+        instance_name, instance_token, server_url: server_url.replace(/\/$/, ''),
+        device_name: device_name || null, connected_phone: connected_phone || null,
+        notes: notes || null, provider: 'whatsapi',
+        status: state, is_connected: isConnected, is_active: true,
+        connected_at: isConnected ? now : null, last_validated_at: now, updated_at: now,
+      };
+
+      let savedInst: any;
+      if (existingByName) {
+        const { data, error } = await adminClient.from('admin_whatsapp_instances')
+          .update(upsertData).eq('id', existingByName.id).select().single();
+        if (error) return jsonErr(`Erro ao atualizar instância: ${error.message}`, 500);
+        savedInst = data;
+      } else {
+        const { data, error } = await adminClient.from('admin_whatsapp_instances')
+          .insert(upsertData).select().single();
+        if (error) return jsonErr(`Erro ao salvar instância: ${error.message}`, 500);
+        savedInst = data;
+      }
+
+      // Audit log
       await adminClient.from('admin_audit_logs').insert({
-        admin_user_id: adminUser.id,
-        action: 'whatsapp_token_updated',
-        metadata: { instance_id: inst.id, instance_name: inst.instance_name },
-      }).catch(e => console.error('Audit log insert failed:', e));
+        admin_user_id: adminUser.id, action: 'whatsapp_instance_connected_manually',
+        metadata: { instance_id: savedInst.id, instance_name, state, is_connected: isConnected },
+      }).catch(e => console.error('Audit log failed:', e));
 
-      return json({ ok: true, instance_name: inst.instance_name });
+      console.log(`[connect_existing] Instance saved: id=${savedInst.id}, state=${state}, connected=${isConnected}`);
+      return json({ ok: true, instance: savedInst, validation: { state, is_connected: isConnected } });
+    }
+
+    // ===== TEST CONNECTION =====
+    if (action === 'test_connection') {
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr('Nenhuma instância ativa encontrada', 404);
+      if (!inst.instance_token || !inst.server_url) return jsonErr('Instância sem token ou server_url configurado', 400);
+
+      console.log(`[test_connection] Testing ${inst.instance_name} at ${inst.server_url}`);
+      try {
+        const valUrl = `${inst.server_url.replace(/\/$/, '')}/instance/connectionState/${encodeURIComponent(inst.instance_name)}`;
+        const valRes = await fetch(valUrl, {
+          method: 'GET',
+          headers: { apikey: inst.instance_token, 'Content-Type': 'application/json' },
+        });
+        const valText = await valRes.text();
+        let valBody: any;
+        try { valBody = JSON.parse(valText); } catch { valBody = { raw: valText }; }
+
+        if (!valRes.ok) {
+          const errDetail = valBody?.error || valBody?.message || valText;
+          await adminClient.from('admin_whatsapp_instances').update({
+            status: 'error', is_connected: false, last_validated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          }).eq('id', inst.id);
+          if (valRes.status === 401) return json({ ok: false, status: 'token_invalid', message: `Token inválido: ${errDetail}` });
+          return json({ ok: false, status: 'error', message: `Erro (${valRes.status}): ${errDetail}` });
+        }
+
+        const state = valBody?.instance?.state || valBody?.state || 'unknown';
+        const isConnected = ['open', 'connected'].includes(String(state).toLowerCase());
+        const now = new Date().toISOString();
+        await adminClient.from('admin_whatsapp_instances').update({
+          status: state, is_connected: isConnected, last_validated_at: now, updated_at: now,
+          ...(isConnected ? { last_connection_at: now } : {}),
+        }).eq('id', inst.id);
+
+        return json({ ok: true, status: isConnected ? 'connected' : 'disconnected', state, instance: { ...inst, status: state, is_connected: isConnected, last_validated_at: now } });
+      } catch (fetchErr) {
+        return json({ ok: false, status: 'communication_error', message: fetchErr instanceof Error ? fetchErr.message : String(fetchErr) });
+      }
     }
 
     return jsonErr('Unknown action');

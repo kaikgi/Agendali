@@ -67,6 +67,37 @@ export function useUpdateInstanceToken() {
   });
 }
 
+export function useConnectExistingInstance() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (data: { instance_name: string; instance_token: string; server_url: string; device_name?: string; connected_phone?: string; notes?: string }) =>
+      callWhatsApp("connect_existing_instance", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-instance"] });
+      toast({ title: "Instância conectada com sucesso" });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao conectar instância", description: e.message, variant: "destructive" }),
+  });
+}
+
+export function useTestConnection() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: () => callWhatsApp("test_connection"),
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-instance"] });
+      if (data?.ok) {
+        toast({ title: data.status === 'connected' ? "Conectada ✓" : "Instância desconectada", description: `Estado: ${data.state}` });
+      } else {
+        toast({ title: "Teste falhou", description: data?.message || "Erro desconhecido", variant: "destructive" });
+      }
+    },
+    onError: (e: Error) => toast({ title: "Erro no teste", description: e.message, variant: "destructive" }),
+  });
+}
+
 // ---- Contacts ----
 export function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\(\)\+\.]/g, '');
