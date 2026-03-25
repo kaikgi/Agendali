@@ -61,6 +61,7 @@ import AdminAdmins from "./pages/admin/AdminAdmins";
 import AdminDangerZone from "./pages/admin/AdminDangerZone";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminWhatsAppAnalytics from "./pages/admin/AdminWhatsAppAnalytics";
+import AdminBroadcasts from "./pages/admin/AdminBroadcasts";
 import AdminAllowedEmails from "./pages/admin/AdminAllowedEmails";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminSettingsSaaS from "./pages/admin/AdminSettingsSaaS";
@@ -161,6 +162,7 @@ const App = () => (
                   <Route path="admins" element={<AdminPermissionGuard permission="view_admins"><AdminAdmins /></AdminPermissionGuard>} />
                   <Route path="auditoria" element={<AdminPermissionGuard permission="view_audit_logs"><AdminAuditLogs /></AdminPermissionGuard>} />
                   <Route path="whatsapp" element={<AdminWhatsAppAnalytics />} />
+                  <Route path="disparos" element={<AdminPermissionGuard permission="view_broadcasts"><AdminBroadcasts /></AdminPermissionGuard>} />
                   <Route path="emails-autorizados" element={<AdminPermissionGuard permission="view_allowed_emails"><AdminAllowedEmails /></AdminPermissionGuard>} />
                   <Route path="webhooks" element={<AdminPermissionGuard permission="view_webhooks"><AdminWebhooks /></AdminPermissionGuard>} />
                   <Route path="danger-zone" element={<AdminPermissionGuard permission="view_danger_zone"><AdminDangerZone /></AdminPermissionGuard>} />

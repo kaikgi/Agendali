@@ -14,6 +14,7 @@ import {
   CreditCard,
   ScrollText,
   Mail,
+  Send,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminPermissions, type AdminPermission } from "@/hooks/useAdminPermissions";
@@ -29,6 +30,7 @@ const adminNavItems: { to: string; label: string; icon: React.ComponentType<any>
   { to: "/admin/emails-autorizados", label: "Emails Autorizados", icon: Mail, end: false, permission: "view_allowed_emails" },
   { to: "/admin/webhooks", label: "Webhooks", icon: Webhook, end: false, permission: "view_webhooks" },
   { to: "/admin/auditoria", label: "Auditoria", icon: ScrollText, end: false, permission: "view_audit_logs" },
+  { to: "/admin/disparos", label: "Disparos", icon: Send, end: false, permission: "view_broadcasts" },
   { to: "/admin/danger-zone", label: "Danger Zone", icon: Skull, end: false, danger: true, permission: "view_danger_zone" },
 ];
 
