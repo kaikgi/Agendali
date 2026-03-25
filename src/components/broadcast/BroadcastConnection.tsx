@@ -1,14 +1,20 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, WifiOff, QrCode, RefreshCw, Loader2, CheckCircle2 } from "lucide-react";
-import { useWhatsAppInstance, useCheckOrCreateInstance, useConnectInstance, useDisconnectInstance } from "@/hooks/useBroadcast";
+import { Input } from "@/components/ui/input";
+import { Wifi, WifiOff, QrCode, RefreshCw, Loader2, CheckCircle2, KeyRound } from "lucide-react";
+import { useWhatsAppInstance, useCheckOrCreateInstance, useConnectInstance, useDisconnectInstance, useUpdateInstanceToken } from "@/hooks/useBroadcast";
 
 export default function BroadcastConnection() {
   const { data: instanceData, isLoading, refetch } = useWhatsAppInstance();
   const checkOrCreate = useCheckOrCreateInstance();
   const connect = useConnectInstance();
   const disconnect = useDisconnectInstance();
+  const updateToken = useUpdateInstanceToken();
+
+  const [showTokenField, setShowTokenField] = useState(false);
+  const [newToken, setNewToken] = useState("");
 
   const instance = instanceData?.instance;
   const isConnected = instance?.is_connected;
@@ -27,6 +33,13 @@ export default function BroadcastConnection() {
     if (isConnected) return "bg-green-600";
     if (instance?.status === 'qr_ready' || instance?.status === 'connecting') return "bg-yellow-600";
     return "";
+  };
+
+  const handleSaveToken = () => {
+    if (!newToken.trim()) return;
+    updateToken.mutate(newToken.trim(), {
+      onSuccess: () => { setNewToken(""); setShowTokenField(false); },
+    });
   };
 
   return (
@@ -60,7 +73,6 @@ export default function BroadcastConnection() {
           )}
 
           <div className="flex gap-2 flex-wrap">
-            {/* No instance at all — show create/sync button */}
             {!instance && !isLoading && (
               <Button onClick={() => checkOrCreate.mutate()} disabled={checkOrCreate.isPending}>
                 {checkOrCreate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <QrCode className="h-4 w-4 mr-2" />}
@@ -68,7 +80,6 @@ export default function BroadcastConnection() {
               </Button>
             )}
 
-            {/* Instance exists but not connected — show connect */}
             {instance && !isConnected && (
               <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
                 {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wifi className="h-4 w-4 mr-2" />}
@@ -76,7 +87,6 @@ export default function BroadcastConnection() {
               </Button>
             )}
 
-            {/* Connected — show disconnect */}
             {instance && isConnected && (
               <>
                 <Badge variant="outline" className="gap-1 text-green-600 border-green-600 py-1.5 px-3">
@@ -106,6 +116,43 @@ export default function BroadcastConnection() {
                 <img src={`data:image/png;base64,${qrCode}`} alt="QR Code WhatsApp" className="w-64 h-64" />
               )}
               <p className="text-xs text-muted-foreground mt-2">O QR Code expira rapidamente. Clique em "Conectar" para gerar um novo.</p>
+            </div>
+          )}
+
+          {/* Update Instance Token */}
+          {instance && (
+            <div className="border-t pt-4 mt-4 space-y-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTokenField(!showTokenField)}
+              >
+                <KeyRound className="h-4 w-4 mr-2" />
+                Atualizar Token da Instância
+              </Button>
+
+              {showTokenField && (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="password"
+                    placeholder="Cole o novo Instance Token aqui"
+                    value={newToken}
+                    onChange={(e) => setNewToken(e.target.value)}
+                    className="max-w-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveToken}
+                    disabled={updateToken.isPending || !newToken.trim()}
+                  >
+                    {updateToken.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Salvar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowTokenField(false); setNewToken(""); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

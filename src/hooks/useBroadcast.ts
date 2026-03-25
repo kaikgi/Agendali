@@ -52,6 +52,19 @@ export function useDisconnectInstance() {
   });
 }
 
+export function useUpdateInstanceToken() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (newToken: string) => callWhatsApp("update_instance_token", { newToken }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-instance"] });
+      toast({ title: "Token atualizado com sucesso" });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao atualizar token", description: e.message, variant: "destructive" }),
+  });
+}
+
 // ---- Contacts ----
 export function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\(\)\+\.]/g, '');

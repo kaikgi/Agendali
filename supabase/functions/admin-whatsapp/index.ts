@@ -352,6 +352,37 @@ serve(async (req) => {
       return json({ ok: true, totalSent, totalFailed });
     }
 
+    if (action === 'update_instance_token') {
+      const { newToken } = body;
+      if (!newToken || typeof newToken !== 'string' || newToken.trim().length < 10) {
+        return jsonErr('Token inválido. Deve ter pelo menos 10 caracteres.');
+      }
+
+      const inst = await getInstanceFromDb();
+      if (!inst) return jsonErr('Nenhuma instância encontrada para atualizar', 404);
+
+      const { error: updErr } = await adminClient.from('admin_whatsapp_instances').update({
+        instance_token: newToken.trim(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', inst.id);
+
+      if (updErr) {
+        console.error('Failed to update instance token:', updErr);
+        return jsonErr(`Erro ao atualizar token: ${updErr.message}`, 500);
+      }
+
+      console.log(`Instance token updated for ${inst.instance_name} by admin ${user.id}`);
+
+      // Log to audit
+      await adminClient.from('admin_audit_logs').insert({
+        admin_user_id: adminUser.id,
+        action: 'whatsapp_token_updated',
+        metadata: { instance_id: inst.id, instance_name: inst.instance_name },
+      }).catch(e => console.error('Audit log insert failed:', e));
+
+      return json({ ok: true, instance_name: inst.instance_name });
+    }
+
     return jsonErr('Unknown action');
   } catch (error) {
     console.error('admin-whatsapp error:', error);
