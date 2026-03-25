@@ -14,6 +14,42 @@ export default function BroadcastConnection() {
   const isConnected = instance?.is_connected;
   const qrCode = instance?.qr_code || instanceData?.qrcode;
 
+  const handleCreate = () => {
+    console.log('[BroadcastConnection] Criar Instância clicked');
+    checkOrCreate.mutate(undefined, {
+      onSuccess: (data) => {
+        console.log('[BroadcastConnection] Create success:', data);
+      },
+      onError: (error) => {
+        console.error('[BroadcastConnection] Create error:', error);
+      },
+    });
+  };
+
+  const handleConnect = () => {
+    console.log('[BroadcastConnection] Conectar clicked');
+    connect.mutate(undefined, {
+      onSuccess: (data) => {
+        console.log('[BroadcastConnection] Connect success:', data);
+      },
+      onError: (error) => {
+        console.error('[BroadcastConnection] Connect error:', error);
+      },
+    });
+  };
+
+  const handleDisconnect = () => {
+    console.log('[BroadcastConnection] Desconectar clicked');
+    disconnect.mutate(undefined, {
+      onSuccess: (data) => {
+        console.log('[BroadcastConnection] Disconnect success:', data);
+      },
+      onError: (error) => {
+        console.error('[BroadcastConnection] Disconnect error:', error);
+      },
+    });
+  };
+
   return (
     <div className="space-y-4 max-w-2xl">
       <Card>
@@ -42,21 +78,21 @@ export default function BroadcastConnection() {
 
           <div className="flex gap-2 flex-wrap">
             {!instance && (
-              <Button onClick={() => checkOrCreate.mutate()} disabled={checkOrCreate.isPending}>
+              <Button onClick={handleCreate} disabled={checkOrCreate.isPending}>
                 {checkOrCreate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <QrCode className="h-4 w-4 mr-2" />}
                 Criar Instância
               </Button>
             )}
 
             {instance && !isConnected && (
-              <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
+              <Button onClick={handleConnect} disabled={connect.isPending}>
                 {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wifi className="h-4 w-4 mr-2" />}
                 Conectar
               </Button>
             )}
 
             {instance && isConnected && (
-              <Button variant="destructive" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
+              <Button variant="destructive" onClick={handleDisconnect} disabled={disconnect.isPending}>
                 {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <WifiOff className="h-4 w-4 mr-2" />}
                 Desconectar
               </Button>
