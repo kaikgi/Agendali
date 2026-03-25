@@ -50,6 +50,195 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_broadcast_campaign_contacts: {
+        Row: {
+          attempt_count: number
+          campaign_id: string
+          contact_id: string
+          created_at: string
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          campaign_id: string
+          contact_id: string
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          campaign_id?: string
+          contact_id?: string
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_broadcast_campaign_contacts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcast_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_broadcast_campaign_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcast_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_broadcast_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delay_seconds: number
+          finished_at: string | null
+          id: string
+          message: string
+          name: string
+          started_at: string | null
+          status: string
+          total_contacts: number
+          total_failed: number
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delay_seconds?: number
+          finished_at?: string | null
+          id?: string
+          message: string
+          name: string
+          started_at?: string | null
+          status?: string
+          total_contacts?: number
+          total_failed?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delay_seconds?: number
+          finished_at?: string | null
+          id?: string
+          message?: string
+          name?: string
+          started_at?: string | null
+          status?: string
+          total_contacts?: number
+          total_failed?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_broadcast_contacts: {
+        Row: {
+          created_at: string
+          establishment_name: string
+          id: string
+          normalized_phone: string
+          phone: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          establishment_name: string
+          id?: string
+          normalized_phone: string
+          phone: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          establishment_name?: string
+          id?: string
+          normalized_phone?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_broadcast_logs: {
+        Row: {
+          campaign_id: string | null
+          contact_id: string | null
+          created_at: string
+          error: string | null
+          establishment_name: string | null
+          id: string
+          message: string | null
+          phone: string
+          provider_message_id: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          error?: string | null
+          establishment_name?: string | null
+          id?: string
+          message?: string | null
+          phone: string
+          provider_message_id?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          error?: string | null
+          establishment_name?: string | null
+          id?: string
+          message?: string | null
+          phone?: string
+          provider_message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_broadcast_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcast_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_broadcast_logs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcast_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_users: {
         Row: {
           created_at: string
@@ -83,6 +272,48 @@ export type Database = {
           role?: string
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      admin_whatsapp_instances: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          id: string
+          instance_name: string
+          instance_token: string | null
+          is_connected: boolean
+          last_connection_at: string | null
+          qr_code: string | null
+          server_url: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          instance_name: string
+          instance_token?: string | null
+          is_connected?: boolean
+          last_connection_at?: string | null
+          qr_code?: string | null
+          server_url: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          instance_name?: string
+          instance_token?: string | null
+          is_connected?: boolean
+          last_connection_at?: string | null
+          qr_code?: string | null
+          server_url?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }

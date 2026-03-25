@@ -18,7 +18,9 @@ export type AdminPermission =
   | "view_danger_zone"
   | "manage_danger_zone"
   | "view_allowed_emails"
-  | "manage_allowed_emails";
+  | "manage_allowed_emails"
+  | "view_broadcasts"
+  | "manage_broadcasts";
 
 const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   super_admin: [
@@ -30,6 +32,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "view_audit_logs",
     "view_danger_zone", "manage_danger_zone",
     "view_allowed_emails", "manage_allowed_emails",
+    "view_broadcasts", "manage_broadcasts",
   ],
   admin: [
     "view_dashboard",
@@ -65,6 +68,7 @@ export const ROUTE_PERMISSIONS: Record<string, AdminPermission> = {
   "/admin/auditoria": "view_audit_logs",
   "/admin/danger-zone": "view_danger_zone",
   "/admin/emails-autorizados": "view_allowed_emails",
+  "/admin/disparos": "view_broadcasts",
 };
 
 export function useAdminRole() {
