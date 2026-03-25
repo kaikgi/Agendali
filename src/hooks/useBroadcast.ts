@@ -6,10 +6,15 @@ import { useToast } from "@/hooks/use-toast";
 async function callWhatsApp(action: string, payload: Record<string, any> = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
+  console.log(`[callWhatsApp] action=${action}`, payload);
   const res = await supabase.functions.invoke("admin-whatsapp", {
     body: { action, ...payload },
   });
-  if (res.error) throw new Error(res.error.message);
+  if (res.error) {
+    console.error(`[callWhatsApp] error for action=${action}:`, res.error);
+    throw new Error(res.error.message);
+  }
+  console.log(`[callWhatsApp] success for action=${action}:`, res.data);
   return res.data;
 }
 
