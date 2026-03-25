@@ -58,10 +58,17 @@ const isSuccessfulSendResponse = (payload: any) => {
   return Boolean(
     payload?.status === "success" ||
     payload?.success === true ||
+    payload?.messageid ||
+    payload?.id ||
+    payload?.chatid ||
     payload?.key ||
     payload?.messageId ||
+    payload?.data?.messageid ||
+    payload?.data?.id ||
     payload?.data?.key ||
     payload?.data?.messageId ||
+    payload?.response?.messageid ||
+    payload?.response?.id ||
     payload?.response?.key ||
     payload?.response?.messageId,
   );
@@ -69,12 +76,18 @@ const isSuccessfulSendResponse = (payload: any) => {
 
 const extractProviderMessageId = (payload: any) => {
   const candidate =
+    payload?.messageid ||
+    payload?.id ||
     payload?.key?.id ||
     payload?.key ||
     payload?.messageId ||
+    payload?.data?.messageid ||
+    payload?.data?.id ||
     payload?.data?.key?.id ||
     payload?.data?.key ||
     payload?.data?.messageId ||
+    payload?.response?.messageid ||
+    payload?.response?.id ||
     payload?.response?.key?.id ||
     payload?.response?.key ||
     payload?.response?.messageId ||
@@ -287,14 +300,19 @@ serve(async (req) => {
       }
 
       const endpoint = `${String(inst.server_url || "").replace(/\/+$/, "")}/send/text`;
-      const payload = { phone: normalizedPhone, message };
+      const payload = { number: normalizedPhone, text: message };
 
       console.log("[send_message] Request", {
         instance_name: inst.instance_name,
         endpoint,
+        method: "POST",
         token_masked: maskToken(inst.instance_token),
+        headers: {
+          "Content-Type": "application/json",
+          token: maskToken(inst.instance_token),
+        },
         normalized_phone: normalizedPhone,
-        payload: { ...payload, message: truncate(message, 120) },
+        payload: { ...payload, text: truncate(message, 120) },
       });
 
       try {
