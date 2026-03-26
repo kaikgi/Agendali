@@ -114,8 +114,10 @@ export type Database = {
           delay_seconds: number
           finished_at: string | null
           id: string
+          last_sent_at: string | null
           message: string
           name: string
+          next_send_at: string | null
           started_at: string | null
           status: string
           total_contacts: number
@@ -129,8 +131,10 @@ export type Database = {
           delay_seconds?: number
           finished_at?: string | null
           id?: string
+          last_sent_at?: string | null
           message: string
           name: string
+          next_send_at?: string | null
           started_at?: string | null
           status?: string
           total_contacts?: number
@@ -144,8 +148,10 @@ export type Database = {
           delay_seconds?: number
           finished_at?: string | null
           id?: string
+          last_sent_at?: string | null
           message?: string
           name?: string
+          next_send_at?: string | null
           started_at?: string | null
           status?: string
           total_contacts?: number
