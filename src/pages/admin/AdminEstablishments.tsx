@@ -21,7 +21,7 @@ import {
 import {
   Search, Building2, Settings2, AlertTriangle, Filter, Trash2,
   Loader2, CheckCircle2, Clock, XCircle, AlertCircle, Ban,
-  ArrowUpDown, ChevronLeft, ChevronRight,
+  ArrowUpDown, ChevronLeft, ChevronRight, RefreshCw,
   TrendingUp, ShieldAlert,
 } from "lucide-react";
 import { format, startOfMonth, isAfter } from "date-fns";
