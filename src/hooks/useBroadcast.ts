@@ -24,6 +24,8 @@ async function callWhatsApp(action: string, payload: Record<string, any> = {}) {
   return res.data;
 }
 
+// ─── Instance hooks ───
+
 export function useWhatsAppInstance() {
   return useQuery({
     queryKey: ["whatsapp-instance"],
@@ -35,7 +37,6 @@ export function useWhatsAppInstance() {
 export function useCheckOrCreateInstance() {
   const qc = useQueryClient();
   const { toast } = useToast();
-
   return useMutation({
     mutationFn: () => callWhatsApp("check_or_create_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -45,7 +46,6 @@ export function useCheckOrCreateInstance() {
 
 export function useConnectInstance() {
   const qc = useQueryClient();
-
   return useMutation({
     mutationFn: () => callWhatsApp("connect_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -54,7 +54,6 @@ export function useConnectInstance() {
 
 export function useDisconnectInstance() {
   const qc = useQueryClient();
-
   return useMutation({
     mutationFn: () => callWhatsApp("disconnect_instance"),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-instance"] }),
@@ -64,7 +63,6 @@ export function useDisconnectInstance() {
 export function useUpdateInstanceToken() {
   const qc = useQueryClient();
   const { toast } = useToast();
-
   return useMutation({
     mutationFn: (newToken: string) => callWhatsApp("update_instance_token", { newToken }),
     onSuccess: () => {
@@ -78,7 +76,6 @@ export function useUpdateInstanceToken() {
 export function useConnectExistingInstance() {
   const qc = useQueryClient();
   const { toast } = useToast();
-
   return useMutation({
     mutationFn: (data: {
       instance_name: string;
@@ -99,7 +96,6 @@ export function useConnectExistingInstance() {
 export function useTestConnection() {
   const qc = useQueryClient();
   const { toast } = useToast();
-
   return useMutation({
     mutationFn: () => callWhatsApp("test_connection"),
     onSuccess: (data: any) => {
@@ -117,6 +113,8 @@ export function useTestConnection() {
   });
 }
 
+// ─── Phone utils ───
+
 export function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/[\s\-\(\)\+\.]/g, "");
   if (cleaned.startsWith("0")) cleaned = "55" + cleaned.substring(1);
@@ -128,6 +126,53 @@ export function isValidPhone(phone: string): boolean {
   const normalized = normalizePhone(phone);
   return /^[1-9]\d{10,14}$/.test(normalized);
 }
+
+// ─── Contact Batches ───
+
+const MANUAL_BATCH_ID = "00000000-0000-0000-0000-000000000001";
+
+export function useContactBatches() {
+  return useQuery({
+    queryKey: ["broadcast-batches"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_broadcast_contact_batches" as any)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+}
+
+export function useDeleteBatch() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      // Delete contacts in this batch first
+      const { error: contactsError } = await supabase
+        .from("admin_broadcast_contacts" as any)
+        .delete()
+        .eq("batch_id", batchId);
+      if (contactsError) throw contactsError;
+      // Delete the batch
+      const { error } = await supabase
+        .from("admin_broadcast_contact_batches" as any)
+        .delete()
+        .eq("id", batchId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-batches"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      toast({ title: "Lote excluído" });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+}
+
+// ─── Contacts ───
 
 export function useBroadcastContacts() {
   return useQuery({
@@ -148,7 +193,7 @@ export function useAddContact() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (contact: { establishment_name: string; phone: string; source?: string }) => {
+    mutationFn: async (contact: { establishment_name: string; phone: string }) => {
       const normalized = normalizePhone(contact.phone);
       if (!isValidPhone(contact.phone)) throw new Error("Telefone inválido");
 
@@ -158,15 +203,19 @@ export function useAddContact() {
           establishment_name: contact.establishment_name,
           phone: contact.phone,
           normalized_phone: normalized,
-          source: contact.source || "manual",
+          source: "manual",
+          batch_id: MANUAL_BATCH_ID,
         })
         .select();
-
       if (error) throw error;
+
+      // Update batch count
+      await updateBatchCount(MANUAL_BATCH_ID);
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-batches"] });
       toast({ title: "Contato adicionado" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
@@ -175,14 +224,29 @@ export function useAddContact() {
 
 export function useDeleteContact() {
   const qc = useQueryClient();
-
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("admin_broadcast_contacts" as any).delete().eq("id", id);
+    mutationFn: async (contact: { id: string; batch_id?: string }) => {
+      const { error } = await supabase.from("admin_broadcast_contacts" as any).delete().eq("id", contact.id);
       if (error) throw error;
+      if (contact.batch_id) await updateBatchCount(contact.batch_id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcast-contacts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-batches"] });
+    },
   });
+}
+
+async function updateBatchCount(batchId: string) {
+  const { count } = await supabase
+    .from("admin_broadcast_contacts" as any)
+    .select("id", { count: "exact", head: true })
+    .eq("batch_id", batchId);
+
+  await supabase
+    .from("admin_broadcast_contact_batches" as any)
+    .update({ total_contacts: count || 0, updated_at: new Date().toISOString() })
+    .eq("id", batchId);
 }
 
 export function useImportContacts() {
@@ -190,12 +254,30 @@ export function useImportContacts() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (contacts: { establishment_name: string; phone: string }[]) => {
-      const rows = contacts.map((contact) => ({
-        establishment_name: contact.establishment_name,
-        phone: contact.phone,
-        normalized_phone: normalizePhone(contact.phone),
+    mutationFn: async (args: { fileName: string; contacts: { establishment_name: string; phone: string }[] }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Create a new batch
+      const { data: batch, error: batchError } = await supabase
+        .from("admin_broadcast_contact_batches" as any)
+        .insert({
+          name: args.fileName,
+          type: "import",
+          source_file_name: args.fileName,
+          total_contacts: args.contacts.length,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+      if (batchError) throw batchError;
+
+      // 2. Insert contacts linked to this batch
+      const rows = args.contacts.map((c) => ({
+        establishment_name: c.establishment_name,
+        phone: c.phone,
+        normalized_phone: normalizePhone(c.phone),
         source: "excel",
+        batch_id: (batch as any).id,
       }));
 
       const { data, error } = await supabase.from("admin_broadcast_contacts" as any).insert(rows).select();
@@ -204,11 +286,14 @@ export function useImportContacts() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["broadcast-contacts"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-batches"] });
       toast({ title: `${(data as any[])?.length || 0} contatos importados` });
     },
     onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
   });
 }
+
+// ─── Campaigns ───
 
 export function useBroadcastCampaigns() {
   return useQuery({
@@ -219,7 +304,6 @@ export function useBroadcastCampaigns() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      console.log("[useBroadcastCampaigns] campaigns refreshed", data);
       return data as any[];
     },
     refetchInterval: 3000,
@@ -237,7 +321,6 @@ export function useCampaignDetails(campaignId: string | null) {
         .eq("campaign_id", campaignId)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      console.log("[useCampaignDetails] details refreshed", { campaignId, count: data?.length || 0, data });
       return data as any[];
     },
     enabled: !!campaignId,
@@ -251,10 +334,7 @@ export function useCreateCampaign() {
 
   return useMutation({
     mutationFn: async (campaign: { name: string; message: string; delay_seconds: number; contactIds: string[] }) => {
-      console.log("[useCreateCampaign] creating campaign", campaign);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
       const { data: newCampaign, error } = await supabase
         .from("admin_broadcast_campaigns" as any)
@@ -274,12 +354,11 @@ export function useCreateCampaign() {
         contact_id: contactId,
       }));
 
-      const { error: campaignContactsError } = await supabase
+      const { error: ccError } = await supabase
         .from("admin_broadcast_campaign_contacts" as any)
         .insert(campaignContacts);
-      if (campaignContactsError) throw campaignContactsError;
+      if (ccError) throw ccError;
 
-      console.log("[useCreateCampaign] campaign created", newCampaign);
       return newCampaign;
     },
     onSuccess: () => {
@@ -290,13 +369,13 @@ export function useCreateCampaign() {
   });
 }
 
-// Global map of active campaign loops — allows pause to abort the sleep
+// ─── Campaign execution ───
+
 const activeCampaignAborts = new Map<string, AbortController>();
 
 export function abortCampaignLoop(campaignId: string) {
   const controller = activeCampaignAborts.get(campaignId);
   if (controller) {
-    console.log("[abortCampaignLoop] aborting loop for", campaignId);
     controller.abort();
     activeCampaignAborts.delete(campaignId);
   }
@@ -319,11 +398,7 @@ export function useStartCampaign() {
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log("[useStartCampaign] start/resume clicked", { campaignId });
-
-      // Abort any existing loop for this campaign
       abortCampaignLoop(campaignId);
-
       const controller = new AbortController();
       activeCampaignAborts.set(campaignId, controller);
 
@@ -331,36 +406,21 @@ export function useStartCampaign() {
         let iteration = 0;
         while (true) {
           iteration += 1;
+          if (controller.signal.aborted) return { interrupted: true, status: "paused" };
 
-          if (controller.signal.aborted) {
-            console.log("[useStartCampaign] loop aborted before iteration", iteration);
-            return { interrupted: true, status: "paused" };
-          }
-
-          console.log(`[useStartCampaign] iteration ${iteration}`, { campaignId });
           const result = await callWhatsApp("process_campaign", { campaignId });
-          console.log(`[useStartCampaign] iteration ${iteration} response`, result);
-
-          // Refresh UI after each contact
           qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
           qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
           qc.invalidateQueries({ queryKey: ["campaign-details"] });
 
-          if (result?.done || result?.interrupted) {
-            return result;
-          }
+          if (result?.done || result?.interrupted) return result;
 
-          // Wait the configured delay — interruptible by pause
           const delayMs = (result?.delay_seconds || 0) * 1000;
           if (delayMs > 0) {
-            console.log(`[useStartCampaign] waiting ${result.delay_seconds}s before next contact`);
             try {
               await interruptibleSleep(delayMs, controller.signal);
             } catch (e: any) {
-              if (e.name === "AbortError") {
-                console.log("[useStartCampaign] sleep interrupted by pause");
-                return { interrupted: true, status: "paused" };
-              }
+              if (e.name === "AbortError") return { interrupted: true, status: "paused" };
               throw e;
             }
           }
@@ -396,16 +456,11 @@ export function usePauseCampaign() {
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log("[usePauseCampaign] pause clicked", { campaignId });
-
-      // 1. Set DB status to paused immediately
       const { error } = await supabase
         .from("admin_broadcast_campaigns" as any)
         .update({ status: "paused", updated_at: new Date().toISOString() })
         .eq("id", campaignId);
       if (error) throw error;
-
-      // 2. Abort the frontend loop immediately (interrupts long delays)
       abortCampaignLoop(campaignId);
     },
     onSuccess: () => {
@@ -423,14 +478,11 @@ export function useCancelCampaign() {
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log("[useCancelCampaign] cancel clicked", { campaignId });
       const { error } = await supabase
         .from("admin_broadcast_campaigns" as any)
         .update({ status: "canceled", updated_at: new Date().toISOString() })
         .eq("id", campaignId);
       if (error) throw error;
-
-      // Abort the frontend loop
       abortCampaignLoop(campaignId);
     },
     onSuccess: () => {
@@ -453,7 +505,6 @@ export function useBroadcastLogs(campaignId?: string) {
       if (campaignId) query = query.eq("campaign_id", campaignId);
       const { data, error } = await query;
       if (error) throw error;
-      console.log("[useBroadcastLogs] logs refreshed", { campaignId, count: data?.length || 0, data });
       return data as any[];
     },
     refetchInterval: 3000,

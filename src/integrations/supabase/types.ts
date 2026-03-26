@@ -155,8 +155,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_broadcast_contact_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          source_file_name: string | null
+          total_contacts: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          source_file_name?: string | null
+          total_contacts?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          source_file_name?: string | null
+          total_contacts?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_broadcast_contacts: {
         Row: {
+          batch_id: string | null
           created_at: string
           establishment_name: string
           id: string
@@ -166,6 +203,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           establishment_name: string
           id?: string
@@ -175,6 +213,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           establishment_name?: string
           id?: string
@@ -183,7 +222,15 @@ export type Database = {
           source?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_broadcast_contacts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "admin_broadcast_contact_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_broadcast_logs: {
         Row: {
