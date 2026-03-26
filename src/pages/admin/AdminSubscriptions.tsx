@@ -22,7 +22,7 @@ import {
 import {
   CreditCard, AlertTriangle, Search, Filter, Settings2, Loader2,
   CheckCircle2, Clock, XCircle, AlertCircle, DollarSign, TrendingUp,
-  ArrowUpDown, ChevronLeft, ChevronRight, History, Ban, Play,
+  ArrowUpDown, ChevronLeft, ChevronRight, History, Ban, Play, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
