@@ -370,6 +370,8 @@ export function useCreateCampaign() {
 }
 
 // ─── Campaign execution ───
+// The campaign is now processed server-side by a cron job (process-broadcast-queue).
+// The frontend just sets the status and optionally runs a fast-path loop.
 
 const activeCampaignAborts = new Map<string, AbortController>();
 
@@ -403,19 +405,18 @@ export function useStartCampaign() {
       activeCampaignAborts.set(campaignId, controller);
 
       try {
-        let iteration = 0;
+        // First call: validates connection and sets status to running
+        const firstResult = await callWhatsApp("process_campaign", { campaignId });
+        qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+        qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
+        qc.invalidateQueries({ queryKey: ["campaign-details"] });
+
+        if (firstResult?.done || firstResult?.interrupted) return firstResult;
+
+        // Fast-path loop: process contacts while the tab is open.
+        // Even if this loop dies, the server-side cron continues.
         while (true) {
-          iteration += 1;
-          if (controller.signal.aborted) return { interrupted: true, status: "paused" };
-
-          const result = await callWhatsApp("process_campaign", { campaignId });
-          qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
-          qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
-          qc.invalidateQueries({ queryKey: ["campaign-details"] });
-
-          if (result?.done || result?.interrupted) return result;
-
-          const delayMs = (result?.delay_seconds || 0) * 1000;
+          const delayMs = (firstResult?.delay_seconds || 60) * 1000;
           if (delayMs > 0) {
             try {
               await interruptibleSleep(delayMs, controller.signal);
@@ -424,6 +425,15 @@ export function useStartCampaign() {
               throw e;
             }
           }
+
+          if (controller.signal.aborted) return { interrupted: true, status: "paused" };
+
+          const result = await callWhatsApp("process_campaign", { campaignId });
+          qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+          qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
+          qc.invalidateQueries({ queryKey: ["campaign-details"] });
+
+          if (result?.done || result?.interrupted) return result;
         }
       } finally {
         activeCampaignAborts.delete(campaignId);
