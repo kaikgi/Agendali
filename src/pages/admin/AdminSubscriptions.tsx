@@ -22,7 +22,7 @@ import {
 import {
   CreditCard, AlertTriangle, Search, Filter, Settings2, Loader2,
   CheckCircle2, Clock, XCircle, AlertCircle, DollarSign, TrendingUp,
-  ArrowUpDown, ChevronLeft, ChevronRight, History, Ban, Play,
+  ArrowUpDown, ChevronLeft, ChevronRight, History, Ban, Play, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -241,13 +241,24 @@ export default function AdminSubscriptions() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-subscriptions-enriched"],
     queryFn: async () => {
+      console.log('[AdminSubscriptions] Fetching...');
       const { data, error } = await supabase.functions.invoke('admin-data', { body: { action: 'list_subscriptions' } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('[AdminSubscriptions] invoke error:', error);
+        throw new Error(error.message || 'Erro ao carregar assinaturas');
+      }
+      if (data?.error) {
+        console.error('[AdminSubscriptions] data error:', data.error);
+        throw new Error(data.error);
+      }
+      console.log('[AdminSubscriptions] OK, count:', data?.subscriptions?.length);
       return data.subscriptions as EnrichedSubscription[];
     },
     staleTime: 15000,
+    retry: 2,
   });
+
+  const refetchSubs = () => queryClient.invalidateQueries({ queryKey: ["admin-subscriptions-enriched"] });
 
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin-subscription-events", manageSub?.establishment_id],
@@ -372,6 +383,10 @@ export default function AdminSubscriptions() {
         <div className="p-3 rounded-full bg-destructive/10"><AlertTriangle className="h-6 w-6 text-destructive" /></div>
         <p className="text-destructive font-semibold">Erro ao carregar assinaturas</p>
         <p className="text-sm text-muted-foreground max-w-md text-center">{(error as Error).message}</p>
+        <Button variant="outline" size="sm" onClick={refetchSubs} className="mt-3 gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Tentar novamente
+        </Button>
       </div>
     );
   }

@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, CreditCard, AlertTriangle, CheckCircle2, XCircle, TrendingUp } from "lucide-react";
+import { Building2, Users, CreditCard, AlertTriangle, CheckCircle2, XCircle, TrendingUp, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useQueryClient } from "@tanstack/react-query";
 
 function StatCard({ title, value, icon: Icon, loading, variant, subtitle }: {
   title: string;
@@ -55,7 +56,8 @@ function StatCard({ title, value, icon: Icon, loading, variant, subtitle }: {
 }
 
 export default function AdminDashboard() {
-  const { data: stats, isLoading, error } = useAdminStats();
+  const { data: stats, isLoading, error, refetch } = useAdminStats();
+  const queryClient = useQueryClient();
 
   if (error) {
     return (
@@ -63,7 +65,8 @@ export default function AdminDashboard() {
         <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
         <p className="text-destructive font-medium">Erro ao carregar estatísticas</p>
         <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Erro desconhecido'}</p>
-        <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-3">
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3 gap-2">
+          <RefreshCw className="h-4 w-4" />
           Tentar novamente
         </Button>
       </div>

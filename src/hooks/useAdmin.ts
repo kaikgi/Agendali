@@ -51,14 +51,23 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["admin-stats"],
     queryFn: async (): Promise<AdminStats> => {
+      console.log('[useAdminStats] Fetching...');
       const { data, error } = await supabase.functions.invoke('admin-data', {
         body: { action: 'stats' },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('[useAdminStats] invoke error:', error);
+        throw new Error(error.message || 'Erro ao carregar estatísticas');
+      }
+      if (data?.error) {
+        console.error('[useAdminStats] data error:', data.error);
+        throw new Error(data.error);
+      }
+      console.log('[useAdminStats] OK, establishments:', data?.total_establishments);
       return data as AdminStats;
     },
     staleTime: 30000,
+    retry: 2,
   });
 }
 
@@ -84,14 +93,23 @@ export function useAdminEstablishments(search?: string) {
   return useQuery({
     queryKey: ["admin-establishments", search],
     queryFn: async () => {
+      console.log('[useAdminEstablishments] Fetching, search:', search || '(none)');
       const { data, error } = await supabase.functions.invoke('admin-data', {
         body: { action: 'list_establishments', search: search || '' },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('[useAdminEstablishments] invoke error:', error);
+        throw new Error(error.message || 'Erro ao listar estabelecimentos');
+      }
+      if (data?.error) {
+        console.error('[useAdminEstablishments] data error:', data.error);
+        throw new Error(data.error);
+      }
+      console.log('[useAdminEstablishments] OK, count:', data?.establishments?.length);
       return data as { establishments: AdminEstablishment[]; total: number };
     },
     staleTime: 15000,
+    retry: 2,
   });
 }
 

@@ -24,6 +24,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[admin-data] No authorization header');
       return respond({ error: 'Não autorizado' }, 401);
     }
 
@@ -33,6 +34,7 @@ serve(async (req) => {
     });
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
+      console.error('[admin-data] Auth failed:', userError?.message || 'no user');
       return respond({ error: 'Não autorizado' }, 401);
     }
 
@@ -47,13 +49,16 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!adminRow) {
+      console.error('[admin-data] User not admin:', user.email);
       return respond({ error: 'Acesso negado' }, 403);
     }
 
     const { action, ...params } = await req.json();
+    console.log(`[admin-data] Action: ${action}, Admin: ${user.email}, Level: ${adminRow.level}`);
 
     // ---- ACTION: stats ----
     if (action === 'stats') {
+      console.log('[admin-data] Fetching stats...');
       const { count: totalEst } = await adminClient
         .from('establishments')
         .select('id', { count: 'exact', head: true });
@@ -98,7 +103,7 @@ serve(async (req) => {
         recentWithEmails.push({ ...est, owner_email: ownerEmail });
       }
 
-      return respond({
+      const result = {
         total_establishments: totalEst || 0,
         total_customers: totalCustomers || 0,
         active_subscriptions: activeSubscriptions || 0,
@@ -106,7 +111,9 @@ serve(async (req) => {
         canceled: canceledCount,
         past_due: pastDueCount,
         recent_establishments: recentWithEmails,
-      });
+      };
+      console.log('[admin-data] Stats OK:', JSON.stringify({ total_establishments: result.total_establishments, active_subscriptions: result.active_subscriptions }));
+      return respond(result);
     }
 
     // ---- ACTION: list_establishments ----
