@@ -297,9 +297,32 @@ export function useStartCampaign() {
   return useMutation({
     mutationFn: async (campaignId: string) => {
       console.log("[useStartCampaign] start clicked", { campaignId });
-      const result = await callWhatsApp("process_campaign", { campaignId });
-      console.log("[useStartCampaign] start response", { campaignId, result });
-      return result;
+
+      // Loop: process one contact per call, wait delay between calls
+      let iteration = 0;
+      while (true) {
+        iteration += 1;
+        console.log(`[useStartCampaign] iteration ${iteration}`, { campaignId });
+
+        const result = await callWhatsApp("process_campaign", { campaignId });
+        console.log(`[useStartCampaign] iteration ${iteration} response`, result);
+
+        // Refresh UI after each contact
+        qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+        qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
+        qc.invalidateQueries({ queryKey: ["campaign-details"] });
+
+        if (result?.done || result?.interrupted) {
+          return result;
+        }
+
+        // Wait the configured delay before next contact
+        const delayMs = (result?.delay_seconds || 0) * 1000;
+        if (delayMs > 0) {
+          console.log(`[useStartCampaign] waiting ${result.delay_seconds}s before next contact`);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
     },
     onSuccess: (result: any) => {
       qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
@@ -307,7 +330,7 @@ export function useStartCampaign() {
       qc.invalidateQueries({ queryKey: ["campaign-details"] });
       toast({
         title: "Campanha processada",
-        description: `${result?.sent ?? result?.totalSent ?? 0} enviados • ${result?.failed ?? result?.totalFailed ?? 0} falhas`,
+        description: `${result?.totalSent ?? 0} enviados • ${result?.totalFailed ?? 0} falhas`,
       });
     },
     onError: (e: Error) => toast({ title: "Erro ao iniciar", description: e.message, variant: "destructive" }),
