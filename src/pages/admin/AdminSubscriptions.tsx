@@ -258,6 +258,8 @@ export default function AdminSubscriptions() {
     retry: 2,
   });
 
+  const refetchSubs = () => queryClient.invalidateQueries({ queryKey: ["admin-subscriptions-enriched"] });
+
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin-subscription-events", manageSub?.establishment_id],
     queryFn: async () => {
@@ -381,6 +383,10 @@ export default function AdminSubscriptions() {
         <div className="p-3 rounded-full bg-destructive/10"><AlertTriangle className="h-6 w-6 text-destructive" /></div>
         <p className="text-destructive font-semibold">Erro ao carregar assinaturas</p>
         <p className="text-sm text-muted-foreground max-w-md text-center">{(error as Error).message}</p>
+        <Button variant="outline" size="sm" onClick={refetchSubs} className="mt-3 gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Tentar novamente
+        </Button>
       </div>
     );
   }
