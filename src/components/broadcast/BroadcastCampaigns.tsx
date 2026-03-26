@@ -179,24 +179,49 @@ export default function BroadcastCampaigns() {
                         <TableCell className="text-xs">{campaign.delay_seconds}s</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            {campaign.status === "draft" || campaign.status === "paused" ? (
+                            {/* Draft or Paused → Play/Resume */}
+                            {(campaign.status === "draft" || campaign.status === "paused") && (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleStartCampaign(campaign.id)}
                                 disabled={startCampaign.isPending}
+                                title={campaign.status === "paused" ? "Retomar campanha" : "Iniciar campanha"}
                               >
                                 {startCampaign.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                               </Button>
-                            ) : null}
+                            )}
 
-                            {campaign.status === "running" ? (
-                              <Button variant="destructive" size="sm" onClick={() => cancelCampaign.mutate(campaign.id)}>
-                                <StopCircle className="h-3.5 w-3.5" />
+                            {/* Running → Pause */}
+                            {campaign.status === "running" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log("[BroadcastCampaigns] pause clicked", { campaignId: campaign.id });
+                                  pauseCampaign.mutate(campaign.id);
+                                }}
+                                disabled={pauseCampaign.isPending}
+                                title="Pausar campanha"
+                              >
+                                {pauseCampaign.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pause className="h-3.5 w-3.5" />}
                               </Button>
-                            ) : null}
+                            )}
 
-                            <Button variant="ghost" size="sm" onClick={() => openCampaignDetails(campaign.id)}>
+                            {/* Running or Paused → Cancel */}
+                            {(campaign.status === "running" || campaign.status === "paused") && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => cancelCampaign.mutate(campaign.id)}
+                                disabled={cancelCampaign.isPending}
+                                title="Cancelar campanha"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+
+                            <Button variant="ghost" size="sm" onClick={() => openCampaignDetails(campaign.id)} title="Ver detalhes">
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </div>
