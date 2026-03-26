@@ -58,6 +58,7 @@ serve(async (req) => {
 
     // ---- ACTION: stats ----
     if (action === 'stats') {
+      console.log('[admin-data] Fetching stats...');
       const { count: totalEst } = await adminClient
         .from('establishments')
         .select('id', { count: 'exact', head: true });
@@ -102,7 +103,7 @@ serve(async (req) => {
         recentWithEmails.push({ ...est, owner_email: ownerEmail });
       }
 
-      return respond({
+      const result = {
         total_establishments: totalEst || 0,
         total_customers: totalCustomers || 0,
         active_subscriptions: activeSubscriptions || 0,
@@ -110,7 +111,9 @@ serve(async (req) => {
         canceled: canceledCount,
         past_due: pastDueCount,
         recent_establishments: recentWithEmails,
-      });
+      };
+      console.log('[admin-data] Stats OK:', JSON.stringify({ total_establishments: result.total_establishments, active_subscriptions: result.active_subscriptions }));
+      return respond(result);
     }
 
     // ---- ACTION: list_establishments ----
