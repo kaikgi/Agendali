@@ -9,12 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Play, StopCircle, Eye, Loader2, Clock, CheckCircle2, AlertTriangle, TimerReset } from "lucide-react";
+import { Plus, Play, Pause, StopCircle, Eye, Loader2, Clock, CheckCircle2, AlertTriangle, TimerReset, XCircle } from "lucide-react";
 import {
   useBroadcastCampaigns,
   useBroadcastContacts,
   useCreateCampaign,
   useStartCampaign,
+  usePauseCampaign,
   useCancelCampaign,
   useCampaignDetails,
 } from "@/hooks/useBroadcast";
@@ -49,6 +50,7 @@ export default function BroadcastCampaigns() {
   const { data: contacts } = useBroadcastContacts();
   const createCampaign = useCreateCampaign();
   const startCampaign = useStartCampaign();
+  const pauseCampaign = usePauseCampaign();
   const cancelCampaign = useCancelCampaign();
 
   const [showCreate, setShowCreate] = useState(false);
