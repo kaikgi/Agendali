@@ -776,7 +776,7 @@ serve(async (req) => {
         }
       }
 
-      // Update campaign counters
+      // Update campaign counters and schedule next
       const { data: allRows } = await adminClient
         .from("admin_broadcast_campaign_contacts")
         .select("status")
@@ -786,16 +786,22 @@ serve(async (req) => {
       const totalFailed = allRows?.filter((r) => r.status === "failed").length ?? 0;
       const totalPending = allRows?.filter((r) => ["pending", "sending"].includes(r.status)).length ?? 0;
 
+      const nextSendAt = totalPending > 0
+        ? new Date(Date.now() + (campaign.delay_seconds || 0) * 1000).toISOString()
+        : null;
+
       await adminClient
         .from("admin_broadcast_campaigns")
         .update({
           total_sent: totalSent,
           total_failed: totalFailed,
+          last_sent_at: new Date().toISOString(),
+          next_send_at: nextSendAt,
           updated_at: new Date().toISOString(),
         })
         .eq("id", campaignId);
 
-      console.log("[process_campaign] Counters", { totalSent, totalFailed, totalPending });
+      console.log("[process_campaign] Counters", { totalSent, totalFailed, totalPending, nextSendAt });
 
       // If no more pending, finalize
       if (totalPending === 0) {
