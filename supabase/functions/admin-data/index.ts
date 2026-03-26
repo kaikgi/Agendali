@@ -24,6 +24,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[admin-data] No authorization header');
       return respond({ error: 'Não autorizado' }, 401);
     }
 
@@ -33,6 +34,7 @@ serve(async (req) => {
     });
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
+      console.error('[admin-data] Auth failed:', userError?.message || 'no user');
       return respond({ error: 'Não autorizado' }, 401);
     }
 
@@ -47,10 +49,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!adminRow) {
+      console.error('[admin-data] User not admin:', user.email);
       return respond({ error: 'Acesso negado' }, 403);
     }
 
     const { action, ...params } = await req.json();
+    console.log(`[admin-data] Action: ${action}, Admin: ${user.email}, Level: ${adminRow.level}`);
 
     // ---- ACTION: stats ----
     if (action === 'stats') {
