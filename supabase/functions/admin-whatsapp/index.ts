@@ -647,7 +647,7 @@ serve(async (req) => {
 
         await adminClient
           .from("admin_broadcast_campaigns")
-          .update({ status: "running", started_at: now, finished_at: null, updated_at: now })
+          .update({ status: "running", started_at: now, finished_at: null, next_send_at: now, updated_at: now })
           .eq("id", campaignId);
       }
 
