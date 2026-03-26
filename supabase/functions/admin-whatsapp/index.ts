@@ -606,223 +606,213 @@ serve(async (req) => {
         .single();
 
       if (!campaign) return jsonErr("Campaign not found", 404);
-      if (!["draft", "paused"].includes(campaign.status)) {
-        return jsonErr("Campaign not in valid state to start");
+
+      // Allow starting from draft/paused, or continuing a running campaign
+      if (!["draft", "paused", "running"].includes(campaign.status)) {
+        return jsonErr("Campaign not in valid state to process");
       }
       if (!campaign.message || !String(campaign.message).trim()) {
         return jsonErr("Campanha sem mensagem configurada");
       }
 
-      console.log("[process_campaign] Campaign start requested", {
-        campaign_id: campaignId,
-        campaign_name: campaign.name,
-        total_contacts: campaign.total_contacts,
-        delay_seconds: campaign.delay_seconds,
-      });
-
       const inst = await getInstanceFromDb();
       if (!inst) return jsonErr("Nenhuma instância ativa encontrada", 404);
 
-      console.log("[process_campaign] Instance loaded", {
-        instance_id: inst.id,
-        instance_name: inst.instance_name,
-        server_url: inst.server_url,
-        token_masked: maskToken(inst.instance_token),
-        status: inst.status,
-        is_connected: inst.is_connected,
-      });
+      // Only check connection on first call (draft/paused → running)
+      if (["draft", "paused"].includes(campaign.status)) {
+        console.log("[process_campaign] First invocation — checking connection", {
+          campaign_id: campaignId,
+          instance: inst.instance_name,
+        });
 
-      const connectionState = await checkInstanceStatus(inst);
-      const now = new Date().toISOString();
-      await adminClient
-        .from("admin_whatsapp_instances")
-        .update({
-          status: connectionState.state,
-          is_connected: connectionState.isConnected,
-          last_validated_at: now,
-          updated_at: now,
-          ...(connectionState.phone ? { connected_phone: connectionState.phone } : {}),
-        })
-        .eq("id", inst.id);
+        const connectionState = await checkInstanceStatus(inst);
+        const now = new Date().toISOString();
+        await adminClient
+          .from("admin_whatsapp_instances")
+          .update({
+            status: connectionState.state,
+            is_connected: connectionState.isConnected,
+            last_validated_at: now,
+            updated_at: now,
+            ...(connectionState.phone ? { connected_phone: connectionState.phone } : {}),
+          })
+          .eq("id", inst.id);
 
-      if (!connectionState.isConnected) {
-        return jsonErr(
-          connectionState.error || `A instância ativa não está conectada. Estado atual: ${connectionState.state}`,
-          400,
-        );
+        if (!connectionState.isConnected) {
+          return jsonErr(
+            connectionState.error || `Instância não conectada. Estado: ${connectionState.state}`,
+            400,
+          );
+        }
+
+        await adminClient
+          .from("admin_broadcast_campaigns")
+          .update({ status: "running", started_at: now, finished_at: null, updated_at: now })
+          .eq("id", campaignId);
       }
 
-      await adminClient
+      // Check if campaign was canceled/paused between invocations
+      const { data: currentCampaign } = await adminClient
         .from("admin_broadcast_campaigns")
-        .update({ status: "running", started_at: now, finished_at: null, updated_at: now })
-        .eq("id", campaignId);
+        .select("status")
+        .eq("id", campaignId)
+        .single();
 
-      const { data: campaignContacts } = await adminClient
+      if (["canceled", "paused"].includes(currentCampaign?.status || "")) {
+        console.log("[process_campaign] Campaign interrupted", { status: currentCampaign?.status });
+        return json({ ok: true, done: true, interrupted: true, status: currentCampaign?.status });
+      }
+
+      // Get ONE pending contact
+      const { data: nextContacts } = await adminClient
         .from("admin_broadcast_campaign_contacts")
         .select("*, contact:admin_broadcast_contacts(*)")
         .eq("campaign_id", campaignId)
         .in("status", ["pending", "failed"])
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .limit(1);
 
-      if (!campaignContacts || campaignContacts.length === 0) {
+      const campaignContact = nextContacts?.[0] as any;
+
+      if (!campaignContact) {
+        // No more contacts — finalize
         const finalization = await finalizeCampaign(campaignId, {
           sent: campaign.total_sent || 0,
           failed: campaign.total_failed || 0,
         });
-        return json({ ok: true, message: "No contacts to process", ...finalization });
+        console.log("[process_campaign] All contacts processed", finalization);
+        return json({ ok: true, done: true, ...finalization });
       }
 
-      let totalSent = campaign.total_sent || 0;
-      let totalFailed = campaign.total_failed || 0;
+      const contact = campaignContact.contact;
+      let sent = false;
 
-      for (let index = 0; index < campaignContacts.length; index += 1) {
-        const campaignContact = campaignContacts[index] as any;
-        const contact = campaignContact.contact;
-
-        const { data: currentCampaign } = await adminClient
-          .from("admin_broadcast_campaigns")
-          .select("status")
-          .eq("id", campaignId)
-          .single();
-
-        if (["canceled", "paused"].includes(currentCampaign?.status || "")) {
-          console.log("[process_campaign] Campaign interrupted", {
-            campaign_id: campaignId,
-            current_status: currentCampaign?.status,
-            processed_index: index,
-          });
-          break;
-        }
-
-        if (!contact) {
-          const errorMessage = "Contato da campanha não encontrado";
-          console.log("[process_campaign] Missing contact", { campaign_contact_id: campaignContact.id, error: errorMessage });
-
-          await adminClient
-            .from("admin_broadcast_campaign_contacts")
-            .update({
-              status: "failed",
-              failed_at: new Date().toISOString(),
-              error_message: errorMessage,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", campaignContact.id);
-
-          totalFailed += 1;
-        } else {
-          await adminClient
-            .from("admin_broadcast_campaign_contacts")
-            .update({
-              status: "sending",
-              attempt_count: (campaignContact.attempt_count || 0) + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", campaignContact.id);
-
-          const sendResult = await sendWhatsAppMessage(inst, contact.normalized_phone || contact.phone, campaign.message);
-          console.log("[process_campaign] Contact result", {
-            campaign_contact_id: campaignContact.id,
-            contact_id: contact.id,
-            normalized_phone: sendResult.normalizedPhone,
-            http_status: sendResult.httpStatus,
-            interpreted_ok: sendResult.ok,
-            provider_message_id: sendResult.providerMessageId,
-            error: sendResult.error,
-          });
-
-          if (sendResult.ok) {
-            const sentAt = new Date().toISOString();
-            await adminClient
-              .from("admin_broadcast_campaign_contacts")
-              .update({
-                status: "sent",
-                sent_at: sentAt,
-                failed_at: null,
-                error_message: null,
-                provider_message_id: sendResult.providerMessageId,
-                updated_at: sentAt,
-              })
-              .eq("id", campaignContact.id);
-
-            await adminClient.from("admin_broadcast_logs").insert({
-              campaign_id: campaignId,
-              contact_id: contact.id,
-              phone: sendResult.normalizedPhone,
-              establishment_name: contact.establishment_name,
-              message: campaign.message,
-              status: "sent",
-              provider_message_id: sendResult.providerMessageId,
-            });
-
-            totalSent += 1;
-          } else {
-            const failedAt = new Date().toISOString();
-            const errorMessage = sendResult.error || "Falha desconhecida ao enviar mensagem";
-
-            await adminClient
-              .from("admin_broadcast_campaign_contacts")
-              .update({
-                status: "failed",
-                failed_at: failedAt,
-                error_message: truncate(errorMessage, 500),
-                provider_message_id: sendResult.providerMessageId,
-                updated_at: failedAt,
-              })
-              .eq("id", campaignContact.id);
-
-            await adminClient.from("admin_broadcast_logs").insert({
-              campaign_id: campaignId,
-              contact_id: contact.id,
-              phone: sendResult.normalizedPhone || normalizePhone(contact.phone || ""),
-              establishment_name: contact.establishment_name,
-              message: campaign.message,
-              status: "failed",
-              error: truncate({
-                error: errorMessage,
-                endpoint: sendResult.endpoint,
-                http_status: sendResult.httpStatus,
-                provider_response: sendResult.payload,
-              }, 500),
-              provider_message_id: sendResult.providerMessageId,
-            });
-
-            totalFailed += 1;
-          }
-        }
-
-        const countersUpdatedAt = new Date().toISOString();
+      if (!contact) {
+        const errorMessage = "Contato da campanha não encontrado";
         await adminClient
-          .from("admin_broadcast_campaigns")
+          .from("admin_broadcast_campaign_contacts")
           .update({
-            total_sent: totalSent,
-            total_failed: totalFailed,
-            updated_at: countersUpdatedAt,
+            status: "failed",
+            failed_at: new Date().toISOString(),
+            error_message: errorMessage,
+            updated_at: new Date().toISOString(),
           })
-          .eq("id", campaignId);
+          .eq("id", campaignContact.id);
+      } else {
+        await adminClient
+          .from("admin_broadcast_campaign_contacts")
+          .update({
+            status: "sending",
+            attempt_count: (campaignContact.attempt_count || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", campaignContact.id);
 
-        console.log("[process_campaign] Counters updated", {
-          campaign_id: campaignId,
-          total_sent: totalSent,
-          total_failed: totalFailed,
+        const sendResult = await sendWhatsAppMessage(inst, contact.normalized_phone || contact.phone, campaign.message);
+        console.log("[process_campaign] Contact result", {
+          campaign_contact_id: campaignContact.id,
+          contact_id: contact.id,
+          normalized_phone: sendResult.normalizedPhone,
+          http_status: sendResult.httpStatus,
+          interpreted_ok: sendResult.ok,
+          provider_message_id: sendResult.providerMessageId,
+          error: sendResult.error,
         });
 
-        const effectiveDelay = Math.min(campaign.delay_seconds || 0, 30);
-        if (index < campaignContacts.length - 1 && effectiveDelay > 0) {
-          const totalRemainingTime = effectiveDelay * (campaignContacts.length - 1 - index);
-          console.log("[process_campaign] Waiting delay", {
+        if (sendResult.ok) {
+          sent = true;
+          const sentAt = new Date().toISOString();
+          await adminClient
+            .from("admin_broadcast_campaign_contacts")
+            .update({
+              status: "sent",
+              sent_at: sentAt,
+              failed_at: null,
+              error_message: null,
+              provider_message_id: sendResult.providerMessageId,
+              updated_at: sentAt,
+            })
+            .eq("id", campaignContact.id);
+
+          await adminClient.from("admin_broadcast_logs").insert({
             campaign_id: campaignId,
-            configured_delay: campaign.delay_seconds,
-            effective_delay: effectiveDelay,
-            remaining_contacts: campaignContacts.length - 1 - index,
-            estimated_remaining_seconds: totalRemainingTime,
-            next_index: index + 1,
+            contact_id: contact.id,
+            phone: sendResult.normalizedPhone,
+            establishment_name: contact.establishment_name,
+            message: campaign.message,
+            status: "sent",
+            provider_message_id: sendResult.providerMessageId,
           });
-          await new Promise((resolve) => setTimeout(resolve, effectiveDelay * 1000));
+        } else {
+          const failedAt = new Date().toISOString();
+          const errorMessage = sendResult.error || "Falha desconhecida ao enviar mensagem";
+
+          await adminClient
+            .from("admin_broadcast_campaign_contacts")
+            .update({
+              status: "failed",
+              failed_at: failedAt,
+              error_message: truncate(errorMessage, 500),
+              provider_message_id: sendResult.providerMessageId,
+              updated_at: failedAt,
+            })
+            .eq("id", campaignContact.id);
+
+          await adminClient.from("admin_broadcast_logs").insert({
+            campaign_id: campaignId,
+            contact_id: contact.id,
+            phone: sendResult.normalizedPhone || normalizePhone(contact.phone || ""),
+            establishment_name: contact.establishment_name,
+            message: campaign.message,
+            status: "failed",
+            error: truncate({
+              error: errorMessage,
+              endpoint: sendResult.endpoint,
+              http_status: sendResult.httpStatus,
+              provider_response: sendResult.payload,
+            }, 500),
+            provider_message_id: sendResult.providerMessageId,
+          });
         }
       }
 
-      const finalization = await finalizeCampaign(campaignId, { sent: totalSent, failed: totalFailed });
-      return json({ ok: true, totalSent, totalFailed, ...finalization });
+      // Update campaign counters
+      const { data: allRows } = await adminClient
+        .from("admin_broadcast_campaign_contacts")
+        .select("status")
+        .eq("campaign_id", campaignId);
+
+      const totalSent = allRows?.filter((r) => r.status === "sent").length ?? 0;
+      const totalFailed = allRows?.filter((r) => r.status === "failed").length ?? 0;
+      const totalPending = allRows?.filter((r) => ["pending", "sending"].includes(r.status)).length ?? 0;
+
+      await adminClient
+        .from("admin_broadcast_campaigns")
+        .update({
+          total_sent: totalSent,
+          total_failed: totalFailed,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", campaignId);
+
+      console.log("[process_campaign] Counters", { totalSent, totalFailed, totalPending });
+
+      // If no more pending, finalize
+      if (totalPending === 0) {
+        const finalization = await finalizeCampaign(campaignId, { sent: totalSent, failed: totalFailed });
+        return json({ ok: true, done: true, sent: sent, ...finalization });
+      }
+
+      // More contacts remain — tell frontend to call again after delay
+      return json({
+        ok: true,
+        done: false,
+        sent: sent,
+        totalSent,
+        totalFailed,
+        totalPending,
+        delay_seconds: campaign.delay_seconds || 0,
+      });
     }
 
     if (action === "update_instance_token") {
