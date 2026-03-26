@@ -241,12 +241,21 @@ export default function AdminSubscriptions() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-subscriptions-enriched"],
     queryFn: async () => {
+      console.log('[AdminSubscriptions] Fetching...');
       const { data, error } = await supabase.functions.invoke('admin-data', { body: { action: 'list_subscriptions' } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('[AdminSubscriptions] invoke error:', error);
+        throw new Error(error.message || 'Erro ao carregar assinaturas');
+      }
+      if (data?.error) {
+        console.error('[AdminSubscriptions] data error:', data.error);
+        throw new Error(data.error);
+      }
+      console.log('[AdminSubscriptions] OK, count:', data?.subscriptions?.length);
       return data.subscriptions as EnrichedSubscription[];
     },
     staleTime: 15000,
+    retry: 2,
   });
 
   const { data: events, isLoading: eventsLoading } = useQuery({
