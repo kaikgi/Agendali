@@ -181,7 +181,7 @@ export default function AdminEstablishments() {
   const [deleteStorageFiles, setDeleteStorageFiles] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const { data, isLoading, error } = useAdminEstablishments(debouncedSearch || undefined);
+  const { data, isLoading, error, refetch } = useAdminEstablishments(debouncedSearch || undefined);
   const queryClient = useQueryClient();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -288,6 +288,10 @@ export default function AdminEstablishments() {
         <div className="p-3 rounded-full bg-destructive/10"><AlertTriangle className="h-6 w-6 text-destructive" /></div>
         <p className="text-destructive font-semibold">Erro ao carregar estabelecimentos</p>
         <p className="text-sm text-muted-foreground max-w-md text-center">{(error as Error)?.message}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3 gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Tentar novamente
+        </Button>
       </div>
     );
   }
