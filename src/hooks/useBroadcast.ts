@@ -290,50 +290,130 @@ export function useCreateCampaign() {
   });
 }
 
+// Global map of active campaign loops — allows pause to abort the sleep
+const activeCampaignAborts = new Map<string, AbortController>();
+
+export function abortCampaignLoop(campaignId: string) {
+  const controller = activeCampaignAborts.get(campaignId);
+  if (controller) {
+    console.log("[abortCampaignLoop] aborting loop for", campaignId);
+    controller.abort();
+    activeCampaignAborts.delete(campaignId);
+  }
+}
+
+function interruptibleSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    }, { once: true });
+  });
+}
+
 export function useStartCampaign() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log("[useStartCampaign] start clicked", { campaignId });
+      console.log("[useStartCampaign] start/resume clicked", { campaignId });
 
-      // Loop: process one contact per call, wait delay between calls
-      let iteration = 0;
-      while (true) {
-        iteration += 1;
-        console.log(`[useStartCampaign] iteration ${iteration}`, { campaignId });
+      // Abort any existing loop for this campaign
+      abortCampaignLoop(campaignId);
 
-        const result = await callWhatsApp("process_campaign", { campaignId });
-        console.log(`[useStartCampaign] iteration ${iteration} response`, result);
+      const controller = new AbortController();
+      activeCampaignAborts.set(campaignId, controller);
 
-        // Refresh UI after each contact
-        qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
-        qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
-        qc.invalidateQueries({ queryKey: ["campaign-details"] });
+      try {
+        let iteration = 0;
+        while (true) {
+          iteration += 1;
 
-        if (result?.done || result?.interrupted) {
-          return result;
+          if (controller.signal.aborted) {
+            console.log("[useStartCampaign] loop aborted before iteration", iteration);
+            return { interrupted: true, status: "paused" };
+          }
+
+          console.log(`[useStartCampaign] iteration ${iteration}`, { campaignId });
+          const result = await callWhatsApp("process_campaign", { campaignId });
+          console.log(`[useStartCampaign] iteration ${iteration} response`, result);
+
+          // Refresh UI after each contact
+          qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+          qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
+          qc.invalidateQueries({ queryKey: ["campaign-details"] });
+
+          if (result?.done || result?.interrupted) {
+            return result;
+          }
+
+          // Wait the configured delay — interruptible by pause
+          const delayMs = (result?.delay_seconds || 0) * 1000;
+          if (delayMs > 0) {
+            console.log(`[useStartCampaign] waiting ${result.delay_seconds}s before next contact`);
+            try {
+              await interruptibleSleep(delayMs, controller.signal);
+            } catch (e: any) {
+              if (e.name === "AbortError") {
+                console.log("[useStartCampaign] sleep interrupted by pause");
+                return { interrupted: true, status: "paused" };
+              }
+              throw e;
+            }
+          }
         }
-
-        // Wait the configured delay before next contact
-        const delayMs = (result?.delay_seconds || 0) * 1000;
-        if (delayMs > 0) {
-          console.log(`[useStartCampaign] waiting ${result.delay_seconds}s before next contact`);
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
+      } finally {
+        activeCampaignAborts.delete(campaignId);
       }
     },
     onSuccess: (result: any) => {
       qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
       qc.invalidateQueries({ queryKey: ["broadcast-logs"] });
       qc.invalidateQueries({ queryKey: ["campaign-details"] });
-      toast({
-        title: "Campanha processada",
-        description: `${result?.totalSent ?? 0} enviados • ${result?.totalFailed ?? 0} falhas`,
-      });
+
+      if (result?.interrupted) {
+        toast({ title: result?.status === "paused" ? "Campanha pausada" : "Campanha interrompida" });
+      } else {
+        toast({
+          title: "Campanha processada",
+          description: `${result?.totalSent ?? result?.sent ?? 0} enviados • ${result?.totalFailed ?? result?.failed ?? 0} falhas`,
+        });
+      }
     },
-    onError: (e: Error) => toast({ title: "Erro ao iniciar", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      if (e.name === "AbortError" || e.message?.includes("Aborted")) return;
+      toast({ title: "Erro ao iniciar", description: e.message, variant: "destructive" });
+    },
+  });
+}
+
+export function usePauseCampaign() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (campaignId: string) => {
+      console.log("[usePauseCampaign] pause clicked", { campaignId });
+
+      // 1. Set DB status to paused immediately
+      const { error } = await supabase
+        .from("admin_broadcast_campaigns" as any)
+        .update({ status: "paused", updated_at: new Date().toISOString() })
+        .eq("id", campaignId);
+      if (error) throw error;
+
+      // 2. Abort the frontend loop immediately (interrupts long delays)
+      abortCampaignLoop(campaignId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
+      qc.invalidateQueries({ queryKey: ["campaign-details"] });
+      toast({ title: "Campanha pausada" });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao pausar", description: e.message, variant: "destructive" }),
   });
 }
 
@@ -349,6 +429,9 @@ export function useCancelCampaign() {
         .update({ status: "canceled", updated_at: new Date().toISOString() })
         .eq("id", campaignId);
       if (error) throw error;
+
+      // Abort the frontend loop
+      abortCampaignLoop(campaignId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["broadcast-campaigns"] });
