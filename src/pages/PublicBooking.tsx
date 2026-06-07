@@ -359,50 +359,45 @@ export default function PublicBooking() {
 
       setCreatedAppointmentId(appointmentId);
 
-      // Persist accepted terms (fire-and-forget, non-blocking)
+      // Persist accepted terms (fire-and-forget, non-blocking) via secured RPC
       const termsToSave = terms || pendingTerms;
-      if (termsToSave && establishment) {
-        (supabase as any)
-          .from('appointment_accepted_terms')
-          .insert({
-            appointment_id: appointmentId,
-            establishment_id: establishment.id,
-            terms_type: termsToSave.type,
-            terms_text: termsToSave.text,
-            terms_params: termsToSave.params,
-          })
-          .then(({ error: termsErr }: any) => {
-            if (termsErr) console.error('[Booking] Failed to save accepted terms:', termsErr);
-            else console.log('[Booking] Accepted terms saved successfully');
-          });
+      if (termsToSave && establishment && result?.manage_token) {
+        (supabase.rpc as any)('public_save_accepted_terms', {
+          p_token: result.manage_token,
+          p_appointment_id: appointmentId,
+          p_terms_type: termsToSave.type,
+          p_terms_text: termsToSave.text,
+          p_terms_params: termsToSave.params,
+        }).then(({ error: termsErr }: any) => {
+          if (termsErr) console.error('[Booking] Failed to save accepted terms:', termsErr);
+          else console.log('[Booking] Accepted terms saved successfully');
+        });
       }
 
       // If payment is required, validate appointment status strictly.
-      // Never silently skip payment when status lookup fails.
       if (requiresPayment) {
-        const { data: apt, error: aptError } = await supabase
-          .from('appointments')
-          .select('status')
-          .eq('id', appointmentId)
-          .maybeSingle();
+        const { data: status, error: aptError } = await (supabase.rpc as any)(
+          'public_get_appointment_status',
+          { p_token: result?.manage_token, p_appointment_id: appointmentId }
+        );
 
         if (aptError) {
           console.error('[Booking] Failed to read appointment status for payment:', aptError);
           throw new Error(`Falha ao validar status para pagamento: ${aptError.message}`);
         }
 
-        if (!apt?.status) {
+        if (!status) {
           console.error('[Booking] Appointment status not found after creation', { appointmentId });
           throw new Error('Agendamento criado, mas o status de pagamento não pôde ser validado.');
         }
 
-        if (apt.status === 'pending_payment') {
+        if (status === 'pending_payment') {
           console.log('[Booking] Payment required, moving to payment step');
           setCurrentStep(4);
           return;
         }
 
-        console.log('[Booking] Payment bypassed or not required by server status', { status: apt.status });
+        console.log('[Booking] Payment bypassed or not required by server status', { status });
         setIsSuccess(true);
         return;
       }
