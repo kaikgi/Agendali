@@ -62,52 +62,18 @@ export function useAppointmentByToken(slug: string | undefined, token: string | 
     queryFn: async () => {
       if (!slug || !token) throw new Error('Slug e token são obrigatórios');
 
-      const tokenHash = await hashToken(token);
+      const { data, error } = await (supabase.rpc as any)('public_get_appointment_by_token', {
+        p_slug: slug,
+        p_token: token,
+      });
 
-      // Fetch token record
-      const { data: tokenRecord, error: tokenError } = await (supabase as any)
-        .from('appointment_manage_tokens')
-        .select('appointment_id, expires_at, used_at')
-        .eq('token_hash', tokenHash)
-        .single();
-
-      if (tokenError || !tokenRecord) {
-        throw new Error('Token inválido ou não encontrado');
+      if (error) {
+        const msg = (error.message || '').replace(/^.*EXCEPTION:\s*/, '').trim();
+        throw new Error(msg || 'Não foi possível carregar o agendamento');
       }
+      if (!data) throw new Error('Agendamento não encontrado');
 
-      // Check if token is expired
-      if (new Date(tokenRecord.expires_at) < new Date()) {
-        throw new Error('Este link expirou');
-      }
-
-      // Fetch appointment with details
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .select(`
-          id,
-          start_at,
-          end_at,
-          status,
-          customer_notes,
-          customer:customers(id, name, phone, email),
-          professional:professionals(id, name),
-          service:services(id, name, duration_minutes, price_cents),
-          establishment:establishments(id, name, slug, phone, address, reschedule_min_hours, cancellation_policy_text)
-        `)
-        .eq('id', tokenRecord.appointment_id)
-        .single();
-
-      if (appointmentError || !appointment) {
-        throw new Error('Agendamento não encontrado');
-      }
-
-      // Verify establishment slug matches
-      const est = appointment.establishment as any;
-      if (est?.slug !== slug) {
-        throw new Error('Agendamento não pertence a este estabelecimento');
-      }
-
-      return appointment as unknown as AppointmentWithDetails;
+      return data as unknown as AppointmentWithDetails & { accepted_terms?: { terms_type: string; terms_params: any } | null };
     },
     enabled: !!slug && !!token,
     retry: false,
