@@ -207,17 +207,11 @@ export default function ManageAppointment() {
   });
   const availableSlots = slotResult?.slots ?? [];
 
-  // Load accepted terms for this appointment
+  // Accepted terms come from the appointment-by-token RPC payload
   useEffect(() => {
     if (!appointment) return;
-    (supabase as any)
-      .from('appointment_accepted_terms')
-      .select('terms_type, terms_params')
-      .eq('appointment_id', appointment.id)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        setAcceptedTerms(data || null);
-      });
+    const terms = (appointment as any).accepted_terms;
+    setAcceptedTerms(terms || null);
   }, [appointment?.id]);
 
   // Evaluate cancellation rules
