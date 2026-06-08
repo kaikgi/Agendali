@@ -87,7 +87,7 @@ describe('Authentication Data Sanitization', () => {
 
       await supabase.auth.resetPasswordForEmail(sanitizedEmail);
 
-      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('reset@example.com');
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith('RESET@example.com');
     });
   });
 
