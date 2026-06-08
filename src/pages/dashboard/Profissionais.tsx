@@ -263,13 +263,34 @@ export default function Profissionais() {
   }
 
   if (estError || error) {
+    const isPlanError = (error as any)?.message?.includes('limite') || (error as any)?.message?.includes('plano');
     return (
       <div className="text-center py-12">
-        <p className="text-destructive mb-4">Erro ao carregar profissionais</p>
-        <Button variant="outline" onClick={handleRetry}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Tentar novamente
-        </Button>
+        <div className="mb-4 flex justify-center">
+          <div className="p-3 bg-destructive/10 rounded-full">
+            <X className="h-10 w-10 text-destructive" />
+          </div>
+        </div>
+        <h2 className="text-xl font-bold mb-2">
+          {isPlanError ? 'Limite do plano atingido' : 'Erro ao carregar profissionais'}
+        </h2>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          {isPlanError 
+            ? 'Seu plano atual não permite adicionar mais profissionais. Faça um upgrade para continuar.' 
+            : 'Ocorreu um problema técnico ao buscar a lista de profissionais. Por favor, tente novamente.'}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button variant="outline" onClick={handleRetry}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+          {isPlanError && (
+            <Button onClick={() => setUpgradeDialogOpen(true)}>
+              <Zap className="h-4 w-4 mr-2" />
+              Ver Planos
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
