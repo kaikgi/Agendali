@@ -65,7 +65,7 @@ export function useProfile() {
           
           return created as Profile;
         }
-        throw error;
+        if (error) throw error;
       }
       
       return data as Profile;
