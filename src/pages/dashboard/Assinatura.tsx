@@ -57,9 +57,9 @@ const KIWIFY_MANAGE_URL = 'https://dashboard.kiwify.com.br';
 
 export default function Assinatura() {
   const { user } = useAuth();
-  const { data: subscription, isLoading: subscriptionLoading } = useSubscription();
-  const { data: establishment, isLoading: establishmentLoading } = useUserEstablishment();
-  const { data: limits, isLoading: limitsLoading } = usePlanLimits(establishment?.id);
+  const { data: subscription, isLoading: subscriptionLoading, error: subError } = useSubscription();
+  const { data: establishment, isLoading: establishmentLoading, error: estError } = useUserEstablishment();
+  const { data: limits, isLoading: limitsLoading, error: limitsError } = usePlanLimits(establishment?.id);
 
   const [changePlanOpen, setChangePlanOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
