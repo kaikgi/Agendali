@@ -2664,11 +2664,40 @@ export type Database = {
           manage_token: string
         }[]
       }
+      public_get_appointment_by_token: {
+        Args: { p_slug: string; p_token: string }
+        Returns: Json
+      }
+      public_get_appointment_status: {
+        Args: { p_appointment_id: string; p_token: string }
+        Returns: string
+      }
+      public_get_busy_ranges: {
+        Args: {
+          p_day_end: string
+          p_day_start: string
+          p_professional_id: string
+        }
+        Returns: {
+          end_at: string
+          start_at: string
+        }[]
+      }
       public_reschedule_appointment: {
         Args: {
           p_appointment_id: string
           p_new_end_at: string
           p_new_start_at: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      public_save_accepted_terms: {
+        Args: {
+          p_appointment_id: string
+          p_terms_params: Json
+          p_terms_text: string
+          p_terms_type: string
           p_token: string
         }
         Returns: Json
