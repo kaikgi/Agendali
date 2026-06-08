@@ -68,6 +68,7 @@ import AdminBroadcasts from "./pages/admin/AdminBroadcasts";
 import AdminAllowedEmails from "./pages/admin/AdminAllowedEmails";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminSettingsSaaS from "./pages/admin/AdminSettingsSaaS";
+import AdminLegalDocuments from "./pages/admin/AdminLegalDocuments";
 import { AdminPermissionGuard } from "./components/AdminPermissionGuard";
 import ResponsiveTestPage from "./pages/dev/ResponsiveTest";
 
@@ -173,6 +174,7 @@ const App = () => (
                   <Route path="disparos" element={<AdminPermissionGuard permission="view_broadcasts"><AdminBroadcasts /></AdminPermissionGuard>} />
                   <Route path="emails-autorizados" element={<AdminPermissionGuard permission="view_allowed_emails"><AdminAllowedEmails /></AdminPermissionGuard>} />
                   <Route path="webhooks" element={<AdminPermissionGuard permission="view_webhooks"><AdminWebhooks /></AdminPermissionGuard>} />
+                  <Route path="legal" element={<AdminPermissionGuard permission="manage_establishments"><AdminLegalDocuments /></AdminPermissionGuard>} />
                   <Route path="danger-zone" element={<AdminPermissionGuard permission="view_danger_zone"><AdminDangerZone /></AdminPermissionGuard>} />
                 </Route>
               </Route>
