@@ -9,12 +9,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
 
+import { useAdminAccess } from '@/hooks/useAdmin';
+
 export function DashboardLayout() {
   const { user } = useAuth();
   const { data: establishment, isLoading: estLoading } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading } = useSubscription();
+  const { data: adminAccess } = useAdminAccess();
 
   const isLoading = estLoading || subLoading;
+  const isSuperAdmin = adminAccess?.isAdmin;
 
   // Determine if access is blocked
   const estStatus = (establishment as any)?.status || '';
@@ -26,9 +30,8 @@ export function DashboardLayout() {
   const entitlements = getPlanEntitlements(subStatus || estStatus, planCode, periodEnd, trialEndsAt);
   
   // Access is blocked if the plan label is "Sem plano" (meaning invalid/expired status)
-  // unless the user is a Super Admin (we'll assume Super Admin bypasses this if we can check it)
-  // For now, if entitlements.professionalLimit is 0, it means the plan is inactive/blocked.
-  const isBlocked = !isLoading && establishment && entitlements.professionalLimit === 0;
+  // Super Admin is never blocked.
+  const isBlocked = !isLoading && !isSuperAdmin && establishment && entitlements.professionalLimit === 0;
 
   return (
     <SidebarProvider>
