@@ -87,7 +87,14 @@ export const PLANS: HardcodedPlan[] = [
 
 /** Returns plan limits based on plan code. */
 export function getPlanLimits(planCode: string | undefined) {
-  const plan = PLANS.find(p => p.code === planCode) || PLANS[0];
+  const code = (planCode || '').toLowerCase();
+  const plan = PLANS.find(p => p.code === code) || PLANS[0];
+  
+  // Custom override for Pro plan (unlimited)
+  if (code === 'pro') {
+    return { maxProfessionals: null };
+  }
+  
   return { maxProfessionals: plan.maxProfessionals };
 }
 
