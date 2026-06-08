@@ -2556,6 +2556,7 @@ export type Database = {
         Args: { p_appointment_id: string }
         Returns: number
       }
+      check_access: { Args: { p_establishment_id: string }; Returns: boolean }
       check_establishment_slug_available: {
         Args: { p_current_establishment_id: string; p_slug: string }
         Returns: boolean
