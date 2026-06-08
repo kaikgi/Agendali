@@ -46,6 +46,7 @@ export default function ClientLogin() {
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
     if (user?.user_metadata?.account_type === 'establishment_owner') {
       setIsLoading(false);
       setAuthError('Essa conta é de estabelecimento. Por favor, acesse o painel.');
