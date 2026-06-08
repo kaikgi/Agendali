@@ -52,41 +52,46 @@ export default function ClientSignup() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { error } = await signUpCustomer({
-      email: data.email,
-      password: data.password,
-      fullName: data.fullName,
-      phone: data.phone,
-    });
+    try {
+      const { error } = await signUpCustomer({
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+        phone: data.phone,
+      });
 
-    if (error) {
-      setIsLoading(false);
-      setAuthError(error.message);
+      if (error) {
+        setAuthError(error.message);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao criar conta',
+          description: error.message,
+        });
+        return;
+      }
+
+      // Log legal acceptance (client)
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user?.id) {
+        await supabase.from('legal_acceptance_logs').insert({
+          user_id: userData.user.id,
+          document_type: 'terms_and_privacy_client',
+          document_version: '1.0',
+          user_agent: navigator.userAgent
+        });
+      }
+
       toast({
-        variant: 'destructive',
-        title: 'Erro ao criar conta',
-        description: error.message,
+        title: 'Conta criada com sucesso!',
+        description: 'Agora você pode agendar seus serviços. Bem-vindo!',
       });
-      return;
+      navigate('/client');
+    } catch (err: any) {
+      console.error('Client signup error:', err);
+      setAuthError(err.message || 'Erro inesperado ao criar conta');
+    } finally {
+      setIsLoading(false);
     }
-
-    // Log legal acceptance (client)
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user?.id) {
-      await supabase.from('legal_acceptance_logs').insert({
-        user_id: userData.user.id,
-        document_type: 'terms_and_privacy_client',
-        document_version: '1.0',
-        user_agent: navigator.userAgent
-      });
-    }
-
-    setIsLoading(false);
-    toast({
-      title: 'Conta criada com sucesso!',
-      description: 'Agora você pode agendar seus serviços. Bem-vindo!',
-    });
-    navigate('/client');
   };
 
   return (

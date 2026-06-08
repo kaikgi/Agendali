@@ -45,23 +45,29 @@ export default function ClientLogin() {
       return;
     }
 
-    const { error } = await signIn(email, password);
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      if (user?.user_metadata?.account_type === 'establishment_owner') {
+        setAuthError('Essa conta é de estabelecimento. Por favor, acesse o painel.');
+        return;
+      }
+
+      navigate('/client');
+    } catch (err: any) {
+      console.error('Client login error:', err);
+      setAuthError(err.message || 'Erro ao realizar login');
+    } finally {
       setIsLoading(false);
-      setAuthError(error.message);
-      return;
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.user_metadata?.account_type === 'establishment_owner') {
-      setIsLoading(false);
-      setAuthError('Essa conta é de estabelecimento. Por favor, acesse o painel.');
-      return;
-    }
-
-    setIsLoading(false);
-    navigate('/client');
   };
 
   const handleGoogleSignIn = async () => {

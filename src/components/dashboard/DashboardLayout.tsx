@@ -15,10 +15,10 @@ import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
-  const { data: subscription, isLoading: subLoading } = useSubscription();
-  const { data: adminAccess, isLoading: adminLoading } = useAdminAccess();
+  const { data: subscription, isLoading: subLoading, error: subError } = useSubscription();
+  const { data: adminAccess, isLoading: adminLoading, error: adminError } = useAdminAccess();
 
   const isActuallyLoading = authLoading || profileLoading || estLoading || subLoading || adminLoading;
 
@@ -38,24 +38,40 @@ export function DashboardLayout() {
   }
 
   // Handle critical establishment error
-  if (estError) {
-    const errorMsg = (estError as any)?.message || 'Erro de conexão';
+  if (estError || subError || adminError || profileError) {
+    const error = estError || subError || adminError || profileError;
+    const errorMsg = (error as any)?.message || 'Erro de conexão';
+    
+    // Safety check for session issues in internal routes
+    const isAuthError = errorMsg.toLowerCase().includes('jwt') || 
+                       errorMsg.toLowerCase().includes('refresh_token') ||
+                       errorMsg.toLowerCase().includes('session_not_found');
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Erro ao carregar estabelecimento</h2>
+            <h2 className="text-xl font-bold">Erro ao carregar dados</h2>
             <p className="text-muted-foreground text-sm">
-              Não conseguimos recuperar os dados da sua empresa no momento.
+              {isAuthError 
+                ? 'Sua sessão expirou ou é inválida. Por favor, saia e entre novamente.'
+                : 'Não conseguimos recuperar os dados necessários no momento. Verifique sua conexão.'}
             </p>
-            <div className="text-xs font-mono bg-muted p-2 rounded break-all mt-4">
+            <div className="text-xs font-mono bg-muted p-2 rounded break-all mt-4 max-h-20 overflow-y-auto">
               {errorMsg}
             </div>
           </div>
-          <Button onClick={() => refetchEst()} className="w-full">
-            Tentar novamente
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Tentar novamente
+            </Button>
+            {isAuthError && (
+              <Button variant="outline" onClick={() => (window as any).location.href = '/login'} className="w-full">
+                Ir para Login
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );

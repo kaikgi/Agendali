@@ -65,31 +65,40 @@ export default function Activate() {
   const onSubmit = async (data: ActivateFormData) => {
     setIsLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password: data.password,
-      data: { activation_pending: false },
-    });
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: data.password,
+        data: { activation_pending: false },
+      });
 
-    setIsLoading(false);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao definir senha',
+          description: error.message,
+        });
+        return;
+      }
 
-    if (error) {
+      setIsSuccess(true);
+      toast({
+        title: 'Conta ativada!',
+        description: 'Sua senha foi criada com sucesso.',
+      });
+
+      setTimeout(() => {
+        navigate('/cadastro');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Activation error:', err);
       toast({
         variant: 'destructive',
-        title: 'Erro ao definir senha',
-        description: error.message,
+        title: 'Erro inesperado',
+        description: err.message || 'Tente novamente mais tarde',
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsSuccess(true);
-    toast({
-      title: 'Conta ativada!',
-      description: 'Sua senha foi criada com sucesso.',
-    });
-
-    setTimeout(() => {
-      navigate('/cadastro');
-    }, 2000);
   };
 
   if (isSuccess) {

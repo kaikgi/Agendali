@@ -52,23 +52,29 @@ export default function Login() {
       return;
     }
 
-    const { error } = await signIn(email, password);
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      if (user?.user_metadata?.account_type === 'customer') {
+        setAuthError('Essa conta é de cliente. Por favor, acesse a área do cliente.');
+        return;
+      }
+
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setAuthError(err.message || 'Erro ao realizar login');
+    } finally {
       setIsLoading(false);
-      setAuthError(error.message);
-      return;
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.user_metadata?.account_type === 'customer') {
-      setIsLoading(false);
-      setAuthError('Essa conta é de cliente. Por favor, acesse a área do cliente.');
-      return;
-    }
-
-    setIsLoading(false);
-    navigate('/dashboard');
   };
 
   const handleResendClick = () => {

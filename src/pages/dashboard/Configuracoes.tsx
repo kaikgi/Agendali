@@ -301,8 +301,13 @@ export default function Configuracoes() {
       queryClient.invalidateQueries({ queryKey: ['user-establishment'] });
       toast({ title: 'Configurações salvas!' });
     } catch (err: any) {
-      if (err?.message !== 'validation') console.error('Erro ao salvar configurações:', err);
+      if (err?.message !== 'validation') {
+        console.error('Erro ao salvar configurações:', err);
+        toast({ title: 'Erro ao salvar', description: err.message || 'Tente novamente', variant: 'destructive' });
+      }
       throw err;
+    } finally {
+      // Logic for ActionButton to stop loading is usually handled by returning the promise
     }
   };
 
