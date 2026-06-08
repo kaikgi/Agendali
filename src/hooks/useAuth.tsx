@@ -117,13 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 2. Create auth user
     const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
+      email: String(normalizedEmail).trim(),
+      password: String(password),
       options: {
         emailRedirectTo: `${getPublicBaseUrl()}/dashboard`,
         data: {
-          full_name: fullName,
-          company_name: companyName,
+          full_name: String(fullName),
+          company_name: String(companyName),
           account_type: 'establishment_owner',
         },
       },
@@ -193,12 +193,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = email.toLowerCase().trim();
 
     const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
+      email: String(normalizedEmail).trim(),
+      password: String(password),
       options: {
         emailRedirectTo: `${getPublicBaseUrl()}/cliente/login`,
         data: {
-          full_name: fullName,
+          full_name: String(fullName),
           account_type: 'customer',
         },
       },
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectTo || `${getPublicBaseUrl()}/dashboard`,
+          redirectTo: String(redirectTo || `${getPublicBaseUrl()}/dashboard`),
         },
       });
       return { error };
@@ -252,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(String(email).trim(), {
       redirectTo: `${getPublicBaseUrl()}/resetar-senha`,
     });
     return { error };
