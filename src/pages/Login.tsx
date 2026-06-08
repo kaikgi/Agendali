@@ -43,10 +43,10 @@ export default function Login() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { error } = await signIn(
-      data.email,
-      data.password,
-    );
+    const email = String(data.email).trim();
+    const password = String(data.password);
+
+    const { error } = await signIn(email, password);
 
     if (error) {
       setIsLoading(false);
