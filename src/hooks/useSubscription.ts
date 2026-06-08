@@ -25,7 +25,10 @@ export function useSubscription() {
   return useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async (): Promise<Subscription | null> => {
-      if (!user?.id) return null;
+      if (!user?.id) {
+        console.log('[useSubscription] No user found');
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('subscriptions')
