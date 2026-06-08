@@ -88,7 +88,7 @@ export default function Assinatura() {
   const estStatus = (est?.status || '').toLowerCase();
   const estPlano = (est?.plano || '').toLowerCase();
 
-  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'past_due';
+  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'past_due' || subscription?.status === 'trialing';
 
   let displayPlanCode: string;
   if (hasActiveSubscription) {
