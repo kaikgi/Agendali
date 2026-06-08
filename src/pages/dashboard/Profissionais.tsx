@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, User, Clock, Scissors, RefreshCw, X, Key } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, Clock, Scissors, RefreshCw, X, Key, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
