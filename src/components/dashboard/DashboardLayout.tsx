@@ -18,9 +18,9 @@ export function DashboardLayout() {
   const subStatus = subscription?.status || '';
   const isBlocked = !subLoading && (
     !establishment ||
-    estStatus === 'past_due' ||
+    // Only block if explicitly canceled. past_due is allowed as per request.
     estStatus === 'canceled' ||
-    (subStatus !== 'active' && estStatus !== 'active')
+    subStatus === 'canceled'
   );
 
   return (
