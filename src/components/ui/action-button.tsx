@@ -71,10 +71,17 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       setState("loading");
       const startTime = Date.now();
       try {
-        await onClick();
-        // Ensure at least 4 seconds of loading animation
+        // Safety timeout for the action itself (15 seconds)
+        const actionPromise = onClick();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Ação expirou (timeout)')), 15000)
+        );
+
+        await Promise.race([actionPromise, timeoutPromise]);
+        
+        // Brief minimum animation time (0.5s instead of 4s)
         const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, 4000 - elapsed);
+        const remaining = Math.max(0, 500 - elapsed);
         if (remaining > 0) {
           await new Promise((r) => setTimeout(r, remaining));
         }
