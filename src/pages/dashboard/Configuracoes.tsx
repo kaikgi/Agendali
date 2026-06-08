@@ -327,9 +327,18 @@ export default function Configuracoes() {
   }
 
   if (error) {
+    const errorMsg = (error as any)?.message || 'Erro desconhecido';
+    console.error('[Configuracoes] Error:', error);
+    
     return (
       <div className="text-center py-12">
-        <p className="text-destructive mb-4">Erro ao carregar configurações</p>
+        <p className="text-destructive mb-2 font-bold text-lg">Erro ao carregar configurações</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          {errorMsg === 'JWT expired' ? 'Sua sessão expirou. Por favor, faça login novamente.' : 'Verifique sua conexão ou tente novamente mais tarde.'}
+        </p>
+        <p className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md mx-auto overflow-hidden text-ellipsis mb-6">
+          Detalhes: {errorMsg}
+        </p>
         <Button variant="outline" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Tentar novamente
