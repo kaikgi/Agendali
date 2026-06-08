@@ -2552,6 +2552,14 @@ export type Database = {
         Returns: string
       }
       admin_get_my_level: { Args: never; Returns: string }
+      can_create_appointment: {
+        Args: { p_establishment_id: string }
+        Returns: Json
+      }
+      can_create_professional: {
+        Args: { p_establishment_id: string }
+        Returns: Json
+      }
       cancel_pending_appointment_email_jobs: {
         Args: { p_appointment_id: string }
         Returns: number
@@ -2763,6 +2771,10 @@ export type Database = {
         Returns: Json
       }
       get_professional_time_blocks: { Args: { p_token: string }; Returns: Json }
+      get_subscription_usage: {
+        Args: { p_establishment_id: string }
+        Returns: Json
+      }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
