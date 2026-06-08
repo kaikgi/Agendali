@@ -37,7 +37,7 @@ export function usePlanLimits(establishmentId: string | undefined) {
         .from('subscriptions')
         .select('plan_code, status')
         .eq('owner_user_id', est.owner_user_id)
-        .eq('status', 'active')
+        .in('status', ['active', 'past_due'])
         .order('created_at', { ascending: false })
         .limit(1);
 
