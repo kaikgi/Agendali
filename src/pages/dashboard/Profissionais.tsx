@@ -264,6 +264,9 @@ export default function Profissionais() {
 
   if (estError || error) {
     const isPlanError = (error as any)?.message?.includes('limite') || (error as any)?.message?.includes('plano');
+    const errorMsg = ((estError || error) as any)?.message || 'Erro desconhecido';
+    console.error('[Profissionais] Error:', estError || error);
+    
     return (
       <div className="text-center py-12">
         <div className="mb-4 flex justify-center">
@@ -274,11 +277,16 @@ export default function Profissionais() {
         <h2 className="text-xl font-bold mb-2">
           {isPlanError ? 'Limite do plano atingido' : 'Erro ao carregar profissionais'}
         </h2>
-        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+        <p className="text-muted-foreground mb-4 max-w-md mx-auto">
           {isPlanError 
             ? 'Seu plano atual não permite adicionar mais profissionais. Faça um upgrade para continuar.' 
-            : 'Ocorreu um problema técnico ao buscar a lista de profissionais. Por favor, tente novamente.'}
+            : errorMsg === 'JWT expired' ? 'Sua sessão expirou. Por favor, faça login novamente.' : 'Ocorreu um problema técnico ao buscar a lista de profissionais. Por favor, tente novamente.'}
         </p>
+        {!isPlanError && (
+          <p className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md mx-auto overflow-hidden text-ellipsis mb-6">
+            Detalhes: {errorMsg}
+          </p>
+        )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button variant="outline" onClick={handleRetry}>
             <RefreshCw className="h-4 w-4 mr-2" />
