@@ -25,6 +25,9 @@ import Sobre from "./pages/Sobre";
 import Contato from "./pages/Contato";
 import Termos from "./pages/Termos";
 import Privacidade from "./pages/Privacidade";
+import PoliticaCookies from "./pages/PoliticaCookies";
+import Seguranca from "./pages/Seguranca";
+import SolicitacaoPrivacidade from "./pages/SolicitacaoPrivacidade";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Agenda from "./pages/dashboard/Agenda";
@@ -89,6 +92,9 @@ const App = () => (
               <Route path="/contato" element={<Contato />} />
               <Route path="/termos" element={<Termos />} />
               <Route path="/privacidade" element={<Privacidade />} />
+              <Route path="/politica-de-cookies" element={<PoliticaCookies />} />
+              <Route path="/seguranca" element={<Seguranca />} />
+              <Route path="/privacidade/solicitacao" element={<SolicitacaoPrivacidade />} />
               
               {/* Dev tools */}
               <Route path="/dev/responsive" element={<ResponsiveTestPage />} />
