@@ -27,7 +27,7 @@ export function useProfile() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         // Profile might not exist yet for new users - auto-create it
