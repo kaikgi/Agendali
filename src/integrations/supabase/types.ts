@@ -2778,6 +2778,10 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { p_user_id: string }; Returns: boolean }
+      is_establishment_owner: {
+        Args: { p_establishment_id: string }
+        Returns: boolean
+      }
       is_master_admin: { Args: never; Returns: boolean }
       normalize_email: { Args: { input_email: string }; Returns: string }
       notify_appointment_status_change: {
