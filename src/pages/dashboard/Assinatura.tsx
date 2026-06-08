@@ -88,7 +88,7 @@ export default function Assinatura() {
   const estStatus = (est?.status || '').toLowerCase();
   const estPlano = (est?.plano || '').toLowerCase();
 
-  const hasActiveSubscription = subscription?.status === 'active';
+  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'past_due';
 
   let displayPlanCode: string;
   if (hasActiveSubscription) {
@@ -100,7 +100,7 @@ export default function Assinatura() {
   }
 
   const currentPlan = PLANS.find(p => p.code === displayPlanCode) || PLANS[0];
-  const entitlements = getPlanEntitlements(estStatus, displayPlanCode);
+  const entitlements = getPlanEntitlements(subscription?.status || estStatus, displayPlanCode);
 
   const billingCycle = (subscription?.billing_cycle || 'monthly').toLowerCase() as BillingPeriod;
   const billingCycleLabel = getBillingCycleLabel(billingCycle);
@@ -167,9 +167,15 @@ export default function Assinatura() {
                 Plano Atual
               </CardTitle>
               {hasActiveSubscription ? (
-                <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Ativo
+                <Badge variant="default" className={cn(
+                  subscription?.status === 'past_due' ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                )}>
+                  {subscription?.status === 'past_due' ? (
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                  )}
+                  {subscription?.status === 'past_due' ? 'Pendente' : 'Ativo'}
                 </Badge>
               ) : (
                 <Badge variant="secondary">Sem assinatura ativa</Badge>
