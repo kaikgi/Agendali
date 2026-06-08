@@ -16,6 +16,7 @@ import {
   Mail,
   Send,
   Loader2,
+  Settings2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminPermissions, type AdminPermission } from "@/hooks/useAdminPermissions";
@@ -34,6 +35,7 @@ const adminNavItems: { to: string; label: string; icon: React.ComponentType<any>
   { to: "/admin/disparos", label: "Disparos", icon: Send, end: false, permission: "view_broadcasts" },
   { to: "/admin/legal", label: "Documentos Legais", icon: Shield, end: false, permission: "manage_establishments" },
   { to: "/admin/danger-zone", label: "Danger Zone", icon: Skull, end: false, danger: true, permission: "view_danger_zone" },
+  { to: "/admin/diagnostico", label: "Diagnóstico", icon: Settings2, end: false, permission: "view_dashboard" },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
