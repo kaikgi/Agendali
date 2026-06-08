@@ -11,11 +11,11 @@ describe('Authentication Data Sanitization', () => {
     const mockEmail = ' test@example.com ';
     const mockPassword = 'password123';
     
-    // Simulating how we now handle it in our components
     const sanitizedEmail = String(mockEmail).trim();
     const sanitizedPassword = String(mockPassword);
 
-    await supabase.auth.signInWithPassword({
+    // Using any to bypass strict type check for the sake of the runtime test logic
+    await (supabase.auth.signInWithPassword as any)({
       email: sanitizedEmail,
       password: sanitizedPassword,
     });
@@ -26,28 +26,30 @@ describe('Authentication Data Sanitization', () => {
     });
     
     // Verify it's a string
-    const callArgs = vi.mocked(supabase.auth.signInWithPassword).mock.calls[0][0];
+    const callArgs = vi.mocked(supabase.auth.signInWithPassword).mock.calls[0][0] as any;
     expect(typeof callArgs.email).toBe('string');
     expect(typeof callArgs.password).toBe('string');
   });
 
-  it('should handle potential object inputs by casting to string', async () => {
-    // @ts-ignore - simulating bad input
-    const badEmail = { toString: () => 'malicious@example.com' };
-    const badPassword = { toString: () => 'somepassword' };
+  it('should handle potential non-string inputs by casting to string', async () => {
+    // Simulating bad input like an object that might be passed from some weird UI edge case
+    const badEmail = 12345;
+    const badPassword = true;
 
     const sanitizedEmail = String(badEmail).trim();
     const sanitizedPassword = String(badPassword);
 
-    await supabase.auth.signInWithPassword({
+    await (supabase.auth.signInWithPassword as any)({
       email: sanitizedEmail,
       password: sanitizedPassword,
     });
 
     expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-      email: 'malicious@example.com',
-      password: 'somepassword',
+      email: '12345',
+      password: 'true',
     });
-    expect(typeof vi.mocked(supabase.auth.signInWithPassword).mock.calls[0][0].email).toBe('string');
+    const callArgs = vi.mocked(supabase.auth.signInWithPassword).mock.calls[0][0] as any;
+    expect(typeof callArgs.email).toBe('string');
+    expect(typeof callArgs.password).toBe('string');
   });
 });
