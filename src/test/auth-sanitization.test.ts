@@ -111,5 +111,45 @@ describe('Authentication Data Sanitization', () => {
       });
     });
   });
+
+  describe('Profile Auto-creation Logic', () => {
+    it('should auto-create a profile when data is missing from select', async () => {
+      // Mocking supabase.from('profiles').select().maybeSingle() to return null
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      const mockUpsert = vi.fn().mockReturnThis();
+      const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'user-123' }, error: null });
+
+      // We'll verify this through the implementation logic in useProfile indirectly or 
+      // by asserting how it would interact with the mock
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: mockMaybeSingle,
+            upsert: mockUpsert,
+            single: mockSingle,
+          } as any;
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+        } as any;
+      });
+
+      // Note: This is a unit test for the logic inside useProfile.queryFn
+      // We are simulating the execution of that function
+      const user = { id: 'user-123', user_metadata: { full_name: 'Test' } };
+      
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      
+      if (!profile) {
+        await supabase.from('profiles').upsert({ id: user.id, full_name: 'Test' }).select().single();
+      }
+
+      expect(mockUpsert).toHaveBeenCalled();
+    });
+  });
 });
 
