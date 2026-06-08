@@ -7,21 +7,28 @@ import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/hooks/useAuth';
 import { BlockedAccessModal } from './BlockedAccessModal';
+import { getPlanEntitlements } from '@/lib/planEntitlements';
 
 export function DashboardLayout() {
   const { user } = useAuth();
-  const { data: establishment } = useUserEstablishment();
+  const { data: establishment, isLoading: estLoading } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading } = useSubscription();
+
+  const isLoading = estLoading || subLoading;
 
   // Determine if access is blocked
   const estStatus = (establishment as any)?.status || '';
   const subStatus = subscription?.status || '';
-  const isBlocked = !subLoading && (
-    !establishment ||
-    // Only block if explicitly canceled. past_due is allowed as per request.
-    estStatus === 'canceled' ||
-    subStatus === 'canceled'
-  );
+  const planCode = subscription?.plan_code || subscription?.plan || (establishment as any)?.plano;
+  const periodEnd = subscription?.current_period_end;
+  const trialEndsAt = (establishment as any)?.trial_ends_at;
+
+  const entitlements = getPlanEntitlements(subStatus || estStatus, planCode, periodEnd, trialEndsAt);
+  
+  // Access is blocked if the plan label is "Sem plano" (meaning invalid/expired status)
+  // unless the user is a Super Admin (we'll assume Super Admin bypasses this if we can check it)
+  // For now, if entitlements.professionalLimit is 0, it means the plan is inactive/blocked.
+  const isBlocked = !isLoading && establishment && entitlements.professionalLimit === 0;
 
   return (
     <SidebarProvider>
