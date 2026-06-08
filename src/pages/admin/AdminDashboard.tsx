@@ -145,7 +145,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Establishments */}
-      <Card shadow="sm">
+      <Card>
         <CardHeader className="pb-3 border-b border-border/50">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
