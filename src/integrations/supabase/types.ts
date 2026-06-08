@@ -473,6 +473,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointment_accepted_terms_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       appointment_email_jobs: {
@@ -661,6 +668,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointment_payments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       appointments: {
@@ -740,6 +754,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -801,6 +822,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -880,6 +908,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "business_hours_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       client_tags: {
@@ -925,6 +960,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_tags_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -1010,6 +1052,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commission_entries_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commission_entries_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -1081,6 +1130,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commission_rules_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commission_rules_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -1142,6 +1198,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commission_settlements_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commission_settlements_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -1188,6 +1251,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "customer_tag_assignments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "customer_tag_assignments_tag_id_fkey"
             columns: ["tag_id"]
             isOneToOne: false
@@ -1227,6 +1297,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -1339,6 +1416,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "establishment_members_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       establishment_notifications: {
@@ -1388,6 +1472,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "establishment_notifications_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -1584,6 +1675,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "legal_acceptance_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       legal_document_versions: {
@@ -1670,6 +1768,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payment_accounts_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payment_settings: {
@@ -1724,6 +1829,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: true
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: true
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -1810,6 +1922,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "privacy_requests_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -1962,6 +2081,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "professionals_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -2054,6 +2180,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ratings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ratings_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -2105,6 +2238,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recurring_time_blocks_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "recurring_time_blocks_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -2152,6 +2292,13 @@ export type Database = {
             referencedRelation: "establishments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "service_categories_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       service_payment_settings: {
@@ -2191,6 +2338,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_payment_settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
           {
@@ -2255,6 +2409,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
             referencedColumns: ["id"]
           },
         ]
@@ -2485,6 +2646,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "time_blocks_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "public_establishments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "time_blocks_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -2500,6 +2668,60 @@ export type Database = {
           email_type: string | null
           status: string | null
           total: number | null
+        }
+        Relationships: []
+      }
+      public_establishments: {
+        Row: {
+          address: string | null
+          booking_enabled: boolean | null
+          cancellation_policy_text: string | null
+          city: string | null
+          description: string | null
+          id: string | null
+          instagram: string | null
+          logo_url: string | null
+          name: string | null
+          phone: string | null
+          require_policy_acceptance: boolean | null
+          slot_interval_minutes: number | null
+          slug: string | null
+          state: string | null
+          timezone: string | null
+        }
+        Insert: {
+          address?: string | null
+          booking_enabled?: boolean | null
+          cancellation_policy_text?: string | null
+          city?: string | null
+          description?: string | null
+          id?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          name?: string | null
+          phone?: string | null
+          require_policy_acceptance?: boolean | null
+          slot_interval_minutes?: number | null
+          slug?: string | null
+          state?: string | null
+          timezone?: string | null
+        }
+        Update: {
+          address?: string | null
+          booking_enabled?: boolean | null
+          cancellation_policy_text?: string | null
+          city?: string | null
+          description?: string | null
+          id?: string | null
+          instagram?: string | null
+          logo_url?: string | null
+          name?: string | null
+          phone?: string | null
+          require_policy_acceptance?: boolean | null
+          slot_interval_minutes?: number | null
+          slug?: string | null
+          state?: string | null
+          timezone?: string | null
         }
         Relationships: []
       }
@@ -2571,6 +2793,15 @@ export type Database = {
       }
       check_has_active_entitlement: {
         Args: { p_email: string }
+        Returns: boolean
+      }
+      check_is_admin: { Args: never; Returns: boolean }
+      check_is_member: {
+        Args: { establishment_id_param: string }
+        Returns: boolean
+      }
+      check_is_owner: {
+        Args: { establishment_id_param: string }
         Returns: boolean
       }
       check_signup_authorization: { Args: { p_email: string }; Returns: Json }
