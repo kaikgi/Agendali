@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX IF NOT EXISTS idx_appointment_email_jobs_dedupe_key ON public.appointment_email_jobs (dedupe_key) WHERE dedupe_key IS NOT NULL;

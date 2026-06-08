@@ -1,2 +1,0 @@
-ALTER TABLE public.appointment_email_jobs DROP CONSTRAINT appointment_email_jobs_email_type_check;
-ALTER TABLE public.appointment_email_jobs ADD CONSTRAINT appointment_email_jobs_email_type_check CHECK (email_type = ANY (ARRAY['appointment_confirmation'::text, 'appointment_reminder_24h'::text, 'appointment_reminder_2h'::text, 'appointment_cancelled'::text, 'appointment_rescheduled'::text, 'appointment_pending_approval'::text]));

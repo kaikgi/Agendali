@@ -1,1 +1,0 @@
-DROP FUNCTION IF EXISTS public.get_professional_commissions(text, date, date);
