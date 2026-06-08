@@ -31,41 +31,39 @@ export function useProfile() {
       
       if (!data) {
         // Profile not found - auto-create it
-          const defaultAccountType: AccountType = 'customer';
-          
-          // Check if user owns an establishment to determine account type
-          const { data: establishments } = await supabase
-            .from('establishments')
-            .select('id')
-            .eq('owner_user_id', user.id)
-            .limit(1);
-          
-          const accountType: AccountType = 
-            (establishments && establishments.length > 0) 
-              ? 'establishment_owner' 
-              : defaultAccountType;
+        const defaultAccountType: AccountType = 'customer';
+        
+        // Check if user owns an establishment to determine account type
+        const { data: establishments } = await supabase
+          .from('establishments')
+          .select('id')
+          .eq('owner_user_id', user.id)
+          .limit(1);
+        
+        const accountType: AccountType = 
+          (establishments && establishments.length > 0) 
+            ? 'establishment_owner' 
+            : defaultAccountType;
 
-          const newProfile = {
-            id: user.id,
-            full_name: user.user_metadata?.full_name || null,
-            phone: user.user_metadata?.phone || null,
-            account_type: accountType,
-          };
+        const newProfile = {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || null,
+          phone: user.user_metadata?.phone || null,
+          account_type: accountType,
+        };
 
-          const { data: created, error: insertError } = await supabase
-            .from('profiles')
-            .upsert(newProfile)
-            .select()
-            .single();
+        const { data: created, error: insertError } = await supabase
+          .from('profiles')
+          .upsert(newProfile)
+          .select()
+          .single();
 
-          if (insertError) {
-            console.error('Auto-create profile failed:', insertError);
-            return null;
-          }
-          
-          return created as Profile;
+        if (insertError) {
+          console.error('Auto-create profile failed:', insertError);
+          return null;
         }
-        if (error) throw error;
+        
+        return created as Profile;
       }
       
       return data as Profile;
