@@ -36,8 +36,14 @@ export default function ClientLogin() {
     setAuthError(null);
     setIsLoading(true);
 
-    const email = String(data.email).trim();
-    const password = String(data.password);
+    const email = String(data.email || "").trim();
+    const password = String(data.password || "");
+
+    if (!email || !password) {
+      setIsLoading(false);
+      setAuthError("Email e senha são obrigatórios.");
+      return;
+    }
 
     const { error } = await signIn(email, password);
 
