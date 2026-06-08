@@ -29,9 +29,8 @@ export function useProfile() {
         .eq('id', user.id)
         .maybeSingle();
       
-      if (error) {
-        // Profile might not exist yet for new users - auto-create it
-        if (error.code === 'PGRST116') {
+      if (!data) {
+        if (true) { // If profile not found, auto-create it
           const defaultAccountType: AccountType = 'customer';
           
           // Check if user owns an establishment to determine account type
