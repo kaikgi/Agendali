@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { customerFormSchema, CustomerFormData } from '@/lib/validations/booking';
@@ -56,7 +57,16 @@ interface CustomerStepProps {
 
 export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultValues, isGuest = false, paymentConfig, servicePriceCents }: CustomerStepProps) {
   const [termsRead, setTermsRead] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [ipAddress, setIpAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => setIpAddress(data.ip))
+      .catch(() => {});
+  }, []);
 
   const canonicalEmail = isGuest ? '' : (defaultValues?.email || '');
 
@@ -87,8 +97,8 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
     formState: { errors },
   } = useForm<CustomerFormData>({
     resolver: zodResolver(
-      customerFormSchema.refine((data) => data.acceptPolicy === true, {
-        message: 'Você precisa aceitar os termos de agendamento',
+      customerFormSchema.refine((data) => data.acceptPolicy === true && privacyAccepted, {
+        message: 'Você precisa aceitar os termos de agendamento e a política de privacidade',
         path: ['acceptPolicy'],
       })
     ),
@@ -125,8 +135,20 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       ...data,
       email: isGuest ? data.email : canonicalEmail,
     };
-    console.log('[CustomerStep] submit', { termsType: generatedTerms.type });
-    await onSubmit(finalData, generatedTerms);
+    
+    // Add IP and User Agent to metadata
+    const enrichedTerms = {
+      ...generatedTerms,
+      params: {
+        ...generatedTerms.params,
+        ip_address: ipAddress,
+        user_agent: navigator.userAgent,
+        accepted_at: new Date().toISOString()
+      }
+    };
+
+    console.log('[CustomerStep] submit', { termsType: enrichedTerms.type });
+    await onSubmit(finalData, enrichedTerms);
   };
 
   const termsTypeLabel = generatedTerms.type === 'deposit'
@@ -302,6 +324,18 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
           {errors.acceptPolicy && (
             <p className="text-sm text-destructive">{errors.acceptPolicy.message}</p>
           )}
+          <div className="flex items-start gap-2 pt-2">
+            <Checkbox
+              id="acceptPrivacy"
+              checked={privacyAccepted}
+              onCheckedChange={(checked) => setPrivacyAccepted(checked as boolean)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="acceptPrivacy" className="text-sm font-normal cursor-pointer">
+                Aceito a <Link to="/privacidade" target="_blank" className="text-primary hover:underline">Política de Privacidade</Link> e autorizo o processamento dos meus dados para este agendamento.
+              </Label>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,10 +36,10 @@ export default function ClientLogin() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { user, error } = await signIn({
-      email: data.email,
-      password: data.password,
-    });
+    const { error } = await signIn(
+      data.email,
+      data.password,
+    );
 
     if (error) {
       setIsLoading(false);
@@ -46,6 +47,7 @@ export default function ClientLogin() {
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
     if (user?.user_metadata?.account_type === 'establishment_owner') {
       setIsLoading(false);
       setAuthError('Essa conta é de estabelecimento. Por favor, acesse o painel.');
@@ -64,11 +66,11 @@ export default function ClientLogin() {
 
     if (error) {
       setIsLoading(false);
-      setAuthError(error);
+      setAuthError(error.message);
       toast({
         variant: 'destructive',
         title: 'Erro ao conectar com Google',
-        description: error,
+        description: error.message,
       });
       return;
     }

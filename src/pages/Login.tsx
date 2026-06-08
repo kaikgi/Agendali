@@ -43,10 +43,10 @@ export default function Login() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { user, error } = await signIn({
-      email: data.email,
-      password: data.password,
-    });
+    const { error } = await signIn(
+      data.email,
+      data.password,
+    );
 
     if (error) {
       setIsLoading(false);
@@ -54,6 +54,7 @@ export default function Login() {
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
     if (user?.user_metadata?.account_type === 'customer') {
       setIsLoading(false);
       setAuthError('Essa conta é de cliente. Por favor, acesse a área do cliente.');

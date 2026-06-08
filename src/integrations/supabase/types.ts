@@ -755,6 +755,56 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          establishment_id: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_webhook_events: {
         Row: {
           event_id: string
@@ -1492,6 +1542,83 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_acceptance_logs: {
+        Row: {
+          accepted_at: string | null
+          document_type: string
+          document_version: string
+          establishment_id: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          document_type: string
+          document_version: string
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          document_type?: string
+          document_version?: string
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acceptance_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_document_versions: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          published_at: string | null
+          title: string
+          type: string
+          version: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          published_at?: string | null
+          title: string
+          type: string
+          version: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          published_at?: string | null
+          title?: string
+          type?: string
+          version?: string
+        }
+        Relationships: []
+      }
       payment_accounts: {
         Row: {
           access_token: string
@@ -1633,6 +1760,59 @@ export type Database = {
           received_at?: string
         }
         Relationships: []
+      }
+      privacy_requests: {
+        Row: {
+          created_at: string | null
+          establishment_id: string | null
+          id: string
+          ip_address: string | null
+          notes: string | null
+          request_type: string
+          requester_email: string
+          requester_name: string
+          requester_phone: string | null
+          resolved_at: string | null
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          request_type: string
+          requester_email: string
+          requester_name: string
+          requester_phone?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          establishment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          request_type?: string
+          requester_email?: string
+          requester_name?: string
+          requester_phone?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "privacy_requests_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       professional_hours: {
         Row: {
