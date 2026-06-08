@@ -35,10 +35,10 @@ export default function ClientLogin() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { user, error } = await signIn({
-      email: data.email,
-      password: data.password,
-    });
+    const { error } = await signIn(
+      data.email,
+      data.password,
+    );
 
     if (error) {
       setIsLoading(false);
@@ -64,11 +64,11 @@ export default function ClientLogin() {
 
     if (error) {
       setIsLoading(false);
-      setAuthError(error);
+      setAuthError(error.message);
       toast({
         variant: 'destructive',
         title: 'Erro ao conectar com Google',
-        description: error,
+        description: error.message,
       });
       return;
     }

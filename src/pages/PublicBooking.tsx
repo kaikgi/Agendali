@@ -363,13 +363,12 @@ export default function PublicBooking() {
       const termsToSave = terms || pendingTerms;
       if (termsToSave && establishment) {
         (supabase as any)
-          .from('appointment_accepted_terms')
-          .insert({
-            appointment_id: appointmentId,
-            establishment_id: establishment.id,
-            terms_type: termsToSave.type,
-            terms_text: termsToSave.text,
-            terms_params: termsToSave.params,
+          .rpc('public_save_accepted_terms', {
+            p_token: result.manage_token,
+            p_appointment_id: appointmentId,
+            p_terms_type: termsToSave.type,
+            p_terms_text: termsToSave.text,
+            p_terms_params: termsToSave.params,
           })
           .then(({ error: termsErr }: any) => {
             if (termsErr) console.error('[Booking] Failed to save accepted terms:', termsErr);

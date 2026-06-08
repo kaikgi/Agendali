@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Loader2, ShieldCheck, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { signupSchema, SignupFormData } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,18 @@ import { BackgroundGradient } from '@/components/ui/background-gradient';
 export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [ipAddress, setIpAddress] = useState<string | null>(null);
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => setIpAddress(data.ip))
+      .catch(() => console.warn('Could not fetch IP address for legal acceptance log'));
+  }, []);
 
   const {
     register,
@@ -39,6 +48,15 @@ export default function Signup() {
   const password = watch('password', '');
 
   const onSubmit = async (data: SignupFormData) => {
+    if (!acceptedTerms) {
+      toast({
+        variant: 'destructive',
+        title: 'Termos não aceitos',
+        description: 'Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.',
+      });
+      return;
+    }
+
     setAuthError(null);
     setIsLoading(true);
 
@@ -67,6 +85,22 @@ export default function Signup() {
       await supabase.from('profiles').update({
         phone: data.phone,
       }).eq('id', userData.user.id);
+
+      // Log legal acceptance
+      const { data: estData } = await supabase
+        .from('establishments')
+        .select('id')
+        .eq('owner_user_id', userData.user.id)
+        .single();
+
+      await supabase.from('legal_acceptance_logs').insert({
+        user_id: userData.user.id,
+        establishment_id: estData?.id,
+        document_type: 'terms_and_privacy',
+        document_version: '1.0',
+        ip_address: ipAddress,
+        user_agent: navigator.userAgent
+      });
     }
 
     setIsLoading(false);
@@ -151,6 +185,27 @@ export default function Signup() {
                 <Label htmlFor="confirmPassword" className="text-slate-700">Confirmar senha</Label>
                 <PasswordInput id="confirmPassword" placeholder="Repita a senha" autoComplete="new-password" className="bg-white border-slate-300" {...register('confirmPassword')} />
                 {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>}
+              </div>
+
+              <div className="flex items-start space-x-2 py-2">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  required
+                />
+                <Label htmlFor="terms" className="text-sm text-slate-600 font-normal leading-tight">
+                  Li e aceito os{' '}
+                  <Link to="/termos" target="_blank" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                    Termos de Uso <ExternalLink className="h-3 w-3" />
+                  </Link>{' '}
+                  e a{' '}
+                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                    Política de Privacidade <ExternalLink className="h-3 w-3" />
+                  </Link>.
+                </Label>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
