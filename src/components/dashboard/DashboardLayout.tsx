@@ -9,16 +9,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
 
-import { useAdminAccess } from '@/hooks/useAdmin';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 export function DashboardLayout() {
   const { user } = useAuth();
-  const { data: establishment, isLoading: estLoading } = useUserEstablishment();
+  const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading } = useSubscription();
-  const { data: adminAccess } = useAdminAccess();
+  const { isSuperAdmin, isLoading: adminLoading } = useAdminPermissions();
 
-  const isLoading = estLoading || subLoading;
-  const isSuperAdmin = adminAccess?.isAdmin;
+  const isLoading = estLoading || subLoading || adminLoading;
 
   // Determine if access is blocked
   const estStatus = (establishment as any)?.status || '';
@@ -32,6 +31,15 @@ export function DashboardLayout() {
   // Access is blocked if the plan label is "Sem plano" (meaning invalid/expired status)
   // Super Admin is never blocked.
   const isBlocked = !isLoading && !isSuperAdmin && establishment && entitlements.professionalLimit === 0;
+
+  if (estError) {
+    const errorMsg = (estError as any)?.message || 'Erro desconhecido';
+    console.error('[DashboardLayout] Establishment error:', estError);
+    
+    // If it's just the main layout, we might want to show a more global error
+    // but usually the specific page (Outlet) will handle it or DashboardHome will.
+    // However, if we can't even load the layout's dependencies, we should show a fallback.
+  }
 
   return (
     <SidebarProvider>

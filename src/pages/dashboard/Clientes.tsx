@@ -120,9 +120,18 @@ export default function Clientes() {
   }
 
   if (estError || error) {
+    const errorMsg = ((estError || error) as any)?.message || 'Erro desconhecido';
+    console.error('[Clientes] Error:', estError || error);
+    
     return (
       <div className="text-center py-12">
-        <p className="text-destructive mb-4">Erro ao carregar clientes</p>
+        <p className="text-destructive mb-4 font-bold">Erro ao carregar clientes</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          {errorMsg === 'JWT expired' ? 'Sua sessão expirou. Por favor, faça login novamente.' : 'Verifique sua conexão ou tente novamente mais tarde.'}
+        </p>
+        <p className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md mx-auto overflow-hidden text-ellipsis mb-6">
+          Detalhes: {errorMsg}
+        </p>
         <Button variant="outline" onClick={handleRetry}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Tentar novamente
