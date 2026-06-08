@@ -128,7 +128,8 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const locked = item.requiredFeature && !features[item.requiredFeature];
+                const isSuperAdmin = adminAccess?.isAdmin;
+                const locked = !isSuperAdmin && item.requiredFeature && !features[item.requiredFeature];
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
