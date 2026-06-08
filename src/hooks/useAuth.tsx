@@ -220,7 +220,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Login payload", { email: typeof email, password: typeof password });
+    }
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: email.trim(), 
+      password 
+    });
     return { error };
   };
 
