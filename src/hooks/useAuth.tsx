@@ -220,12 +220,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Login payload", { email: typeof email, password: typeof password });
+    // @ts-ignore - Using import.meta.env for Vite
+    if (import.meta.env?.DEV) {
+      console.log("Login payload types:", { email: typeof email, password: typeof password });
     }
+    
     const { error } = await supabase.auth.signInWithPassword({ 
-      email: email.trim(), 
-      password 
+      email: String(email).trim(), 
+      password: String(password)
     });
     return { error };
   };
