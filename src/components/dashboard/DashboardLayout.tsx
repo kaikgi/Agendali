@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading, error: subError } = useSubscription();
   const { data: adminAccess, isLoading: adminLoading, error: adminError } = useAdminAccess();
