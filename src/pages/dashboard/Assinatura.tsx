@@ -180,12 +180,20 @@ export default function Assinatura() {
                   ) : (
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                   )}
-                  {subscription?.status === 'past_due' ? 'Pendente' : 'Ativo'}
+                  {subscription?.status === 'past_due' ? 'Pagamento Pendente' : 'Ativo'}
                 </Badge>
               ) : (
                 <Badge variant="secondary">Sem assinatura ativa</Badge>
               )}
             </div>
+            {subscription?.status === 'past_due' && (
+              <Alert variant="default" className="mt-2 border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200 text-xs">
+                  Sua última tentativa de pagamento falhou. Você ainda tem acesso ao sistema enquanto processamos a pendência, mas por favor regularize sua situação na Kiwify.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Plan Hero */}
