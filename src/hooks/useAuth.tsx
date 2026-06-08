@@ -252,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(String(email).trim(), {
       redirectTo: `${getPublicBaseUrl()}/resetar-senha`,
     });
     return { error };
