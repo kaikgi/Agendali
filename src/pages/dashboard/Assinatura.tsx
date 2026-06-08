@@ -100,7 +100,12 @@ export default function Assinatura() {
   }
 
   const currentPlan = PLANS.find(p => p.code === displayPlanCode) || PLANS[0];
-  const entitlements = getPlanEntitlements(subscription?.status || estStatus, displayPlanCode);
+  const entitlements = getPlanEntitlements(
+    subscription?.status || estStatus, 
+    displayPlanCode, 
+    subscription?.current_period_end, 
+    establishment?.trial_ends_at
+  );
 
   const billingCycle = (subscription?.billing_cycle || 'monthly').toLowerCase() as BillingPeriod;
   const billingCycleLabel = getBillingCycleLabel(billingCycle);
