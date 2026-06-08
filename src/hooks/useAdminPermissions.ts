@@ -76,7 +76,7 @@ export function useAdminRole() {
   return useQuery({
     queryKey: ["my-admin-role", user?.id],
     queryFn: async () => {
-      if (!user) return "none";
+      if (!user?.id) return "none";
       try {
         const { data, error } = await supabase.rpc("admin_get_my_level");
         if (error) {

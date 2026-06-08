@@ -9,7 +9,7 @@ export function useAdminAccess() {
   return useQuery({
     queryKey: ["admin-access", user?.id],
     queryFn: async () => {
-      if (!user) return { isAdmin: false };
+      if (!user?.id) return { isAdmin: false };
       try {
         // Use the security-definer RPC which bypasses RLS
         const { data, error } = await supabase.rpc("is_admin", {

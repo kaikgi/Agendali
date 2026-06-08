@@ -10,12 +10,13 @@ import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
 import { useAdminAccess } from '@/hooks/useAdmin';
 import { useProfile } from '@/hooks/useProfile';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
-  const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
+  const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: adminAccess, isLoading: adminLoading } = useAdminAccess();
 
@@ -24,13 +25,40 @@ export function DashboardLayout() {
   if (isActuallyLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Carregando painel...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Handle critical establishment error
+  if (estError) {
+    const errorMsg = (estError as any)?.message || 'Erro de conexão';
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">Erro ao carregar estabelecimento</h2>
+            <p className="text-muted-foreground text-sm">
+              Não conseguimos recuperar os dados da sua empresa no momento.
+            </p>
+            <div className="text-xs font-mono bg-muted p-2 rounded break-all mt-4">
+              {errorMsg}
+            </div>
+          </div>
+          <Button onClick={() => refetchEst()} className="w-full">
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Determine if access is blocked
@@ -46,10 +74,6 @@ export function DashboardLayout() {
   // Super Admin is never blocked.
   const isSuperAdmin = adminAccess?.isAdmin;
   const isBlocked = !isSuperAdmin && establishment && entitlements.professionalLimit === 0;
-
-  if (estError) {
-    console.error('[DashboardLayout] Establishment error:', estError);
-  }
 
   return (
     <SidebarProvider>

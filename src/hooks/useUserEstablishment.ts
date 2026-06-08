@@ -10,7 +10,7 @@ export function useUserEstablishment() {
   return useQuery({
     queryKey: ['user-establishment', user?.id],
     queryFn: async () => {
-      if (!user) {
+      if (!user?.id) {
         console.log('[useUserEstablishment] No user found');
         return null;
       }
