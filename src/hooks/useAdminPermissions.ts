@@ -77,9 +77,16 @@ export function useAdminRole() {
     queryKey: ["my-admin-role", user?.id],
     queryFn: async () => {
       if (!user) return "none";
-      const { data, error } = await supabase.rpc("admin_get_my_level" as any);
-      if (error) throw error;
-      return (data as string) ?? "none";
+      try {
+        const { data, error } = await supabase.rpc("admin_get_my_level");
+        if (error) {
+          console.warn("[useAdminRole] RPC error (might not be admin):", error.message);
+          return "none";
+        }
+        return (data as string) ?? "none";
+      } catch (err) {
+        return "none";
+      }
     },
     enabled: !!user,
     staleTime: 30000,

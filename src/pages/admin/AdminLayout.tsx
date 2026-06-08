@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
@@ -15,6 +15,7 @@ import {
   ScrollText,
   Mail,
   Send,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminPermissions, type AdminPermission } from "@/hooks/useAdminPermissions";
@@ -44,18 +45,36 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function AdminLayout() {
+  const { user, loading: authLoading } = useAuth();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { role, hasPermission } = useAdminPermissions();
+  const { role, hasPermission, isLoading: permissionsLoading, error: permissionsError } = useAdminPermissions();
 
-  const visibleItems = adminNavItems.filter(item => hasPermission(item.permission));
+  const isActuallyLoading = authLoading || permissionsLoading;
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
+  if (isActuallyLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role === 'none' || !role) {
+    return <Navigate to="/" replace />;
+  }
+
+  const visibleItems = adminNavItems.filter(item => hasPermission(item.permission));
   const roleLabel = ROLE_LABELS[role || ""] || "Admin";
 
   return (
