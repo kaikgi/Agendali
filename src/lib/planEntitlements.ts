@@ -64,13 +64,31 @@ export const FEATURE_LABELS: Record<FeatureFlag, { title: string; description: s
 export function getPlanEntitlements(
   status: string | undefined | null,
   plano: string | undefined | null,
-  _trialEndsAt?: string | null | undefined,
+  periodEnd?: string | null | undefined,
+  trialEndsAt?: string | null | undefined,
 ): PlanEntitlements {
   const normalizedStatus = (status || '').toLowerCase();
   const normalizedPlano = (plano || '').toLowerCase();
+  const now = new Date();
 
-  // Consider active if status is active, empty (legacy), or billing is verified
-  const isActive = ['active', 'past_due', ''].includes(normalizedStatus);
+  // Check trial validity
+  const trialActive = trialEndsAt ? new Date(trialEndsAt) > now : false;
+  
+  // Check period end for past_due (grace period)
+  // If current_period_end exists and is in the past, it's actually expired.
+  // We'll allow a 3-day grace period for past_due status.
+  const isWithinGracePeriod = (dateStr: string | null | undefined) => {
+    if (!dateStr) return true; // No date means we don't block
+    const endDate = new Date(dateStr);
+    const graceDate = new Date(endDate.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days grace
+    return graceDate > now;
+  };
+
+  const isActive = 
+    normalizedStatus === 'active' || 
+    (normalizedStatus === 'trialing' && trialActive) ||
+    (normalizedStatus === 'past_due' && isWithinGracePeriod(periodEnd)) ||
+    normalizedStatus === ''; // Legacy/Initial
 
   if (isActive) {
     switch (normalizedPlano) {
@@ -91,15 +109,7 @@ export function getPlanEntitlements(
           features: STUDIO_FEATURES 
         };
       case 'solo':
-        return { 
-          planLabel: 'Solo', 
-          professionalLimit: 1, 
-          appointmentLimit: Infinity, 
-          hasCommissions: false, 
-          features: SOLO_FEATURES 
-        };
       default:
-        // Default to Solo for any other case if status is active
         return { 
           planLabel: 'Solo', 
           professionalLimit: 1, 
@@ -110,9 +120,9 @@ export function getPlanEntitlements(
     }
   }
 
-  // Canceled or unknown — fallback to most restrictive
+  // Canceled, expired past_due, or unknown — fallback to most restrictive
   return { 
-    planLabel: 'Sem plano', 
+    planLabel: normalizedStatus === 'past_due' ? 'Pagamento Pendente' : 'Sem plano', 
     professionalLimit: 0, 
     appointmentLimit: 0, 
     hasCommissions: false, 
