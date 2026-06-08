@@ -193,12 +193,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const normalizedEmail = email.toLowerCase().trim();
 
     const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
+      email: String(normalizedEmail).trim(),
+      password: String(password),
       options: {
         emailRedirectTo: `${getPublicBaseUrl()}/cliente/login`,
         data: {
-          full_name: fullName,
+          full_name: String(fullName),
           account_type: 'customer',
         },
       },
