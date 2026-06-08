@@ -25,13 +25,16 @@ export function useSubscription() {
   return useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async (): Promise<Subscription | null> => {
-      if (!user?.id) return null;
+      if (!user?.id) {
+        console.log('[useSubscription] No user found');
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('owner_user_id', user.id)
-        .in('status', ['active', 'past_due'])
+        .in('status', ['active', 'past_due', 'trialing'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, CreditCard, AlertTriangle, CheckCircle2, XCircle, TrendingUp, RefreshCw } from "lucide-react";
+import { Building2, Users, CreditCard, AlertTriangle, CheckCircle2, XCircle, TrendingUp, RefreshCw, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
@@ -56,17 +56,20 @@ function StatCard({ title, value, icon: Icon, loading, variant, subtitle }: {
 }
 
 export default function AdminDashboard() {
-  const { data: stats, isLoading, error, refetch } = useAdminStats();
-  const queryClient = useQueryClient();
+  const { data: stats, isLoading, error, refetch, isFetching } = useAdminStats();
 
   if (error) {
     return (
-      <div className="text-center py-12 space-y-2">
-        <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
-        <p className="text-destructive font-medium">Erro ao carregar estatísticas</p>
-        <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Erro desconhecido'}</p>
+      <div className="text-center py-12 space-y-4">
+        <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+        <div className="space-y-2">
+          <p className="text-destructive font-bold text-lg">Erro ao carregar estatísticas</p>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            {(error as Error)?.message || 'Erro desconhecido ao chamar a Edge Function.'}
+          </p>
+        </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3 gap-2">
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className={isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           Tentar novamente
         </Button>
       </div>
@@ -74,39 +77,47 @@ export default function AdminDashboard() {
   }
 
   const activeCount = stats?.by_status?.active ?? 0;
-  const pastDueCount = (stats?.by_status?.past_due ?? 0) + (stats?.by_status?.canceled ?? 0);
+  const blockedCount = (stats?.by_status?.past_due ?? 0) + (stats?.by_status?.canceled ?? 0) + (stats?.by_status?.suspended ?? 0);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Visão Geral</h1>
-        <p className="text-muted-foreground text-sm">Centro de comando do Agendali SaaS</p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Visão Geral</h1>
+          <p className="text-muted-foreground text-sm">Centro de comando do Agendali SaaS</p>
+        </div>
+        {isFetching && !isLoading && (
+          <Badge variant="outline" className="gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Atualizando...
+          </Badge>
+        )}
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Estabelecimentos"
+          title="Estabelecimentos"
           value={stats?.total_establishments ?? 0}
           icon={Building2}
           loading={isLoading}
-          subtitle="Cadastrados na plataforma"
+          subtitle="Total cadastrado"
         />
         <StatCard
-          title="Pagantes (Active)"
+          title="Ativos (Pago)"
           value={activeCount}
           icon={CheckCircle2}
           loading={isLoading}
           variant="success"
-          subtitle="Assinaturas ativas"
+          subtitle="Assinaturas em dia"
         />
         <StatCard
-          title="Bloqueados / Cancelados"
-          value={pastDueCount}
+          title="Suspensos / Off"
+          value={blockedCount}
           icon={XCircle}
           loading={isLoading}
           variant="danger"
-          subtitle="Acesso suspenso"
+          subtitle="Acesso restrito"
         />
         <StatCard
           title="Total de Clientes"
@@ -133,47 +144,23 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Status Breakdown */}
-      {stats?.by_status && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              Distribuição por Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              {Object.entries(stats.by_status).map(([status, count]) => (
-                <div key={status} className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-lg">
-                  <Badge variant={status === 'active' ? 'default' : 'destructive'}>
-                    {status}
-                  </Badge>
-                  <span className="text-lg font-bold tabular-nums">{count as number}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Recent Establishments */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b border-border/50">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
-            Últimos Estabelecimentos Cadastrados
+            Últimos Estabelecimentos
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="p-4 space-y-3">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
             </div>
           ) : stats?.recent_establishments?.length ? (
             <div className="divide-y">
               {stats.recent_establishments.map((est) => (
-                <div key={est.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+                <div key={est.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -184,7 +171,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={est.status === 'active' ? 'default' : 'destructive'}>
+                    <Badge variant={est.status === 'active' ? 'default' : 'destructive'} className="text-[10px]">
                       {est.status}
                     </Badge>
                     <span className="text-xs text-muted-foreground tabular-nums">
@@ -195,7 +182,7 @@ export default function AdminDashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-6 text-sm">Nenhum estabelecimento ainda</p>
+            <p className="text-muted-foreground text-center py-8 text-sm italic">Nenhum estabelecimento encontrado.</p>
           )}
         </CardContent>
       </Card>

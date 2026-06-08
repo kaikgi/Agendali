@@ -70,6 +70,7 @@ import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminSettingsSaaS from "./pages/admin/AdminSettingsSaaS";
 import AdminLegalDocuments from "./pages/admin/AdminLegalDocuments";
 import { AdminPermissionGuard } from "./components/AdminPermissionGuard";
+import AdminDiagnostics from "./pages/admin/AdminDiagnostics";
 import ResponsiveTestPage from "./pages/dev/ResponsiveTest";
 
 const queryClient = new QueryClient();
@@ -176,6 +177,7 @@ const App = () => (
                   <Route path="webhooks" element={<AdminPermissionGuard permission="view_webhooks"><AdminWebhooks /></AdminPermissionGuard>} />
                   <Route path="legal" element={<AdminPermissionGuard permission="manage_establishments"><AdminLegalDocuments /></AdminPermissionGuard>} />
                   <Route path="danger-zone" element={<AdminPermissionGuard permission="view_danger_zone"><AdminDangerZone /></AdminPermissionGuard>} />
+                  <Route path="diagnostico" element={<AdminDiagnostics />} />
                 </Route>
               </Route>
               

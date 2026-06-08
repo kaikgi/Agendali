@@ -1,18 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useAdminAccess } from './useAdmin';
 
 export function useUserEstablishment() {
   const { user } = useAuth();
+  const { data: adminAccess } = useAdminAccess();
 
   return useQuery({
     queryKey: ['user-establishment', user?.id],
     queryFn: async () => {
-      if (!user) {
+      if (!user?.id) {
         console.log('[useUserEstablishment] No user found');
         return null;
       }
 
+      // If user is super_admin, we don't necessarily NEED a common establishment.
+      // But we still look for one so they can toggle views.
       console.log('[useUserEstablishment] Fetching for user:', user.id, user.email);
 
       // First try: user is owner - get most recent establishment
@@ -71,8 +75,7 @@ export function useUserEstablishment() {
       return memberEstablishment;
     },
     enabled: !!user,
-    staleTime: 30000, // 30s cache
-    refetchInterval: 30000, // poll every 30s
+    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 }

@@ -9,7 +9,7 @@ export function useAdminAccess() {
   return useQuery({
     queryKey: ["admin-access", user?.id],
     queryFn: async () => {
-      if (!user) return { isAdmin: false };
+      if (!user?.id) return { isAdmin: false };
       try {
         // Use the security-definer RPC which bypasses RLS
         const { data, error } = await supabase.rpc("is_admin", {
@@ -52,22 +52,27 @@ export function useAdminStats() {
     queryKey: ["admin-stats"],
     queryFn: async (): Promise<AdminStats> => {
       console.log('[useAdminStats] Fetching...');
-      const { data, error } = await supabase.functions.invoke('admin-data', {
-        body: { action: 'stats' },
-      });
-      if (error) {
-        console.error('[useAdminStats] invoke error:', error);
-        throw new Error(error.message || 'Erro ao carregar estatísticas');
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { action: 'stats' },
+        });
+        if (error) {
+          console.error('[useAdminStats] invoke error:', error);
+          throw new Error(error.message || 'Erro ao carregar estatísticas');
+        }
+        if (data?.error) {
+          console.error('[useAdminStats] data error:', data.error);
+          throw new Error(data.error);
+        }
+        console.log('[useAdminStats] OK, establishments:', data?.total_establishments);
+        return data as AdminStats;
+      } catch (err: any) {
+        console.error('[useAdminStats] catch error:', err);
+        throw err;
       }
-      if (data?.error) {
-        console.error('[useAdminStats] data error:', data.error);
-        throw new Error(data.error);
-      }
-      console.log('[useAdminStats] OK, establishments:', data?.total_establishments);
-      return data as AdminStats;
     },
     staleTime: 30000,
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -94,22 +99,27 @@ export function useAdminEstablishments(search?: string) {
     queryKey: ["admin-establishments", search],
     queryFn: async () => {
       console.log('[useAdminEstablishments] Fetching, search:', search || '(none)');
-      const { data, error } = await supabase.functions.invoke('admin-data', {
-        body: { action: 'list_establishments', search: search || '' },
-      });
-      if (error) {
-        console.error('[useAdminEstablishments] invoke error:', error);
-        throw new Error(error.message || 'Erro ao listar estabelecimentos');
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { action: 'list_establishments', search: search || '' },
+        });
+        if (error) {
+          console.error('[useAdminEstablishments] invoke error:', error);
+          throw new Error(error.message || 'Erro ao listar estabelecimentos');
+        }
+        if (data?.error) {
+          console.error('[useAdminEstablishments] data error:', data.error);
+          throw new Error(data.error);
+        }
+        console.log('[useAdminEstablishments] OK, count:', data?.establishments?.length);
+        return data as { establishments: AdminEstablishment[]; total: number };
+      } catch (err: any) {
+        console.error('[useAdminEstablishments] catch error:', err);
+        throw err;
       }
-      if (data?.error) {
-        console.error('[useAdminEstablishments] data error:', data.error);
-        throw new Error(data.error);
-      }
-      console.log('[useAdminEstablishments] OK, count:', data?.establishments?.length);
-      return data as { establishments: AdminEstablishment[]; total: number };
     },
     staleTime: 15000,
-    retry: 2,
+    retry: 1,
   });
 }
 

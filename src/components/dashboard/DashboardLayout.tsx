@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { CompletionPromptDialog } from '@/components/completion/CompletionPromptDialog';
@@ -8,16 +8,58 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/hooks/useAuth';
 import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
-
-import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { useAdminAccess } from '@/hooks/useAdmin';
+import { useProfile } from '@/hooks/useProfile';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
-  const { user } = useAuth();
-  const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, isLoading: profileLoading } = useProfile();
+  const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading } = useSubscription();
-  const { isSuperAdmin, isLoading: adminLoading } = useAdminPermissions();
+  const { data: adminAccess, isLoading: adminLoading } = useAdminAccess();
 
-  const isLoading = estLoading || subLoading || adminLoading;
+  const isActuallyLoading = authLoading || profileLoading || estLoading || subLoading || adminLoading;
+
+  if (isActuallyLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Carregando painel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Handle critical establishment error
+  if (estError) {
+    const errorMsg = (estError as any)?.message || 'Erro de conexão';
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">Erro ao carregar estabelecimento</h2>
+            <p className="text-muted-foreground text-sm">
+              Não conseguimos recuperar os dados da sua empresa no momento.
+            </p>
+            <div className="text-xs font-mono bg-muted p-2 rounded break-all mt-4">
+              {errorMsg}
+            </div>
+          </div>
+          <Button onClick={() => refetchEst()} className="w-full">
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Determine if access is blocked
   const estStatus = (establishment as any)?.status || '';
@@ -30,16 +72,8 @@ export function DashboardLayout() {
   
   // Access is blocked if the plan label is "Sem plano" (meaning invalid/expired status)
   // Super Admin is never blocked.
-  const isBlocked = !isLoading && !isSuperAdmin && establishment && entitlements.professionalLimit === 0;
-
-  if (estError) {
-    const errorMsg = (estError as any)?.message || 'Erro desconhecido';
-    console.error('[DashboardLayout] Establishment error:', estError);
-    
-    // If it's just the main layout, we might want to show a more global error
-    // but usually the specific page (Outlet) will handle it or DashboardHome will.
-    // However, if we can't even load the layout's dependencies, we should show a fallback.
-  }
+  const isSuperAdmin = adminAccess?.isAdmin;
+  const isBlocked = !isSuperAdmin && establishment && entitlements.professionalLimit === 0;
 
   return (
     <SidebarProvider>
@@ -58,7 +92,7 @@ export function DashboardLayout() {
       </div>
 
       {/* Payment Blocked Paywall */}
-      {!subLoading && isBlocked && <BlockedAccessModal reason={estStatus || 'no_establishment'} />}
+      {isBlocked && <BlockedAccessModal reason={estStatus || 'no_establishment'} />}
 
       {/* Completion Prompt Dialog */}
       <CompletionPromptDialog 
