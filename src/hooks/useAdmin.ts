@@ -48,9 +48,13 @@ export interface AdminStats {
 }
 
 export function useAdminStats() {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ["admin-stats"],
+    queryKey: ["admin-stats", user?.id],
     queryFn: async (): Promise<AdminStats> => {
+      if (!user?.id) throw new Error('Não autenticado');
+      
       console.log('[useAdminStats] Fetching...');
       try {
         const { data, error } = await supabase.functions.invoke('admin-data', {
@@ -71,6 +75,7 @@ export function useAdminStats() {
         throw err;
       }
     },
+    enabled: !!user?.id,
     staleTime: 30000,
     retry: 1,
   });
@@ -95,9 +100,13 @@ export interface AdminEstablishment {
 }
 
 export function useAdminEstablishments(search?: string) {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ["admin-establishments", search],
+    queryKey: ["admin-establishments", search, user?.id],
     queryFn: async () => {
+      if (!user?.id) throw new Error('Não autenticado');
+      
       console.log('[useAdminEstablishments] Fetching, search:', search || '(none)');
       try {
         const { data, error } = await supabase.functions.invoke('admin-data', {
@@ -118,6 +127,7 @@ export function useAdminEstablishments(search?: string) {
         throw err;
       }
     },
+    enabled: !!user?.id,
     staleTime: 15000,
     retry: 1,
   });
