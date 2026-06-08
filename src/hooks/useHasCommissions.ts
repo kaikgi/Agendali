@@ -14,8 +14,10 @@ export function useHasCommissions(): { hasAccess: boolean; isLoading: boolean; p
 
   const planCode = subscription?.plan_code || subscription?.plan || establishment?.plano;
   const status = subscription?.status || establishment?.status;
+  const periodEnd = subscription?.current_period_end;
+  const trialEndsAt = (establishment as any)?.trial_ends_at;
 
-  const entitlements = getPlanEntitlements(status, planCode);
+  const entitlements = getPlanEntitlements(status, planCode, periodEnd, trialEndsAt);
 
   return {
     hasAccess: entitlements.hasCommissions,

@@ -10,11 +10,13 @@ export function useFeatureAccess(feature: FeatureFlag) {
   const { data: subscription, isLoading: subLoading } = useSubscription();
 
   const isLoading = estLoading || subLoading;
-
+  
   const planCode = subscription?.plan_code || subscription?.plan || establishment?.plano;
   const status = subscription?.status || establishment?.status;
+  const periodEnd = subscription?.current_period_end;
+  const trialEndsAt = establishment?.trial_ends_at;
 
-  const entitlements = getPlanEntitlements(status, planCode);
+  const entitlements = getPlanEntitlements(status, planCode, periodEnd, trialEndsAt);
   const hasAccess = entitlements.features[feature];
   const meta = FEATURE_LABELS[feature];
 
@@ -38,7 +40,10 @@ export function usePlanFeatures() {
   const isLoading = estLoading || subLoading;
   const planCode = subscription?.plan_code || subscription?.plan || establishment?.plano;
   const status = subscription?.status || establishment?.status;
-  const entitlements = getPlanEntitlements(status, planCode);
+  const periodEnd = subscription?.current_period_end;
+  const trialEndsAt = establishment?.trial_ends_at;
+
+  const entitlements = getPlanEntitlements(status, planCode, periodEnd, trialEndsAt);
 
   return { features: entitlements.features, planLabel: entitlements.planLabel, isLoading };
 }
