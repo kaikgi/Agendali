@@ -108,7 +108,8 @@ export default function Signup() {
       title: 'Conta criada com sucesso!',
       description: 'Seu estabelecimento está pronto. Bem-vindo ao Agendali!',
     });
-    navigate('/dashboard');
+    // Clear query cache to ensure profile is fetched fresh after establishment creation
+    window.location.href = '/dashboard';
   };
 
   return (
