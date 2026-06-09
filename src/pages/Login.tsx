@@ -53,28 +53,44 @@ export default function Login() {
     }
 
     try {
-      const { error } = await signIn(email, password);
+      console.log('[Login] Attempting sign-in for:', email);
+      
+      const signInPromise = signIn(email, password);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo de resposta do servidor excedido. Tente novamente.')), 15000)
+      );
 
-      if (error) {
-        setAuthError(error.message);
+      const result = await Promise.race([signInPromise, timeoutPromise]) as { error: any };
+
+      if (result.error) {
+        console.error('[Login] Sign-in failed:', result.error.message);
+        setAuthError(result.error.message);
         return;
       }
 
+      console.log('[Login] Sign-in successful, fetching user data...');
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+      
+      if (userError) {
+        console.error('[Login] getUser error:', userError);
+        throw userError;
+      }
       
       if (user?.user_metadata?.account_type === 'customer') {
+        console.warn('[Login] Customer account tried to login as establishment');
         setAuthError('Essa conta é de cliente. Por favor, acesse a área do cliente.');
         return;
       }
 
+      console.log('[Login] Redirecting to dashboard...');
       navigate('/dashboard');
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('[Login] Fatal error:', err);
       setAuthError(err.message || 'Erro ao realizar login');
     } finally {
       setIsLoading(false);
     }
+
   };
 
   const handleResendClick = () => {

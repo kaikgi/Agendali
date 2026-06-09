@@ -14,14 +14,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const location = useLocation();
 
-  console.log('[ProtectedRoute] Rendering:', { 
-    authLoading, 
-    profileLoading, 
-    hasUser: !!user, 
-    hasProfile: !!profile,
-    profileError: profileError?.message,
-    path: location.pathname 
-  });
+  useEffect(() => {
+    console.log('[ProtectedRoute] Diagnostic Log:', { 
+      authLoading, 
+      profileLoading, 
+      hasUser: !!user, 
+      userEmail: user?.email,
+      hasProfile: !!profile,
+      profileError: profileError?.message,
+      path: location.pathname 
+    });
+  }, [authLoading, profileLoading, user, profile, profileError, location.pathname]);
+
 
   // Use a ref to track if we've already timed out
   const [timedOut, setTimedOut] = useState(false);
