@@ -13,11 +13,29 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const location = useLocation();
 
+  console.log('[ProtectedRoute] Rendering:', { 
+    authLoading, 
+    profileLoading, 
+    hasUser: !!user, 
+    hasProfile: !!profile,
+    profileError: profileError?.message,
+    path: location.pathname 
+  });
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground animate-pulse">Verificando acesso...</p>
+        <div className="text-[10px] text-muted-foreground opacity-50 mt-4 flex flex-col items-center gap-1">
+          <span>{authLoading ? "Aguardando autenticação..." : "Carregando perfil..."}</span>
+          <button 
+            onClick={() => window.location.reload()}
+            className="underline hover:text-primary mt-2"
+          >
+            Recarregar página se travar
+          </button>
+        </div>
       </div>
     );
   }

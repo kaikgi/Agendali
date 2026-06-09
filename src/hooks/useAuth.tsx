@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange:', event);
+      console.log('[Auth] onAuthStateChange:', event, !!session);
       
       if (!isMounted.current) return;
 
@@ -105,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[Auth] User signed in, ensuring profile exists...');
         try {
           await ensureProfileExists(session.user);
         } catch (err) {
@@ -117,8 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('[Auth] Token refreshed successfully');
       } else if (event === 'INITIAL_SESSION') {
-        // Handled by getSession primarily, but good to have here
-        if (!session) setLoading(false);
+        if (!session) {
+          console.log('[Auth] No initial session, stop loading');
+          setLoading(false);
+        }
       }
     });
 
