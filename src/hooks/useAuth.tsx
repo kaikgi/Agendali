@@ -112,19 +112,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] getSession finished, success:', !!session);
 
         if (error) {
+          console.error('[Auth] getSession error:', error);
           await handleAuthError(error);
           setLoading(false);
           return;
         }
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
+        if (session) {
+          setSession(session);
+          setUser(session.user);
           console.log('[Auth] User identified:', session.user.id, session.user.email);
           await ensureProfileExists(session.user);
         } else {
-          console.log('[Auth] No active session found');
+          console.log('[Auth] No active session found in getSession');
+          // Important: explicitly set nulls if no session found to stop loading
+          setSession(null);
+          setUser(null);
         }
       } catch (err) {
         console.error('[Auth] getSession critical failure:', err);
@@ -133,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted.current) {
           console.log('[Auth] Initialization finished, loading = false');
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
     };
