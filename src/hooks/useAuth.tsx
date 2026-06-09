@@ -148,8 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isMounted.current) return;
 
       // Update state always
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
+
 
       if (event === 'SIGNED_IN' && currentSession?.user) {
         console.log('[Auth] SIGNED_IN detected, ensuring profile...');
