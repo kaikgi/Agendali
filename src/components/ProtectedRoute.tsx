@@ -22,7 +22,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     path: location.pathname 
   });
 
-  if (authLoading || profileLoading) {
+  // Use a ref to track if we've already timed out
+  const [timedOut, setTimedOut] = (window as any).React.useState(false);
+
+  (window as any).React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authLoading || profileLoading) {
+        console.warn('[ProtectedRoute] Loading timeout reached');
+        setTimedOut(true);
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [authLoading, profileLoading]);
+
+  if ((authLoading || profileLoading) && !timedOut) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -40,9 +53,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Handle profile fetch error (potential session corruption)
-  if (profileError) {
-    console.error('[ProtectedRoute] Profile error:', profileError);
+  // Handle profile fetch error (potential session corruption) or timeout
+  if (profileError || (timedOut && (authLoading || profileLoading))) {
+    console.error('[ProtectedRoute] Access verification failed:', { profileError, timedOut, authLoading, profileLoading });
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
