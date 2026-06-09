@@ -28,7 +28,7 @@ interface AuthContextType {
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }>;
+  checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean; token?: string }>;
   clearLocalSession: () => Promise<void>;
 }
 
@@ -102,18 +102,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedVersion = localStorage.getItem('agendali_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log(`[Auth] Version mismatch: ${storedVersion} vs ${APP_VERSION}. Clearing local session.`);
-      // clearLocalSession(); // Desativado temporariamente para depurar se isso causa loop no F5
+      await clearLocalSession();
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
 
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] initAuth effect starting');
+      console.log('[Auth] initAuth starting (v1.0.4)');
       try {
-        console.log('[Auth] Calling getSession sync...');
         const { data, error } = await supabase.auth.getSession();
-        console.log('[Auth] getSession finished, session:', !!data?.session, 'error:', error?.message);
+        console.log('[Auth] getSession done:', !!data?.session, error?.message);
+
 
 
         console.log('[Auth] RACE finished');
