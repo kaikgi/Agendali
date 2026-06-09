@@ -9,7 +9,7 @@ export function useUserEstablishment() {
 
   return useQuery({
     queryKey: ['user-establishment', user?.id],
-    enabled: !!user?.id && !adminAccess?.isAdmin,
+    enabled: !!user?.id,
     queryFn: async () => {
       if (!user?.id) {
         console.log('[useUserEstablishment] No user ID, skipping fetch');

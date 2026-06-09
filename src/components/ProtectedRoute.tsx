@@ -104,7 +104,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user && !authLoading) {
-    console.log('[ProtectedRoute] No user found, redirecting to login');
+    console.log('[ProtectedRoute] No user found and loading finished, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -169,7 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        // Stop loading on these events even if no session
+        console.log(`[Auth] ${event} detected, sync state...`);
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         if (loading) {
           setLoading(false);
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
