@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange:', event);
+      console.log('[Auth] onAuthStateChange:', event, !!session);
       
       if (!isMounted.current) return;
 
@@ -105,29 +105,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[Auth] User signed in, ensuring profile exists...');
         try {
           await ensureProfileExists(session.user);
         } catch (err) {
           console.error('[Auth] Profile check error:', err);
         } finally {
+          console.log('[Auth] Stopping loading after SIGNED_IN');
           setLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('[Auth] Token refreshed successfully');
-      } else if (event === 'INITIAL_SESSION') {
-        // Handled by getSession primarily, but good to have here
-        if (!session) setLoading(false);
+      } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
+        console.log('[Auth] Auth event:', event);
+        if (!session) {
+          console.log('[Auth] No session, stop loading');
+          setLoading(false);
+        }
       }
     });
 
     // Initial session check
+    console.log('[Auth] Starting initial session check...');
     supabase.auth
       .getSession()
       .then(async ({ data: { session }, error }) => {
         if (!isMounted.current) return;
         
+        console.log('[Auth] Initial session check result:', !!session, error?.message);
+
         if (error) {
           await handleAuthError(error);
           setLoading(false);
@@ -138,15 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('[Auth] Initial session has user, ensuring profile...');
           try {
             await ensureProfileExists(session.user);
           } catch (err) {
             console.error('[Auth] Initial profile check error:', err);
           }
+        } else {
+          console.log('[Auth] No session user found in initial check');
         }
+        console.log('[Auth] Stopping loading after getSession');
         setLoading(false);
       })
       .catch(async (err) => {
+        console.error('[Auth] Initial session check catch:', err);
         if (isMounted.current) {
           await handleAuthError(err);
           setLoading(false);
@@ -358,6 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const ensureProfileExists = async (user: User) => {
+    console.log('[Auth] ensureProfileExists for:', user.id);
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
       .select('id')
@@ -370,7 +384,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!existingProfile) {
-      console.log('[Auth] Profile not found, creating for user:', user.id);
+      console.log('[Auth] Profile not found in ensureProfileExists, creating...');
       const { error } = await supabase
         .from('profiles')
         .insert({

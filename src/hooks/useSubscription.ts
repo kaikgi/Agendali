@@ -20,10 +20,12 @@ export interface Subscription {
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   return useQuery({
     queryKey: ['subscription', user?.id],
+    enabled: !!user?.id && !authLoading,
+    staleTime: 60000,
     queryFn: async (): Promise<Subscription | null> => {
       if (!user?.id) {
         console.log('[useSubscription] No user found');
@@ -46,8 +48,6 @@ export function useSubscription() {
 
       return data as Subscription | null;
     },
-    enabled: !!user?.id,
-    staleTime: 30000,
   });
 }
 

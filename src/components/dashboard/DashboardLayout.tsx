@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
@@ -10,17 +11,29 @@ import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
 import { useAdminAccess } from '@/hooks/useAdmin';
 import { useProfile } from '@/hooks/useProfile';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
-  const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
+  const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading, error: subError } = useSubscription();
   const { data: adminAccess, isLoading: adminLoading, error: adminError } = useAdminAccess();
 
-  const isActuallyLoading = authLoading || profileLoading || estLoading || subLoading || adminLoading;
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authLoading || profileLoading || estLoading || subLoading || adminLoading) {
+        console.warn('[DashboardLayout] Data loading timeout reached');
+        setTimedOut(true);
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [authLoading, profileLoading, estLoading, subLoading, adminLoading]);
+
+  const isActuallyLoading = (authLoading || profileLoading || estLoading || subLoading || adminLoading) && !timedOut;
 
   if (isActuallyLoading) {
     return (
@@ -28,6 +41,10 @@ export function DashboardLayout() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground animate-pulse">Carregando painel...</p>
+          <div className="text-[10px] text-muted-foreground opacity-50 flex flex-col items-center gap-1">
+            {estLoading && <span>Carregando dados da empresa...</span>}
+            {subLoading && <span>Verificando assinatura...</span>}
+          </div>
         </div>
       </div>
     );
@@ -37,10 +54,10 @@ export function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Handle critical establishment error
-  if (estError || subError || adminError || profileError) {
+  // Handle critical establishment error or timeout
+  if (estError || subError || adminError || profileError || (timedOut && (authLoading || profileLoading || estLoading || subLoading || adminLoading))) {
     const error = estError || subError || adminError || profileError;
-    const errorMsg = (error as any)?.message || 'Erro de conexão';
+    const errorMsg = (error as any)?.message || (timedOut ? 'Tempo limite de carregamento excedido' : 'Erro de conexão');
     
     // Safety check for session issues in internal routes
     const isAuthError = errorMsg.toLowerCase().includes('jwt') || 

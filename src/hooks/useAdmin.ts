@@ -4,10 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 
 // ─── Admin Access Check ───
 export function useAdminAccess() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   return useQuery({
     queryKey: ["admin-access", user?.id],
+    enabled: !!user?.id && !authLoading,
+    staleTime: 60000,
     queryFn: async () => {
       if (!user?.id) return { isAdmin: false };
       try {
@@ -26,8 +28,6 @@ export function useAdminAccess() {
         return { isAdmin: false };
       }
     },
-    enabled: !!user,
-    staleTime: 30000,
   });
 }
 

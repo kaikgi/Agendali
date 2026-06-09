@@ -15,12 +15,13 @@ export interface Profile {
 }
 
 export function useProfile() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
+      console.log('[useProfile] queryFn triggered for user:', user?.id);
       if (!user?.id) return null;
       
       const { data, error } = await supabase
@@ -28,6 +29,13 @@ export function useProfile() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+      
+      console.log('[useProfile] profile response:', { data, error });
+      
+      if (error) {
+        console.error('[useProfile] Supabase error:', error);
+        throw error;
+      }
       
       if (!data) {
         // Profile not found - auto-create it
@@ -68,7 +76,9 @@ export function useProfile() {
       
       return data as Profile;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !authLoading,
+    retry: 1,
+    staleTime: 60000,
   });
 
   const updateMutation = useMutation({
