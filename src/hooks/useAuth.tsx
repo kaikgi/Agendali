@@ -126,11 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Initial session check
+    console.log('[Auth] Starting initial session check...');
     supabase.auth
       .getSession()
       .then(async ({ data: { session }, error }) => {
         if (!isMounted.current) return;
         
+        console.log('[Auth] Initial session check result:', !!session, error?.message);
+
         if (error) {
           await handleAuthError(error);
           setLoading(false);
@@ -141,15 +144,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('[Auth] Initial session has user, ensuring profile...');
           try {
             await ensureProfileExists(session.user);
           } catch (err) {
             console.error('[Auth] Initial profile check error:', err);
           }
+        } else {
+          console.log('[Auth] No session user found in initial check');
         }
         setLoading(false);
       })
       .catch(async (err) => {
+        console.error('[Auth] Initial session check catch:', err);
         if (isMounted.current) {
           await handleAuthError(err);
           setLoading(false);
