@@ -48,8 +48,6 @@ export function useSubscription() {
 
       return data as Subscription | null;
     },
-    enabled: !!user?.id,
-    staleTime: 30000,
   });
 }
 
