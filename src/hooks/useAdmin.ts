@@ -28,8 +28,6 @@ export function useAdminAccess() {
         return { isAdmin: false };
       }
     },
-    enabled: !!user,
-    staleTime: 30000,
   });
 }
 
