@@ -9,8 +9,10 @@ export function useAdminAccess() {
   return useQuery({
     queryKey: ["admin-access", user?.id],
     enabled: !!user?.id && !authLoading,
-    staleTime: 60000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!user?.id) return { isAdmin: false };
       

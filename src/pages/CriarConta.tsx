@@ -224,7 +224,7 @@ export default function CriarConta() {
         title: 'Conta criada com sucesso!',
         description: 'Seu estabelecimento está pronto. Bem-vindo ao Agendali!',
       });
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
       console.error('[CriarConta] Critical Error during signup:', err);
       setIsLoading(false);

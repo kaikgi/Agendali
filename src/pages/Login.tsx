@@ -83,7 +83,7 @@ export default function Login() {
       }
 
       console.log('[Login] Redirecting to dashboard...');
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err: any) {
       console.error('[Login] Fatal error:', err);
       setAuthError(err.message || 'Erro ao realizar login');

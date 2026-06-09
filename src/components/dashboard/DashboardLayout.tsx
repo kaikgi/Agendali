@@ -33,7 +33,9 @@ export function DashboardLayout() {
     return () => clearTimeout(timer);
   }, [authLoading, profileLoading, estLoading, subLoading, adminLoading]);
 
-  const isActuallyLoading = (authLoading || profileLoading || estLoading || subLoading || adminLoading) && !timedOut;
+  // Only wait for establishment/subscription/admin if auth/profile are successful
+  const isActuallyLoading = (authLoading || profileLoading || 
+    (user && (estLoading || subLoading || adminLoading))) && !timedOut;
 
   if (isActuallyLoading) {
     return (

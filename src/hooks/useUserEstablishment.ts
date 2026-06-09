@@ -81,8 +81,9 @@ export function useUserEstablishment() {
         throw err;
       }
     },
-    refetchOnWindowFocus: true,
-    retry: 2,
-    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }

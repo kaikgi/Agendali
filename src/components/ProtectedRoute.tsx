@@ -30,14 +30,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
+    // Only start timeout if loading is active
+    if (!authLoading && !profileLoading) return;
+
     const timer = setTimeout(() => {
-      if (authLoading || profileLoading) {
-        console.warn('[ProtectedRoute] Loading timeout reached after 15s');
+      if ((authLoading || profileLoading) && !user) {
+        console.warn('[ProtectedRoute] Loading timeout reached after 12s - User likely missing session');
         setTimedOut(true);
       }
-    }, 15000);
+    }, 12000);
     return () => clearTimeout(timer);
-  }, [authLoading, profileLoading]);
+  }, [authLoading, profileLoading, user]);
 
   // Show loading state while auth or profile is being verified
   if ((authLoading || profileLoading) && !timedOut) {

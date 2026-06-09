@@ -112,19 +112,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] getSession finished, success:', !!session);
 
         if (error) {
+          console.error('[Auth] getSession error:', error);
           await handleAuthError(error);
           setLoading(false);
           return;
         }
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
+        if (session) {
+          setSession(session);
+          setUser(session.user);
           console.log('[Auth] User identified:', session.user.id, session.user.email);
           await ensureProfileExists(session.user);
         } else {
-          console.log('[Auth] No active session found');
+          console.log('[Auth] No active session found in getSession');
+          // Important: explicitly set nulls if no session found to stop loading
+          setSession(null);
+          setUser(null);
         }
       } catch (err) {
         console.error('[Auth] getSession critical failure:', err);
@@ -133,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted.current) {
           console.log('[Auth] Initialization finished, loading = false');
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
     };
@@ -141,29 +145,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!session);
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession);
       
       if (!isMounted.current) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Update state always
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && currentSession?.user) {
         console.log('[Auth] SIGNED_IN detected, ensuring profile...');
         try {
-          await ensureProfileExists(session.user);
+          await ensureProfileExists(currentSession.user);
         } catch (err) {
           console.error('[Auth] SIGNED_IN profile check error:', err);
         } finally {
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('[Auth] SIGNED_OUT detected');
         setLoading(false);
+        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        if (!session && loading) {
+        // Stop loading on these events even if no session
+        if (loading) {
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
     });
