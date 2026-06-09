@@ -79,8 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (initializationStarted.current) return;
+    if (initializationStarted.current) {
+      console.log('[Auth] AuthProvider effect called but already initialized');
+      return;
+    }
     initializationStarted.current = true;
+
     isMounted.current = true;
     
     console.log('[Auth] App started, version:', APP_VERSION);
