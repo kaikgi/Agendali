@@ -108,58 +108,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] initAuth started, localStorage:', localStorage.getItem('supabase.auth.token') ? 'present' : 'absent');
-
-      console.log('[Auth] Calling supabase.auth.getSession()...');
+      console.log('[Auth] initAuth started');
       try {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        console.log('[Auth] getSession result session:', !!currentSession, 'error:', error?.message);
-        
-        if (currentSession) {
-          console.log('[Auth] Found session in init, syncing user state immediately');
-          setSession(currentSession);
-          setUser(currentSession.user);
-        }
-
-
-
-
         
         if (!isMounted.current) return;
         
-        console.log('[Auth] getSession finished, success:', !!session);
-
         if (error) {
           console.error('[Auth] getSession error:', error);
           await handleAuthError(error);
-          setLoading(false);
-          return;
-        }
-
-        if (currentSession) {
-          console.log('[Auth] ensureProfileExists for user:', currentSession.user.id);
+        } else if (currentSession) {
+          console.log('[Auth] session found, syncing state');
+          setSession(currentSession);
+          setUser(currentSession.user);
           await ensureProfileExists(currentSession.user);
         } else {
-          console.log('[Auth] No active session found in getSession');
-          setSession(null);
-          setUser(null);
-        }
-
-          console.log('[Auth] No active session found in getSession');
-          // Important: explicitly set nulls if no session found to stop loading
+          console.log('[Auth] no session found');
           setSession(null);
           setUser(null);
         }
       } catch (err) {
-        console.error('[Auth] getSession critical failure:', err);
-        if (isMounted.current) await handleAuthError(err);
+        console.error('[Auth] initAuth critical failure:', err);
       } finally {
         if (isMounted.current) {
-          console.log('[Auth] Initialization finished, loading = false');
           setLoading(false);
-          console.log('[Auth] Initialization finished, loading set to false');
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-
         }
       }
     };
