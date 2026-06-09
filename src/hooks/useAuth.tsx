@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.2'; // Incrementado para garantir limpeza de cache problemático
+const APP_VERSION = '1.0.3'; // Incrementado para depurar carregamento
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] getSession started');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('[Auth] getSession result session:', !!session, 'error:', error?.message);
+
         
         if (!isMounted.current) return;
         
@@ -146,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession);
+      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession, 'User:', currentSession?.user?.email);
       
       if (!isMounted.current) return;
 
