@@ -13,62 +13,78 @@ export function useUserEstablishment() {
     staleTime: 60000,
     queryFn: async () => {
       if (!user?.id) {
-        console.log('[useUserEstablishment] No user found');
+        console.log('[useUserEstablishment] No user ID, skipping fetch');
         return null;
       }
 
-      console.log('[useUserEstablishment] Fetching for user:', user.id, user.email);
+      console.log('[useUserEstablishment] Fetching for user:', user.id);
 
-      // Add a safety timeout for the database call
       const fetchWithTimeout = async () => {
-        // First try: user is owner
-        const { data: ownedEstablishments, error: ownerError } = await supabase
+        // Try to get establishment where user is owner
+        console.log('[useUserEstablishment] Attempting to fetch owned establishment...');
+        const { data: owned, error: ownerError } = await supabase
           .from('establishments')
           .select('*')
           .eq('owner_user_id', user.id)
-          .order('created_at', { ascending: false })
           .limit(1);
 
-        if (ownerError) throw ownerError;
+        if (ownerError) {
+          console.error('[useUserEstablishment] Owner fetch error:', ownerError);
+          throw ownerError;
+        }
         
-        if (ownedEstablishments && ownedEstablishments.length > 0) {
-          return ownedEstablishments[0];
+        if (owned && owned.length > 0) {
+          console.log('[useUserEstablishment] Found owned establishment:', owned[0].id);
+          return owned[0];
         }
 
-        // Second try: user is member
+        // Try to get establishment via membership
+        console.log('[useUserEstablishment] No owned establishment found, checking memberships...');
         const { data: memberships, error: memberError } = await supabase
           .from('establishment_members')
           .select('establishment_id')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
           .limit(1);
 
-        if (memberError) throw memberError;
+        if (memberError) {
+          console.error('[useUserEstablishment] Membership fetch error:', memberError);
+          throw memberError;
+        }
         
-        if (!memberships || memberships.length === 0) return null;
+        if (!memberships || memberships.length === 0) {
+          console.log('[useUserEstablishment] No memberships found for user');
+          return null;
+        }
 
-        const { data: memberEstablishment, error: estError } = await supabase
+        console.log('[useUserEstablishment] Found membership in establishment:', memberships[0].establishment_id);
+        const { data: memberEst, error: estError } = await supabase
           .from('establishments')
           .select('*')
           .eq('id', memberships[0].establishment_id)
           .maybeSingle();
 
-        if (estError) throw estError;
-        return memberEstablishment;
+        if (estError) {
+          console.error('[useUserEstablishment] Member establishment fetch error:', estError);
+          throw estError;
+        }
+        
+        return memberEst;
       };
 
       try {
-        // Simple promise race for timeout
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout ao buscar estabelecimento')), 10000)
+          setTimeout(() => reject(new Error('Tempo de carregamento do estabelecimento excedido (15s). Verifique sua conexão.')), 15000)
         );
         
-        return await Promise.race([fetchWithTimeout(), timeoutPromise]) as any;
+        return await Promise.race([fetchWithTimeout(), timeoutPromise]);
       } catch (err: any) {
-        console.error('[useUserEstablishment] Error:', err);
+        console.error('[useUserEstablishment] Final error:', err);
         throw err;
       }
     },
     refetchOnWindowFocus: true,
+    retry: 2,
+    staleTime: 30000,
+
   });
 }
