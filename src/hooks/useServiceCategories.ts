@@ -33,18 +33,27 @@ export function useServiceCategories(establishmentId: string | undefined) {
   const listQuery = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!establishmentId) throw new Error('Missing establishment ID');
+      if (!establishmentId) return [];
+      console.log('[useServiceCategories] Fetching for:', establishmentId);
+      
       const { data, error } = await supabase
         .from('service_categories' as any)
         .select('*')
         .eq('establishment_id', establishmentId)
         .order('sort_order')
         .order('name');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[useServiceCategories] Error:', error);
+        throw error;
+      }
       return (data ?? []) as ServiceCategory[];
     },
     enabled: !!establishmentId,
+    retry: 1,
+    staleTime: 30000,
   });
+
 
   const createMutation = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
