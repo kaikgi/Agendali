@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.6'; // Novo reset
+const APP_VERSION = '1.0.7'; // Novo reset
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -110,12 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] initAuth starting (v1.0.6)');
+      console.log('[Auth] initAuth starting (v1.0.7)');
       try {
-        console.log('[Auth] Pre-getSession');
-        const sessionResult = await supabase.auth.getSession();
-        console.log('[Auth] Post-getSession result:', !!sessionResult.data?.session);
-        const { data, error } = sessionResult;
+        console.log('[Auth] Pre-fetch');
+        const session = await supabase.auth.getSession().then(r => r.data?.session);
+        console.log('[Auth] Session fetched:', !!session);
+
 
 
 
@@ -126,16 +126,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (!isMounted.current) return;
         
-        if (data?.session) {
+        if (session) {
           console.log('[Auth] session found in initAuth, syncing state');
-          setSession(data.session);
-          setUser(data.session.user);
-          await ensureProfileExists(data.session.user);
+          setSession(session);
+          setUser(session.user);
+          await ensureProfileExists(session.user);
         } else {
           console.log('[Auth] no session found in initAuth');
           setSession(null);
           setUser(null);
         }
+
       } catch (err) {
         console.error('[Auth] initAuth catch:', err);
       } finally {
