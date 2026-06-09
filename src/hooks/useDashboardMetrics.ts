@@ -9,7 +9,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
   const todayQuery = useQuery({
     queryKey: ['metrics-today', establishmentId],
     queryFn: async () => {
-      try {
+      const fetchToday = async () => {
         const now = new Date();
         const todayStart = startOfDay(now).toISOString();
         const tomorrowStart = startOfDay(subDays(now, -1)).toISOString();
@@ -22,9 +22,18 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
-      } catch {
+      };
+
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout metrics-today')), 5000)
+        );
+        return await Promise.race([fetchToday(), timeoutPromise]) as number;
+      } catch (err) {
+        console.error('[useDashboardMetrics] todayQuery error:', err);
         return 0;
       }
+
     },
     enabled: !!establishmentId,
     staleTime: 30000,
@@ -33,7 +42,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
   const weekQuery = useQuery({
     queryKey: ['metrics-week', establishmentId],
     queryFn: async () => {
-      try {
+      const fetchWeek = async () => {
         const weekStart = startOfDay(subDays(new Date(), 6)).toISOString();
         const { count, error } = await supabase
           .from('appointments')
@@ -43,9 +52,18 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .not('status', 'in', '("canceled","canceled_by_customer","canceled_by_establishment","rejected")');
         if (error) throw error;
         return count ?? 0;
-      } catch {
+      };
+
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout metrics-week')), 5000)
+        );
+        return await Promise.race([fetchWeek(), timeoutPromise]) as number;
+      } catch (err) {
+        console.error('[useDashboardMetrics] weekQuery error:', err);
         return 0;
       }
+
     },
     enabled: !!establishmentId,
     staleTime: 30000,
@@ -54,7 +72,7 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
   const canceledQuery = useQuery({
     queryKey: ['metrics-canceled', establishmentId],
     queryFn: async () => {
-      try {
+      const fetchCanceled = async () => {
         const weekStart = startOfDay(subDays(new Date(), 6)).toISOString();
         const { count, error } = await supabase
           .from('appointments')
@@ -64,9 +82,18 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
           .in('status', ['canceled', 'canceled_by_customer', 'canceled_by_establishment']);
         if (error) throw error;
         return count ?? 0;
-      } catch {
+      };
+
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout metrics-canceled')), 5000)
+        );
+        return await Promise.race([fetchCanceled(), timeoutPromise]) as number;
+      } catch (err) {
+        console.error('[useDashboardMetrics] canceledQuery error:', err);
         return 0;
       }
+
     },
     enabled: !!establishmentId,
     staleTime: 30000,
@@ -167,16 +194,25 @@ export function useDashboardMetrics(establishmentId: string | undefined) {
   const totalCustomersQuery = useQuery({
     queryKey: ['metrics-total-customers', establishmentId],
     queryFn: async () => {
-      try {
+      const fetchTotal = async () => {
         const { count, error } = await supabase
           .from('customers')
           .select('*', { count: 'exact', head: true })
           .eq('establishment_id', establishmentId!);
         if (error) throw error;
         return count ?? 0;
-      } catch {
+      };
+
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout metrics-total-customers')), 5000)
+        );
+        return await Promise.race([fetchTotal(), timeoutPromise]) as number;
+      } catch (err) {
+        console.error('[useDashboardMetrics] totalCustomersQuery error:', err);
         return 0;
       }
+
     },
     enabled: !!establishmentId,
     staleTime: 60000,
