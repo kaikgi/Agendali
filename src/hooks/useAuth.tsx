@@ -114,6 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         console.log('[Auth] getSession result session:', !!session, 'error:', error?.message);
+        
+        // Se houver sessão, sincroniza imediatamente o estado para evitar loops
+        if (session) {
+          console.log('[Auth] Syncing session from getSession to state');
+          setSession(session);
+          setUser(session.user);
+        }
+
 
 
         

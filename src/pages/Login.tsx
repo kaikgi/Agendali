@@ -65,8 +65,10 @@ export default function Login() {
       if (result.error) {
         console.error('[Login] Sign-in failed:', result.error.message);
         setAuthError(result.error.message);
+        setIsLoading(false);
         return;
       }
+
 
       console.log('[Login] Sign-in successful, fetching user data...');
       const { data: { user }, error: userError } = await supabase.auth.getUser();
