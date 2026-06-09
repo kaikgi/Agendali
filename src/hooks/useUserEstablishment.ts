@@ -1,15 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useAdminAccess } from './useAdmin';
 
 export function useUserEstablishment() {
-  const { user } = useAuth();
-  const { data: adminAccess } = useAdminAccess();
+  const { user, loading: authLoading } = useAuth();
 
   return useQuery({
     queryKey: ['user-establishment', user?.id],
-    enabled: !!user?.id && !adminAccess?.isAdmin,
+    enabled: !!user?.id && !authLoading,
     queryFn: async () => {
       if (!user?.id) {
         console.log('[useUserEstablishment] No user ID, skipping fetch');

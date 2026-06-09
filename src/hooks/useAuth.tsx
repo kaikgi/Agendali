@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.2'; // Incrementado para garantir limpeza de cache problemático
+const APP_VERSION = '1.0.3'; // Incrementado para depurar carregamento
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLocalSession = async () => {
     console.log('[Auth] Clearing local session due to error or version mismatch');
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut();
     } catch (e) {
       console.error('[Auth] Error during local signOut:', e);
     }
@@ -79,8 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (initializationStarted.current) return;
+    if (initializationStarted.current) {
+      console.log('[Auth] AuthProvider effect called but already initialized');
+      return;
+    }
     initializationStarted.current = true;
+
     isMounted.current = true;
     
     console.log('[Auth] App started, version:', APP_VERSION);
@@ -97,48 +101,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedVersion = localStorage.getItem('agendali_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log(`[Auth] Version mismatch: ${storedVersion} vs ${APP_VERSION}. Clearing local session.`);
-      clearLocalSession();
+      // clearLocalSession(); // Desativado temporariamente para depurar se isso causa loop no F5
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
+
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] getSession started');
+      console.log('[Auth] initAuth starting getSession');
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        console.log('[Auth] getSession finished, session:', !!data?.session, 'error:', error?.message);
+
+
         
         if (!isMounted.current) return;
         
-        console.log('[Auth] getSession finished, success:', !!session);
-
-        if (error) {
-          console.error('[Auth] getSession error:', error);
-          await handleAuthError(error);
-          setLoading(false);
-          return;
-        }
-
-        if (session) {
-          setSession(session);
-          setUser(session.user);
-          console.log('[Auth] User identified:', session.user.id, session.user.email);
-          await ensureProfileExists(session.user);
+        if (data?.session) {
+          console.log('[Auth] session found in initAuth, syncing state');
+          setSession(data.session);
+          setUser(data.session.user);
+          await ensureProfileExists(data.session.user);
         } else {
-          console.log('[Auth] No active session found in getSession');
-          // Important: explicitly set nulls if no session found to stop loading
+          console.log('[Auth] no session found in initAuth');
           setSession(null);
           setUser(null);
         }
+
       } catch (err) {
-        console.error('[Auth] getSession critical failure:', err);
-        if (isMounted.current) await handleAuthError(err);
+        console.error('[Auth] initAuth catch:', err);
       } finally {
         if (isMounted.current) {
-          console.log('[Auth] Initialization finished, loading = false');
+          console.log('[Auth] initAuth finally, loading = false');
           setLoading(false);
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
+
     };
 
     initAuth();
@@ -146,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession);
+      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession, 'User:', currentSession?.user?.email);
       
       if (!isMounted.current) return;
 
@@ -169,7 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        // Stop loading on these events even if no session
+        console.log(`[Auth] ${event} detected, sync state...`);
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         if (loading) {
           setLoading(false);
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);

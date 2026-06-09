@@ -23,7 +23,7 @@ export default function Login() {
   const [resendEmail, setResendEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, clearLocalSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -40,7 +40,9 @@ export default function Login() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    await clearLocalSession();
     setAuthError(null);
+
     setIsLoading(true);
 
     const email = String(data.email || "").trim();
@@ -57,16 +59,19 @@ export default function Login() {
       
       const signInPromise = signIn(email, password);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Tempo de resposta do servidor excedido. Tente novamente.')), 15000)
+        setTimeout(() => reject(new Error('Tempo de resposta do servidor excedido. Tente novamente.')), 30000)
       );
+
 
       const result = await Promise.race([signInPromise, timeoutPromise]) as { error: any };
 
       if (result.error) {
         console.error('[Login] Sign-in failed:', result.error.message);
         setAuthError(result.error.message);
+        setIsLoading(false);
         return;
       }
+
 
       console.log('[Login] Sign-in successful, fetching user data...');
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -83,7 +88,8 @@ export default function Login() {
       }
 
       console.log('[Login] Redirecting to dashboard...');
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
+
     } catch (err: any) {
       console.error('[Login] Fatal error:', err);
       setAuthError(err.message || 'Erro ao realizar login');

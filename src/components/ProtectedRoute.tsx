@@ -34,8 +34,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     if (!authLoading && !profileLoading) return;
 
     const timer = setTimeout(() => {
-      if ((authLoading || profileLoading) && !user) {
-        console.warn('[ProtectedRoute] Loading timeout reached after 12s - User likely missing session');
+      if ((authLoading || profileLoading)) {
+        console.warn('[ProtectedRoute] Loading timeout reached after 12s - forcing timeout state');
         setTimedOut(true);
       }
     }, 12000);
@@ -104,7 +104,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user && !authLoading) {
-    console.log('[ProtectedRoute] No user found, redirecting to login');
+    console.log('[ProtectedRoute] No user found and loading finished, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
