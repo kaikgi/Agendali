@@ -154,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           console.log('[Auth] No session user found in initial check');
         }
+        console.log('[Auth] Stopping loading after getSession');
         setLoading(false);
       })
       .catch(async (err) => {
