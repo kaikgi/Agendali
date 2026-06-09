@@ -145,29 +145,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!session);
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!currentSession);
       
       if (!isMounted.current) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Update state always
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && currentSession?.user) {
         console.log('[Auth] SIGNED_IN detected, ensuring profile...');
         try {
-          await ensureProfileExists(session.user);
+          await ensureProfileExists(currentSession.user);
         } catch (err) {
           console.error('[Auth] SIGNED_IN profile check error:', err);
         } finally {
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('[Auth] SIGNED_OUT detected');
         setLoading(false);
+        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        if (!session && loading) {
+        // Stop loading on these events even if no session
+        if (loading) {
           setLoading(false);
+          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
     });
