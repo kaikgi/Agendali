@@ -9,19 +9,23 @@ export function AdminProtectedRoute() {
 
   if (authLoading || adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground animate-pulse">Verificando credenciais admin...</p>
       </div>
     );
   }
 
   if (!user) {
+    console.log('[AdminProtectedRoute] No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   if (!adminAccess?.isAdmin) {
+    console.warn('[AdminProtectedRoute] User is not admin, redirecting to home');
     return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
+
 }
