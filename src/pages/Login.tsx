@@ -23,7 +23,7 @@ export default function Login() {
   const [resendEmail, setResendEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, clearLocalSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -40,7 +40,9 @@ export default function Login() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    await clearLocalSession();
     setAuthError(null);
+
     setIsLoading(true);
 
     const email = String(data.email || "").trim();

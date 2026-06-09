@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLocalSession = async () => {
     console.log('[Auth] Clearing local session due to error or version mismatch');
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut();
     } catch (e) {
       console.error('[Auth] Error during local signOut:', e);
     }
@@ -111,23 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] initAuth started');
       try {
         console.log('[Auth] Calling getSession...');
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        console.log('[Auth] getSession complete:', !!data?.session, error?.message);
+
         
         if (!isMounted.current) return;
         
-        if (error) {
-          console.error('[Auth] getSession error:', error);
-          await handleAuthError(error);
-        } else if (currentSession) {
+        if (data?.session) {
           console.log('[Auth] session found in initAuth, syncing state');
-          setSession(currentSession);
-          setUser(currentSession.user);
-          await ensureProfileExists(currentSession.user);
+          setSession(data.session);
+          setUser(data.session.user);
+          await ensureProfileExists(data.session.user);
         } else {
           console.log('[Auth] no session found in initAuth');
           setSession(null);
           setUser(null);
         }
+
       } catch (err) {
         console.error('[Auth] initAuth catch:', err);
       } finally {
