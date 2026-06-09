@@ -117,9 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('[Auth] Token refreshed successfully');
-      } else if (event === 'INITIAL_SESSION') {
+      } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
+        console.log('[Auth] Auth event:', event);
         if (!session) {
-          console.log('[Auth] No initial session, stop loading');
+          console.log('[Auth] No session, stop loading');
           setLoading(false);
         }
       }
