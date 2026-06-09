@@ -17,11 +17,23 @@ import { Button } from '@/components/ui/button';
 export function DashboardLayout() {
   const { user, loading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
-  const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
+  const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading, error: subError } = useSubscription();
   const { data: adminAccess, isLoading: adminLoading, error: adminError } = useAdminAccess();
 
-  const isActuallyLoading = authLoading || profileLoading || estLoading || subLoading || adminLoading;
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authLoading || profileLoading || estLoading || subLoading || adminLoading) {
+        console.warn('[DashboardLayout] Data loading timeout reached');
+        setTimedOut(true);
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [authLoading, profileLoading, estLoading, subLoading, adminLoading]);
+
+  const isActuallyLoading = (authLoading || profileLoading || estLoading || subLoading || adminLoading) && !timedOut;
 
   if (isActuallyLoading) {
     return (
@@ -29,6 +41,10 @@ export function DashboardLayout() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground animate-pulse">Carregando painel...</p>
+          <div className="text-[10px] text-muted-foreground opacity-50 flex flex-col items-center gap-1">
+            {estLoading && <span>Carregando dados da empresa...</span>}
+            {subLoading && <span>Verificando assinatura...</span>}
+          </div>
         </div>
       </div>
     );
