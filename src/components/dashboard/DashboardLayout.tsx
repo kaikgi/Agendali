@@ -54,10 +54,10 @@ export function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Handle critical establishment error
-  if (estError || subError || adminError || profileError) {
+  // Handle critical establishment error or timeout
+  if (estError || subError || adminError || profileError || (timedOut && (authLoading || profileLoading || estLoading || subLoading || adminLoading))) {
     const error = estError || subError || adminError || profileError;
-    const errorMsg = (error as any)?.message || 'Erro de conexão';
+    const errorMsg = (error as any)?.message || (timedOut ? 'Tempo limite de carregamento excedido' : 'Erro de conexão');
     
     // Safety check for session issues in internal routes
     const isAuthError = errorMsg.toLowerCase().includes('jwt') || 
