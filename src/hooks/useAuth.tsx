@@ -103,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check
     const initAuth = async () => {
+      console.log('[Auth] initAuth started, localStorage:', localStorage.getItem('supabase.auth.token') ? 'present' : 'absent');
+
       console.log('[Auth] getSession started');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -121,8 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session) {
+          console.log('[Auth] getSession found session, setting user/session state');
           setSession(session);
           setUser(session.user);
+
           console.log('[Auth] User identified:', session.user.id, session.user.email);
           await ensureProfileExists(session.user);
         } else {
@@ -138,7 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted.current) {
           console.log('[Auth] Initialization finished, loading = false');
           setLoading(false);
+          console.log('[Auth] Initialization finished, loading set to false');
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
+
         }
       }
     };
