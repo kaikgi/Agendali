@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.3'; // Incrementado para depurar carregamento
+const APP_VERSION = '1.0.4'; // Novo reset para depuração
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLocalSession = async () => {
     console.log('[Auth] Clearing local session due to error or version mismatch');
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
+
     } catch (e) {
       console.error('[Auth] Error during local signOut:', e);
     }
@@ -143,7 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     };
 
+    console.log('[Auth] Calling initAuth()...');
     initAuth();
+
 
     const {
       data: { subscription },
