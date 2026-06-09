@@ -105,10 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       console.log('[Auth] initAuth started, localStorage:', localStorage.getItem('supabase.auth.token') ? 'present' : 'absent');
 
-      console.log('[Auth] getSession started');
+      console.log('[Auth] Calling supabase.auth.getSession()...');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         console.log('[Auth] getSession result session:', !!session, 'error:', error?.message);
+
 
         
         if (!isMounted.current) return;
