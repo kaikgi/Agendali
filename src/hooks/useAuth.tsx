@@ -112,15 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('[Auth] Calling supabase.auth.getSession()...');
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('[Auth] getSession result session:', !!session, 'error:', error?.message);
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        console.log('[Auth] getSession result session:', !!currentSession, 'error:', error?.message);
         
-        // Se houver sessão, sincroniza imediatamente o estado para evitar loops
-        if (session) {
-          console.log('[Auth] Syncing session from getSession to state');
-          setSession(session);
-          setUser(session.user);
+        if (currentSession) {
+          console.log('[Auth] Found session in init, syncing user state immediately');
+          setSession(currentSession);
+          setUser(currentSession.user);
         }
+
 
 
 
@@ -136,14 +136,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (session) {
-          console.log('[Auth] getSession found session, setting user/session state');
-          setSession(session);
-          setUser(session.user);
-
-          console.log('[Auth] User identified:', session.user.id, session.user.email);
-          await ensureProfileExists(session.user);
+        if (currentSession) {
+          console.log('[Auth] ensureProfileExists for user:', currentSession.user.id);
+          await ensureProfileExists(currentSession.user);
         } else {
+          console.log('[Auth] No active session found in getSession');
+          setSession(null);
+          setUser(null);
+        }
+
           console.log('[Auth] No active session found in getSession');
           // Important: explicitly set nulls if no session found to stop loading
           setSession(null);
