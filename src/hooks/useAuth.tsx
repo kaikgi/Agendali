@@ -110,10 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       console.log('[Auth] initAuth started');
       try {
-        console.log('[Auth] Calling supabase.auth.getSession()');
-        const { data, error } = await supabase.auth.getSession();
-        const currentSession = data?.session;
-
+        console.log('[Auth] Calling getSession...');
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (!isMounted.current) return;
         
@@ -121,25 +119,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[Auth] getSession error:', error);
           await handleAuthError(error);
         } else if (currentSession) {
-          console.log('[Auth] session found, syncing state');
+          console.log('[Auth] session found in initAuth, syncing state');
           setSession(currentSession);
           setUser(currentSession.user);
-          console.log('[Auth] session synced to state, calling ensureProfileExists');
           await ensureProfileExists(currentSession.user);
-
         } else {
-          console.log('[Auth] no session found');
+          console.log('[Auth] no session found in initAuth');
           setSession(null);
           setUser(null);
         }
       } catch (err) {
-        console.error('[Auth] initAuth critical failure:', err);
+        console.error('[Auth] initAuth catch:', err);
       } finally {
         if (isMounted.current) {
+          console.log('[Auth] initAuth finally, loading = false');
           setLoading(false);
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
+
     };
 
     initAuth();
