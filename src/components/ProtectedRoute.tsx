@@ -24,9 +24,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   });
 
   // Use a ref to track if we've already timed out
-  const [timedOut, setTimedOut] = (window as any).React.useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
-  (window as any).React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (authLoading || profileLoading) {
         console.warn('[ProtectedRoute] Loading timeout reached');
