@@ -34,8 +34,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     if (!authLoading && !profileLoading) return;
 
     const timer = setTimeout(() => {
-      if ((authLoading || profileLoading) && !user) {
-        console.warn('[ProtectedRoute] Loading timeout reached after 12s - User likely missing session');
+      if ((authLoading || profileLoading)) {
+        console.warn('[ProtectedRoute] Loading timeout reached after 12s - forcing timeout state');
         setTimedOut(true);
       }
     }, 12000);
