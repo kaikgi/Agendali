@@ -32,6 +32,5 @@ export function ClientProtectedRoute({ children }: ClientProtectedRouteProps) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <>{children />;
-
+  return <>{children}</>;
 }
