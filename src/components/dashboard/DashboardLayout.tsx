@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
@@ -10,7 +11,7 @@ import { BlockedAccessModal } from './BlockedAccessModal';
 import { getPlanEntitlements } from '@/lib/planEntitlements';
 import { useAdminAccess } from '@/hooks/useAdmin';
 import { useProfile } from '@/hooks/useProfile';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
