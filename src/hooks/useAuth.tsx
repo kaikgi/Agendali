@@ -104,8 +104,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
-    // Usa onAuthStateChange para inicializar o estado de forma mais resiliente que getSession isolado
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (initialSession && isMounted.current && !session) {
+        console.log('[Auth] getSession found session, setting state');
+        setSession(initialSession);
+        setUser(initialSession.user);
+        setLoading(false);
+        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
+      }
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+
       console.log('[Auth] Event:', event, !!currentSession);
       if (!isMounted.current) return;
 
