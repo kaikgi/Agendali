@@ -50,17 +50,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             <RefreshCw className="h-10 w-10 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Erro de Autenticação</h2>
+            <h2 className="text-xl font-bold">Erro de Carregamento</h2>
             <p className="text-muted-foreground text-sm">
-              Não conseguimos validar sua sessão. Isso pode acontecer se sua conexão cair ou se os dados do navegador estiverem corrompidos.
+              Não conseguimos validar seu acesso ou carregar seu perfil. Isso pode ocorrer por instabilidade na rede ou sessão expirada.
             </p>
           </div>
           <div className="flex flex-col gap-2">
             <Button onClick={() => window.location.reload()} className="w-full">
               Tentar Recarregar
             </Button>
-            <Button variant="outline" onClick={() => clearLocalSession()} className="w-full">
-              Limpar Sessão e Sair
+            <Button variant="outline" onClick={() => (window as any).location.href = '/login'} className="w-full">
+              Voltar ao Login
+            </Button>
+            <Button variant="ghost" onClick={() => clearLocalSession()} className="w-full text-xs text-muted-foreground">
+              Limpar dados locais e sair
             </Button>
           </div>
         </div>
