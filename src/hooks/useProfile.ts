@@ -15,7 +15,7 @@ export interface Profile {
 }
 
 export function useProfile() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -31,6 +31,11 @@ export function useProfile() {
         .maybeSingle();
       
       console.log('[useProfile] profile response:', { data, error });
+      
+      if (error) {
+        console.error('[useProfile] Supabase error:', error);
+        throw error;
+      }
       
       if (!data) {
         // Profile not found - auto-create it
