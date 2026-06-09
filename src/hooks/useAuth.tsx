@@ -102,8 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedVersion = localStorage.getItem('agendali_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log(`[Auth] Version mismatch: ${storedVersion} vs ${APP_VERSION}. Clearing local session.`);
-      await clearLocalSession();
+      clearLocalSession(); 
     }
+
     localStorage.setItem('agendali_version', APP_VERSION);
 
 
