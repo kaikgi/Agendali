@@ -9,6 +9,8 @@ export function useUserEstablishment() {
 
   return useQuery({
     queryKey: ['user-establishment', user?.id],
+    enabled: !!user?.id && !adminAccess?.isAdmin,
+    staleTime: 60000,
     queryFn: async () => {
       if (!user?.id) {
         console.log('[useUserEstablishment] No user found');
