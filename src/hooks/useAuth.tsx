@@ -104,34 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
-    const initAuth = async () => {
-      try {
-        console.log('[Auth] Running getSession');
-        const { data, error } = await supabase.auth.getSession();
-        if (!isMounted.current) return;
-        
-        if (data?.session) {
-          console.log('[Auth] Session found');
-          setSession(data.session);
-          setUser(data.session.user);
-          await ensureProfileExists(data.session.user);
-        } else if (error) {
-          await handleAuthError(error);
-        }
-      } catch (err) {
-        console.error('[Auth] Init failed:', err);
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-        }
-      }
-    };
-
-    initAuth();
-
+    // Usa onAuthStateChange para inicializar o estado de forma mais resiliente que getSession isolado
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log('[Auth] Event:', event);
+      console.log('[Auth] Event:', event, !!currentSession);
       if (!isMounted.current) return;
 
       if (currentSession) {
@@ -142,13 +117,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
 
-      if (event === 'SIGNED_IN' && currentSession?.user) {
-        await ensureProfileExists(currentSession.user);
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        if (currentSession?.user) {
+          await ensureProfileExists(currentSession.user);
+        }
         setLoading(false);
+        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'SIGNED_OUT') {
         setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        setLoading(false);
+        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       }
     });
 
@@ -158,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
     };
   }, []);
+
 
   const checkEmailAuthorized = async (email: string) => {
     const { data, error } = await supabase.rpc('check_signup_authorization', { p_email: email.toLowerCase().trim() });
