@@ -69,8 +69,6 @@ export function useUserEstablishment() {
         throw err;
       }
     },
-    enabled: !!user,
-    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 }
