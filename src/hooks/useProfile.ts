@@ -79,8 +79,10 @@ export function useProfile() {
       return await Promise.race([fetchProfile(), timeoutPromise]) as Profile;
     },
     enabled: !!user?.id && !authLoading,
-    retry: 2,
-    staleTime: 60000,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache to prevent repeat lookups during F5
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false, // Prevent F5 storms from triggering redundant fetches
   });
 
 
