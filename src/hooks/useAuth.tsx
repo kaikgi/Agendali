@@ -110,7 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       console.log('[Auth] initAuth started');
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        console.log('[Auth] Calling supabase.auth.getSession()');
+        const { data, error } = await supabase.auth.getSession();
+        const currentSession = data?.session;
+
         
         if (!isMounted.current) return;
         
@@ -121,7 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] session found, syncing state');
           setSession(currentSession);
           setUser(currentSession.user);
+          console.log('[Auth] session synced to state, calling ensureProfileExists');
           await ensureProfileExists(currentSession.user);
+
         } else {
           console.log('[Auth] no session found');
           setSession(null);

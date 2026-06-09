@@ -57,8 +57,9 @@ export default function Login() {
       
       const signInPromise = signIn(email, password);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Tempo de resposta do servidor excedido. Tente novamente.')), 15000)
+        setTimeout(() => reject(new Error('Tempo de resposta do servidor excedido. Tente novamente.')), 30000)
       );
+
 
       const result = await Promise.race([signInPromise, timeoutPromise]) as { error: any };
 
