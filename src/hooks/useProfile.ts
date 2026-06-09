@@ -21,6 +21,7 @@ export function useProfile() {
   const query = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
+      console.log('[useProfile] queryFn triggered for user:', user?.id);
       if (!user?.id) return null;
       
       const { data, error } = await supabase
@@ -28,6 +29,8 @@ export function useProfile() {
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+      
+      console.log('[useProfile] profile response:', { data, error });
       
       if (!data) {
         // Profile not found - auto-create it

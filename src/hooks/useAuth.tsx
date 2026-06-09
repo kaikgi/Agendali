@@ -368,6 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const ensureProfileExists = async (user: User) => {
+    console.log('[Auth] ensureProfileExists for:', user.id);
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
       .select('id')
@@ -380,7 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!existingProfile) {
-      console.log('[Auth] Profile not found, creating for user:', user.id);
+      console.log('[Auth] Profile not found in ensureProfileExists, creating...');
       const { error } = await supabase
         .from('profiles')
         .insert({
