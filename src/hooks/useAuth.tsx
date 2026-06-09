@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.error('[Auth] Profile check error:', err);
         } finally {
+          console.log('[Auth] Stopping loading after SIGNED_IN');
           setLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
