@@ -79,6 +79,7 @@ export function useProfile() {
     enabled: !!user?.id && !authLoading,
     retry: 1,
     staleTime: 60000,
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<Omit<Profile, 'id' | 'created_at'>>) => {
