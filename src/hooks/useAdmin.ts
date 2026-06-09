@@ -10,24 +10,36 @@ export function useAdminAccess() {
     queryKey: ["admin-access", user?.id],
     enabled: !!user?.id && !authLoading,
     staleTime: 60000,
+    retry: 1,
     queryFn: async () => {
       if (!user?.id) return { isAdmin: false };
-      try {
-        // Use the security-definer RPC which bypasses RLS
+      
+      console.log('[useAdminAccess] Checking for user:', user.id);
+      
+      const checkAdmin = async () => {
         const { data, error } = await supabase.rpc("is_admin", {
           p_user_id: user.id,
         });
 
         if (error) {
-          console.error("is_admin RPC error:", error);
+          console.error("[useAdminAccess] RPC error:", error);
           return { isAdmin: false };
         }
-
         return { isAdmin: !!data };
-      } catch {
+      };
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite ao verificar permissões admin.')), 10000)
+      );
+
+      try {
+        return await Promise.race([checkAdmin(), timeoutPromise]) as { isAdmin: boolean };
+      } catch (err) {
+        console.error('[useAdminAccess] Error:', err);
         return { isAdmin: false };
       }
     },
+
   });
 }
 

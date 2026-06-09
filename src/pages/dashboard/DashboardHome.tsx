@@ -1,4 +1,4 @@
-import { Calendar, Users, XCircle, TrendingUp, UserCheck, UsersRound, RefreshCw } from 'lucide-react';
+import { Calendar, Users, XCircle, TrendingUp, UserCheck, UsersRound, RefreshCw, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
@@ -287,27 +287,36 @@ export default function DashboardHome() {
 
   if (estError) {
     const errorMsg = (estError as any)?.message || 'Erro desconhecido';
+    const isAuthError = errorMsg.toLowerCase().includes('jwt') || 
+                       errorMsg.toLowerCase().includes('refresh_token') ||
+                       errorMsg.toLowerCase().includes('session_not_found');
+    
     console.error('[DashboardHome] Establishment error:', estError);
     
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
         <p className="text-destructive mb-2 font-bold text-lg">Erro ao carregar estabelecimento</p>
         <p className="text-sm text-muted-foreground mb-4">
-          {errorMsg === 'JWT expired' ? 'Sua sessão expirou. Por favor, faça login novamente.' : 'Verifique sua conexão ou tente novamente mais tarde.'}
+          {isAuthError 
+            ? 'Sua sessão expirou ou é inválida. Por favor, faça login novamente.' 
+            : 'Verifique sua conexão ou tente novamente mais tarde. Se o problema persistir, tente limpar os dados do site.'}
         </p>
-        <p className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md mx-auto overflow-hidden text-ellipsis whitespace-nowrap">
-          Detalhes: {errorMsg}
-        </p>
-        <Button 
-          variant="outline" 
-          className="mt-6"
-          onClick={() => window.location.reload()}
-        >
-          Recarregar página
-        </Button>
+        <div className="text-[10px] font-mono bg-muted p-2 rounded break-all mb-6 opacity-70">
+          Erro: {errorMsg}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button onClick={() => window.location.reload()} className="w-full">
+            Recarregar página
+          </Button>
+          <Button variant="outline" onClick={() => (window as any).location.href = '/login'} className="w-full">
+            Voltar ao Login
+          </Button>
+        </div>
       </div>
     );
   }
+
 
   if (!establishment) {
     return (

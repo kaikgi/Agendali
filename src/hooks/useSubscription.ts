@@ -26,28 +26,36 @@ export function useSubscription() {
     queryKey: ['subscription', user?.id],
     enabled: !!user?.id && !authLoading,
     staleTime: 60000,
+    retry: 1,
     queryFn: async (): Promise<Subscription | null> => {
-      if (!user?.id) {
-        console.log('[useSubscription] No user found');
-        return null;
-      }
+      if (!user?.id) return null;
 
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('owner_user_id', user.id)
-        .in('status', ['active', 'past_due', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      console.log('[useSubscription] Fetching for user:', user.id);
 
-      if (error) {
-        console.error('Error fetching subscription:', error);
-        throw error;
-      }
+      const fetchSub = async () => {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('owner_user_id', user.id)
+          .in('status', ['active', 'past_due', 'trialing'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      return data as Subscription | null;
+        if (error) {
+          console.error('[useSubscription] Error:', error);
+          throw error;
+        }
+        return data as Subscription | null;
+      };
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite excedido ao carregar assinatura.')), 10000)
+      );
+
+      return await Promise.race([fetchSub(), timeoutPromise]) as Subscription | null;
     },
+
   });
 }
 

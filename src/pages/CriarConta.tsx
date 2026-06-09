@@ -113,6 +113,7 @@ export default function CriarConta() {
       const planCode = tokenData.plan_id || 'solo';
 
       // 1. Create auth user
+      console.log('[CriarConta] Step 1: Creating auth user...');
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -127,15 +128,20 @@ export default function CriarConta() {
       });
 
       if (signUpError || !authData.user) {
-        throw signUpError || new Error('Erro ao criar conta');
+        console.error('[CriarConta] Step 1 Failed:', signUpError);
+        throw signUpError || new Error('Erro ao criar conta de usuário');
       }
 
       const userId = authData.user.id;
+      console.log('[CriarConta] User created:', userId);
 
       // 2. Update phone on profile
-      await supabase.from('profiles').update({ phone: phoneDigits }).eq('id', userId);
+      console.log('[CriarConta] Step 2: Updating profile phone...');
+      const { error: profileError } = await supabase.from('profiles').update({ phone: phoneDigits }).eq('id', userId);
+      if (profileError) console.error('[CriarConta] Profile update error (non-fatal):', profileError);
 
       // 3. Create establishment
+      console.log('[CriarConta] Step 3: Creating establishment...');
       const { data: establishment, error: estError } = await supabase
         .from('establishments')
         .insert({
@@ -148,18 +154,26 @@ export default function CriarConta() {
         .single();
 
       if (estError || !establishment) {
+        console.error('[CriarConta] Step 3 Failed:', estError);
         throw estError || new Error('Erro ao criar estabelecimento');
       }
+      console.log('[CriarConta] Establishment created:', establishment.id);
 
       // 4. Create owner member
-      await supabase.from('establishment_members').insert({
+      console.log('[CriarConta] Step 4: Creating establishment member...');
+      const { error: memberError } = await supabase.from('establishment_members').insert({
         establishment_id: establishment.id,
         user_id: userId,
         role: 'owner',
       } as any);
+      if (memberError) {
+        console.error('[CriarConta] Step 4 Failed:', memberError);
+        throw memberError;
+      }
 
-      // 4b. Activate subscription via RPC
-      await supabase.rpc('activate_subscription', {
+      // 4b. Activate subscription
+      console.log('[CriarConta] Step 5: Activating subscription...');
+      const { error: subError } = await supabase.rpc('activate_subscription', {
         p_establishment_id: establishment.id,
         p_plan: planCode,
         p_billing_cycle: 'monthly',
@@ -169,8 +183,10 @@ export default function CriarConta() {
         p_provider_ref: tokenData.order_id || 'signup-token',
         p_metadata: { source: 'signup_token', order_id: tokenData.order_id },
       } as any);
+      if (subError) console.error('[CriarConta] Step 5 error (non-fatal):', subError);
 
       // 5. Create default business hours
+      console.log('[CriarConta] Step 6: Creating business hours...');
       const defaultHours: any[] = [];
       for (let weekday = 1; weekday <= 6; weekday++) {
         defaultHours.push({
@@ -188,17 +204,21 @@ export default function CriarConta() {
         close_time: null,
         closed: true,
       });
-      await supabase.from('business_hours').insert(defaultHours);
+      const { error: hoursError } = await supabase.from('business_hours').insert(defaultHours);
+      if (hoursError) console.error('[CriarConta] Step 6 error (non-fatal):', hoursError);
 
       // 6. Consume token
+      console.log('[CriarConta] Step 7: Consuming token...');
       await supabase.rpc('consume_signup_token', { p_token: token } as any);
 
       // 7. Mark allowed signup as used
+      console.log('[CriarConta] Step 8: Marking allowed signup as used...');
       await supabase
         .from('allowed_establishment_signups')
         .update({ used: true })
         .eq('email', email);
 
+      console.log('[CriarConta] Signup process completed successfully');
       setIsLoading(false);
       toast({
         title: 'Conta criada com sucesso!',
@@ -206,6 +226,7 @@ export default function CriarConta() {
       });
       navigate('/dashboard');
     } catch (err: any) {
+      console.error('[CriarConta] Critical Error during signup:', err);
       setIsLoading(false);
       const message = err?.message || 'Erro ao criar conta';
       setAuthError(message);
@@ -215,6 +236,7 @@ export default function CriarConta() {
         description: message,
       });
     }
+
   };
 
   // Loading state

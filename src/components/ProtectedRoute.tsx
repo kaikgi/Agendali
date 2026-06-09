@@ -14,14 +14,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const location = useLocation();
 
-  console.log('[ProtectedRoute] Rendering:', { 
-    authLoading, 
-    profileLoading, 
-    hasUser: !!user, 
-    hasProfile: !!profile,
-    profileError: profileError?.message,
-    path: location.pathname 
-  });
+  useEffect(() => {
+    console.log('[ProtectedRoute] Diagnostic Log:', { 
+      authLoading, 
+      profileLoading, 
+      hasUser: !!user, 
+      userEmail: user?.email,
+      hasProfile: !!profile,
+      profileError: profileError?.message,
+      path: location.pathname 
+    });
+  }, [authLoading, profileLoading, user, profile, profileError, location.pathname]);
 
   // Use a ref to track if we've already timed out
   const [timedOut, setTimedOut] = useState(false);
@@ -29,13 +32,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (authLoading || profileLoading) {
-        console.warn('[ProtectedRoute] Loading timeout reached');
+        console.warn('[ProtectedRoute] Loading timeout reached after 15s');
         setTimedOut(true);
       }
     }, 15000);
     return () => clearTimeout(timer);
   }, [authLoading, profileLoading]);
 
+  // Show loading state while auth or profile is being verified
   if ((authLoading || profileLoading) && !timedOut) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
@@ -54,9 +58,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Handle profile fetch error (potential session corruption) or timeout
+  // Critical error or timeout
   if (profileError || (timedOut && (authLoading || profileLoading))) {
-    console.error('[ProtectedRoute] Access verification failed:', { profileError, timedOut, authLoading, profileLoading });
+    const errorMsg = profileError?.message || (timedOut ? 'Tempo limite de verificação excedido (15s).' : 'Erro de carregamento');
+    const isAuthError = errorMsg.toLowerCase().includes('jwt') || 
+                       errorMsg.toLowerCase().includes('refresh_token') ||
+                       errorMsg.toLowerCase().includes('session_not_found');
+
+    console.error('[ProtectedRoute] Access verification failed:', { errorMsg, timedOut, authLoading, profileLoading });
+    
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center space-y-6">
@@ -66,8 +76,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           <div className="space-y-2">
             <h2 className="text-xl font-bold">Erro de Carregamento</h2>
             <p className="text-muted-foreground text-sm">
-              Não conseguimos validar seu acesso ou carregar seu perfil. Isso pode ocorrer por instabilidade na rede ou sessão expirada.
+              {isAuthError 
+                ? 'Sua sessão expirou ou é inválida. Por favor, faça login novamente.' 
+                : 'Não conseguimos validar seu acesso. Isso pode ocorrer por instabilidade na rede ou sessão expirada.'}
             </p>
+            <div className="text-[10px] font-mono bg-muted p-2 rounded break-all mt-2 opacity-70">
+              ID: {user?.id || 'no-user'} | Msg: {errorMsg}
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Button onClick={() => window.location.reload()} className="w-full">
@@ -85,12 +100,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  if (!user && !authLoading) {
+    console.log('[ProtectedRoute] No user found, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Block customers from accessing establishment dashboard
   if (profile?.account_type === 'customer') {
+    console.warn('[ProtectedRoute] Customer tried to access establishment route');
     return <Navigate to="/client" replace />;
   }
 

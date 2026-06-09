@@ -77,20 +77,33 @@ export function useAdminRole() {
     queryKey: ["my-admin-role", user?.id],
     queryFn: async () => {
       if (!user?.id) return "none";
-      try {
+      console.log('[useAdminRole] Checking level for:', user.id);
+      
+      const fetchLevel = async () => {
         const { data, error } = await supabase.rpc("admin_get_my_level");
         if (error) {
-          console.warn("[useAdminRole] RPC error (might not be admin):", error.message);
+          console.warn("[useAdminRole] RPC error (likely not an admin):", error.message);
           return "none";
         }
         return (data as string) ?? "none";
+      };
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout useAdminRole')), 8000)
+      );
+
+      try {
+        return await Promise.race([fetchLevel(), timeoutPromise]) as string;
       } catch (err) {
+        console.error('[useAdminRole] Error:', err);
         return "none";
       }
     },
     enabled: !!user,
-    staleTime: 30000,
+    staleTime: 60000,
+    retry: 1,
   });
+
 }
 
 export function useAdminPermissions() {

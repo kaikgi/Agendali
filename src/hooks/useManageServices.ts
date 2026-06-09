@@ -31,17 +31,27 @@ export function useManageServices(establishmentId: string | undefined) {
   const listQuery = useQuery({
     queryKey: ['manage-services', establishmentId],
     queryFn: async () => {
+      if (!establishmentId) return [];
+      console.log('[useManageServices] Fetching for:', establishmentId);
+      
       const { data, error } = await supabase
         .from('services')
         .select('*')
         .eq('establishment_id', establishmentId)
         .order('sort_order')
         .order('name');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[useManageServices] Error:', error);
+        throw error;
+      }
       return data as Service[];
     },
     enabled: !!establishmentId,
+    retry: 1,
+    staleTime: 30000,
   });
+
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateServiceData) => {

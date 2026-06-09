@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.1'; // Increment this to force session clear if needed
+const APP_VERSION = '1.0.2'; // Incrementado para garantir limpeza de cache problemático
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const authTimeoutRef = useRef<any>(null);
   const isMounted = useRef(true);
+  const initializationStarted = useRef(false);
+
 
   const clearLocalSession = async () => {
     console.log('[Auth] Clearing local session due to error or version mismatch');
@@ -77,64 +79,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (initializationStarted.current) return;
+    initializationStarted.current = true;
     isMounted.current = true;
+    
+    console.log('[Auth] App started, version:', APP_VERSION);
     
     // Safety timeout to prevent infinite loading
     authTimeoutRef.current = setTimeout(() => {
       if (loading && isMounted.current) {
-        console.warn('[Auth] Auth loading timed out after 15s');
+        console.warn('[Auth] Auth loading timed out after 15s - forcing loading false');
         setLoading(false);
       }
     }, 15000);
 
-    // Check app version for compatibility
+    // Check app version for compatibility - ONLY clear if version changed
     const storedVersion = localStorage.getItem('agendali_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
+      console.log(`[Auth] Version mismatch: ${storedVersion} vs ${APP_VERSION}. Clearing local session.`);
       clearLocalSession();
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange:', event, !!session);
-      
-      if (!isMounted.current) return;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('[Auth] User signed in, ensuring profile exists...');
-        try {
-          await ensureProfileExists(session.user);
-        } catch (err) {
-          console.error('[Auth] Profile check error:', err);
-        } finally {
-          console.log('[Auth] Stopping loading after SIGNED_IN');
-          setLoading(false);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('[Auth] Token refreshed successfully');
-      } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
-        console.log('[Auth] Auth event:', event);
-        if (!session) {
-          console.log('[Auth] No session, stop loading');
-          setLoading(false);
-        }
-      }
-    });
-
     // Initial session check
-    console.log('[Auth] Starting initial session check...');
-    supabase.auth
-      .getSession()
-      .then(async ({ data: { session }, error }) => {
+    const initAuth = async () => {
+      console.log('[Auth] getSession started');
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (!isMounted.current) return;
         
-        console.log('[Auth] Initial session check result:', !!session, error?.message);
+        console.log('[Auth] getSession finished, success:', !!session);
 
         if (error) {
           await handleAuthError(error);
@@ -146,25 +121,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          console.log('[Auth] Initial session has user, ensuring profile...');
-          try {
-            await ensureProfileExists(session.user);
-          } catch (err) {
-            console.error('[Auth] Initial profile check error:', err);
-          }
+          console.log('[Auth] User identified:', session.user.id, session.user.email);
+          await ensureProfileExists(session.user);
         } else {
-          console.log('[Auth] No session user found in initial check');
+          console.log('[Auth] No active session found');
         }
-        console.log('[Auth] Stopping loading after getSession');
-        setLoading(false);
-      })
-      .catch(async (err) => {
-        console.error('[Auth] Initial session check catch:', err);
+      } catch (err) {
+        console.error('[Auth] getSession critical failure:', err);
+        if (isMounted.current) await handleAuthError(err);
+      } finally {
         if (isMounted.current) {
-          await handleAuthError(err);
+          console.log('[Auth] Initialization finished, loading = false');
           setLoading(false);
         }
-      });
+      }
+    };
+
+    initAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange event:', event, 'Has session:', !!session);
+      
+      if (!isMounted.current) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[Auth] SIGNED_IN detected, ensuring profile...');
+        try {
+          await ensureProfileExists(session.user);
+        } catch (err) {
+          console.error('[Auth] SIGNED_IN profile check error:', err);
+        } finally {
+          setLoading(false);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('[Auth] SIGNED_OUT detected');
+        setLoading(false);
+      } else if (event === 'INITIAL_SESSION' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        if (!session && loading) {
+          setLoading(false);
+        }
+      }
+    });
 
     return () => {
       isMounted.current = false;
@@ -172,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
     };
   }, []);
+
 
   const checkEmailAuthorized = async (email: string): Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean }> => {
     const normalizedEmail = email.toLowerCase().trim();

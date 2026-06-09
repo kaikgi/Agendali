@@ -6,7 +6,7 @@ import {
   isToday, isSameDay, isSameMonth, parseISO, getDay,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, User, Ban, Filter, CalendarDays, List, Scissors, RefreshCw, CalendarRange } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, User, Ban, Filter, CalendarDays, List, Scissors, RefreshCw, CalendarRange, AlertCircle } from 'lucide-react';
 import { useAllCustomerTags } from '@/hooks/useClientTags';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,20 +159,28 @@ export default function Agenda() {
     console.error('[Agenda] Error:', estError || error);
     
     return (
-      <div className="text-center py-12">
-        <p className="text-destructive mb-4 font-bold">Erro ao carregar agenda</p>
+      <div className="text-center py-12 max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+        <p className="text-destructive mb-2 font-bold text-lg">Erro ao carregar agenda</p>
         <p className="text-sm text-muted-foreground mb-4">
-          {errorMsg === 'JWT expired' ? 'Sua sessão expirou. Por favor, faça login novamente.' : 'Verifique sua conexão ou tente novamente mais tarde.'}
+          {errorMsg.toLowerCase().includes('jwt') || errorMsg.toLowerCase().includes('session_not_found')
+            ? 'Sua sessão expirou ou é inválida. Por favor, faça login novamente.' 
+            : 'Verifique sua conexão ou tente novamente mais tarde.'}
         </p>
-        <p className="text-xs text-muted-foreground bg-muted p-2 rounded max-w-md mx-auto overflow-hidden text-ellipsis mb-6">
-          Detalhes: {errorMsg}
-        </p>
-        <Button variant="outline" onClick={handleRetry}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Tentar novamente
-        </Button>
+        <div className="text-[10px] font-mono bg-muted p-2 rounded break-all mb-6 opacity-70">
+          Erro: {errorMsg}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button onClick={handleRetry} className="w-full">
+            Tentar novamente
+          </Button>
+          <Button variant="outline" onClick={() => (window as any).location.href = '/login'} className="w-full">
+            Voltar ao Login
+          </Button>
+        </div>
       </div>
     );
+
   }
 
   if (estLoading) {
