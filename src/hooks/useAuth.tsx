@@ -112,8 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase.auth.getSession();
         console.log('[Auth] getSession finished, session:', !!data?.session, 'error:', error?.message);
-
-
         
         if (!isMounted.current) return;
         
@@ -127,7 +125,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setUser(null);
         }
-
       } catch (err) {
         console.error('[Auth] initAuth catch:', err);
       } finally {
@@ -137,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
         }
       }
+
 
     };
 
