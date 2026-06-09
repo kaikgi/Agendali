@@ -21,65 +21,68 @@ export function useProfile() {
   const query = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
-      console.log('[useProfile] queryFn triggered for user:', user?.id);
       if (!user?.id) return null;
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      console.log('[useProfile] Fetching for user:', user.id);
       
-      console.log('[useProfile] profile response:', { data, error });
-      
-      if (error) {
-        console.error('[useProfile] Supabase error:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        // Profile not found - auto-create it
-        const defaultAccountType: AccountType = 'customer';
-        
-        // Check if user owns an establishment to determine account type
-        const { data: establishments } = await supabase
-          .from('establishments')
-          .select('id')
-          .eq('owner_user_id', user.id)
-          .limit(1);
-        
-        const accountType: AccountType = 
-          (establishments && establishments.length > 0) 
-            ? 'establishment_owner' 
-            : defaultAccountType;
-
-        const newProfile = {
-          id: user.id,
-          full_name: user.user_metadata?.full_name || null,
-          phone: user.user_metadata?.phone || null,
-          account_type: accountType,
-        };
-
-        const { data: created, error: insertError } = await supabase
+      const fetchProfile = async () => {
+        const { data, error } = await supabase
           .from('profiles')
-          .upsert(newProfile)
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Auto-create profile failed:', insertError);
-          return null;
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[useProfile] Supabase error:', error);
+          throw error;
         }
         
-        return created as Profile;
-      }
-      
-      return data as Profile;
+        if (!data) {
+          console.log('[useProfile] Profile not found, auto-creating...');
+          const { data: establishments } = await supabase
+            .from('establishments')
+            .select('id')
+            .eq('owner_user_id', user.id)
+            .limit(1);
+          
+          const accountType: AccountType = 
+            (establishments && establishments.length > 0) 
+              ? 'establishment_owner' 
+              : 'customer';
+
+          const newProfile = {
+            id: user.id,
+            full_name: user.user_metadata?.full_name || null,
+            phone: user.user_metadata?.phone || null,
+            account_type: accountType,
+          };
+
+          const { data: created, error: insertError } = await supabase
+            .from('profiles')
+            .upsert(newProfile)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('[useProfile] Auto-create failed:', insertError);
+            throw insertError;
+          }
+          return created as Profile;
+        }
+        return data as Profile;
+      };
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite ao carregar perfil (10s).')), 10000)
+      );
+
+      return await Promise.race([fetchProfile(), timeoutPromise]) as Profile;
     },
     enabled: !!user?.id && !authLoading,
-    retry: 1,
+    retry: 2,
     staleTime: 60000,
   });
+
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<Omit<Profile, 'id' | 'created_at'>>) => {
