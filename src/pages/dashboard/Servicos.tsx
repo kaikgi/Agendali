@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   Plus, Pencil, Trash2, Scissors, RefreshCw, GripVertical,
-  ChevronUp, ChevronDown, FolderPlus, Tag, ChevronRight,
+  ChevronUp, ChevronDown, FolderPlus, Tag, ChevronRight, AlertCircle,
 } from 'lucide-react';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionButton } from '@/components/ui/action-button';
