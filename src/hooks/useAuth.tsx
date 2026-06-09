@@ -110,10 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] initAuth starting (v1.0.4)');
+      console.log('[Auth] initAuth starting (v1.0.5)');
       try {
         const { data, error } = await supabase.auth.getSession();
-        console.log('[Auth] getSession done:', !!data?.session, error?.message);
+        console.log('[Auth] getSession result (async):', !!data?.session, error?.message);
+
 
 
 
