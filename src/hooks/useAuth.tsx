@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const APP_VERSION = '1.0.5'; // Novo reset
+const APP_VERSION = '1.0.6'; // Novo reset
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -110,10 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check
     const initAuth = async () => {
-      console.log('[Auth] initAuth starting (v1.0.5)');
+      console.log('[Auth] initAuth starting (v1.0.6)');
       try {
-        const { data, error } = await supabase.auth.getSession();
-        console.log('[Auth] getSession result (async):', !!data?.session, error?.message);
+        console.log('[Auth] Pre-getSession');
+        const sessionResult = await supabase.auth.getSession();
+        console.log('[Auth] Post-getSession result:', !!sessionResult.data?.session);
+        const { data, error } = sessionResult;
+
 
 
 
