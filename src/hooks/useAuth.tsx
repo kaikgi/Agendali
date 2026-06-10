@@ -9,6 +9,7 @@ interface SignUpData {
   password: string;
   fullName: string;
   companyName: string;
+  phone: string;
 }
 
 interface CustomerSignUpData {
@@ -30,6 +31,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   checkEmailAuthorized: (email: string) => Promise<{ authorized: boolean; planId?: string; pendingPayment?: boolean; token?: string }>;
   clearLocalSession: () => Promise<void>;
+  completeSignup: (data: { userId: string; fullName: string; companyName: string; phone: string }) => Promise<{ error: Error | null; establishmentId?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,12 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isMounted = useRef(true);
   const initializationStarted = useRef(false);
 
-  const clearLocalSession = async () => {
-    console.log('[Auth] Clearing local session');
+  const clearLocalSession = async (reason?: string) => {
+    console.log('[AUTH] clearLocalSession executou?', { reason: reason || 'chamada direta' });
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch (e) {
-      console.error('[Auth] local signOut error:', e);
+      console.error('[AUTH] local signOut error:', e);
     }
     localStorage.removeItem('supabase.auth.token');
     setUser(null);
@@ -58,10 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const handleAuthError = async (error: any) => {
-    console.error('[Auth] Auth error:', error);
+    console.error('[AUTH] Auth error:', error);
     const errorMsg = error?.message?.toLowerCase() || '';
     if (errorMsg.includes('refresh_token_not_found') || errorMsg.includes('session_not_found') || errorMsg.includes('jwt expired')) {
-      await clearLocalSession();
+      await clearLocalSession('erro_autenticacao');
       toast({
         variant: 'destructive',
         title: 'Sessão expirada',
@@ -71,42 +73,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const ensureProfileExists = async (user: User) => {
-    console.log('[Auth] Profile check for:', user.id);
-    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-    if (!existing) {
-      console.log('[Auth] Creating missing profile');
-      await supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || '',
-        account_type: user.user_metadata?.account_type || 'customer',
-      });
+    console.log('[AUTH] Profile check for:', user.id);
+    try {
+      const { data: existing, error: fetchError } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+      if (fetchError) {
+        console.error('[AUTH] erro ao buscar profile em ensureProfileExists:', fetchError.message);
+        return;
+      }
+      if (!existing) {
+        console.log('[AUTH] Creating missing profile');
+        const { error: insertError } = await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          account_type: user.user_metadata?.account_type || 'customer',
+        });
+        if (insertError) {
+          console.error('[AUTH] erro ao inserir profile em ensureProfileExists:', insertError.message);
+        }
+      }
+    } catch (err) {
+      console.error('[AUTH] exceção inesperada em ensureProfileExists:', err);
     }
   };
 
   useEffect(() => {
+    const initStartTime = Date.now();
     if (initializationStarted.current) return;
     initializationStarted.current = true;
     isMounted.current = true;
     
-    console.log('[Auth] App init v' + APP_VERSION);
+    console.log('[AUTH] init iniciado', { version: APP_VERSION });
     
     authTimeoutRef.current = setTimeout(() => {
       if (loading && isMounted.current) {
-        console.warn('[Auth] Timeout reached');
+        console.warn('[AUTH] Timeout reached, forçando authLoading = false');
         setLoading(false);
       }
     }, 15000);
 
     const storedVersion = localStorage.getItem('agendali_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
-      clearLocalSession();
+      console.log('[AUTH] APP_VERSION limpou sessão?', { Reason: `versão armazenada: ${storedVersion} diferente de v${APP_VERSION}` });
+      clearLocalSession('versao_antiga');
     }
     localStorage.setItem('agendali_version', APP_VERSION);
 
+    console.log('[AUTH] getSession iniciado');
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log('[AUTH] getSession retornou', {
+        sessionExiste: !!initialSession,
+        userExiste: !!initialSession?.user,
+        tempoRestauracaoMs: Date.now() - initStartTime
+      });
       if (initialSession && isMounted.current && !session) {
-        console.log('[Auth] getSession found session, setting state');
         setSession(initialSession);
         setUser(initialSession.user);
         setLoading(false);
@@ -115,8 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-
-      console.log('[Auth] Event:', event, !!currentSession);
+      console.log('[AUTH] evento onAuthStateChange', {
+        evento: event,
+        sessionExiste: !!currentSession,
+        userExiste: !!currentSession?.user
+      });
       if (!isMounted.current) return;
 
       if (currentSession) {
@@ -131,9 +154,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           await ensureProfileExists(currentSession.user);
         }
+        console.log('[AUTH] authLoading = false');
         setLoading(false);
         if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       } else if (event === 'SIGNED_OUT') {
+        console.log('[AUTH] authLoading = false (SIGNED_OUT)');
         setLoading(false);
         if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       }
@@ -154,8 +179,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { authorized: !!res?.authorized, planId: res?.plan_id, pendingPayment: !!res?.pending_payment };
   };
 
+  const completeSignup = async (data: { userId: string; fullName: string; companyName: string; phone: string }) => {
+    try {
+      const { data: res, error } = await supabase.rpc('complete_establishment_signup', {
+        p_user_id: data.userId,
+        p_full_name: data.fullName,
+        p_company_name: data.companyName,
+        p_phone: data.phone,
+      });
+
+      if (error) {
+        console.error('[Auth] complete_establishment_signup RPC error:', error);
+        return { error };
+      }
+
+      const response = res as any;
+      if (response && !response.success) {
+        console.error('[Auth] complete_establishment_signup failure:', response.error);
+        return { error: new Error(response.error || 'Erro ao completar cadastro') };
+      }
+
+      return { error: null, establishmentId: response?.establishment_id };
+    } catch (err: any) {
+      console.error('[Auth] completeSignup unexpected error:', err);
+      return { error: err };
+    }
+  };
+
   const signUp = async (data: SignUpData) => {
-    const { authorized, planId } = await checkEmailAuthorized(data.email);
+    const { authorized } = await checkEmailAuthorized(data.email);
     if (!authorized) return { error: new Error('Email não autorizado') };
 
     const { data: authData, error } = await supabase.auth.signUp({
@@ -169,17 +221,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error || !authData.user) return { error: error || new Error('Erro no signup') };
 
-    const { data: est, error: estErr } = await supabase.from('establishments').insert({
-      owner_user_id: authData.user.id,
-      name: data.companyName,
-      status: 'active',
-      plano: planId || 'solo',
-    }).select('id').single();
+    // Chama a RPC atômica para criar perfil, estabelecimento, membership e subscription de forma transacional
+    const { error: completeError } = await completeSignup({
+      userId: authData.user.id,
+      fullName: data.fullName,
+      companyName: data.companyName,
+      phone: data.phone,
+    });
 
-    if (estErr) return { error: estErr };
-
-    await supabase.from('establishment_members').insert({ establishment_id: est.id, user_id: authData.user.id, role: 'owner' });
-    await supabase.from('allowed_establishment_signups').update({ used: true }).eq('email', data.email.toLowerCase().trim());
+    if (completeError) {
+      return { error: completeError };
+    }
 
     return { error: null };
   };
@@ -226,7 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signUpCustomer, signIn, signInWithGoogle, signOut, resetPassword, checkEmailAuthorized, clearLocalSession }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signUpCustomer, signIn, signInWithGoogle, signOut, resetPassword, checkEmailAuthorized, clearLocalSession, completeSignup }}>
       {children}
     </AuthContext.Provider>
   );

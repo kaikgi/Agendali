@@ -110,7 +110,6 @@ export default function CriarConta() {
     try {
       const email = tokenData.email.toLowerCase().trim();
       const phoneDigits = phone.replace(/\D/g, '');
-      const planCode = tokenData.plan_id || 'solo';
 
       // 1. Create auth user
       console.log('[CriarConta] Step 1: Creating auth user...');
@@ -135,62 +134,35 @@ export default function CriarConta() {
       const userId = authData.user.id;
       console.log('[CriarConta] User created:', userId);
 
-      // 2. Update phone on profile
-      console.log('[CriarConta] Step 2: Updating profile phone...');
-      const { error: profileError } = await supabase.from('profiles').update({ phone: phoneDigits }).eq('id', userId);
-      if (profileError) console.error('[CriarConta] Profile update error (non-fatal):', profileError);
+      // 2. Chamar RPC complete_establishment_signup para criar perfil, estabelecimento, membership e assinatura atomicamente
+      console.log('[CriarConta] Step 2: Calling complete_establishment_signup RPC...');
+      const { data: rpcData, error: rpcError } = await supabase.rpc('complete_establishment_signup', {
+        p_user_id: userId,
+        p_full_name: fullName.trim(),
+        p_company_name: companyName.trim(),
+        p_phone: phoneDigits,
+      });
 
-      // 3. Create establishment
-      console.log('[CriarConta] Step 3: Creating establishment...');
-      const { data: establishment, error: estError } = await supabase
-        .from('establishments')
-        .insert({
-          owner_user_id: userId,
-          name: companyName.trim(),
-          status: 'active',
-          plano: planCode,
-        } as any)
-        .select('id')
-        .single();
-
-      if (estError || !establishment) {
-        console.error('[CriarConta] Step 3 Failed:', estError);
-        throw estError || new Error('Erro ao criar estabelecimento');
-      }
-      console.log('[CriarConta] Establishment created:', establishment.id);
-
-      // 4. Create owner member
-      console.log('[CriarConta] Step 4: Creating establishment member...');
-      const { error: memberError } = await supabase.from('establishment_members').insert({
-        establishment_id: establishment.id,
-        user_id: userId,
-        role: 'owner',
-      } as any);
-      if (memberError) {
-        console.error('[CriarConta] Step 4 Failed:', memberError);
-        throw memberError;
+      if (rpcError) {
+        console.error('[CriarConta] RPC Error:', rpcError);
+        throw rpcError;
       }
 
-      // 4b. Activate subscription
-      console.log('[CriarConta] Step 5: Activating subscription...');
-      const { error: subError } = await supabase.rpc('activate_subscription', {
-        p_establishment_id: establishment.id,
-        p_plan: planCode,
-        p_billing_cycle: 'monthly',
-        p_status: 'active',
-        p_amount_cents: 0,
-        p_provider: 'kiwify',
-        p_provider_ref: tokenData.order_id || 'signup-token',
-        p_metadata: { source: 'signup_token', order_id: tokenData.order_id },
-      } as any);
-      if (subError) console.error('[CriarConta] Step 5 error (non-fatal):', subError);
+      const response = rpcData as any;
+      if (response && !response.success) {
+        console.error('[CriarConta] RPC returned success=false:', response.error);
+        throw new Error(response.error || 'Erro ao completar cadastro do estabelecimento');
+      }
 
-      // 5. Create default business hours
-      console.log('[CriarConta] Step 6: Creating business hours...');
+      const establishmentId = response.establishment_id;
+      console.log('[CriarConta] Establishment completed:', establishmentId);
+
+      // 3. Create default business hours
+      console.log('[CriarConta] Step 3: Creating business hours...');
       const defaultHours: any[] = [];
       for (let weekday = 1; weekday <= 6; weekday++) {
         defaultHours.push({
-          establishment_id: establishment.id,
+          establishment_id: establishmentId,
           weekday,
           open_time: '09:00',
           close_time: '18:00',
@@ -198,25 +170,14 @@ export default function CriarConta() {
         });
       }
       defaultHours.push({
-        establishment_id: establishment.id,
+        establishment_id: establishmentId,
         weekday: 0,
         open_time: null,
         close_time: null,
         closed: true,
       });
       const { error: hoursError } = await supabase.from('business_hours').insert(defaultHours);
-      if (hoursError) console.error('[CriarConta] Step 6 error (non-fatal):', hoursError);
-
-      // 6. Consume token
-      console.log('[CriarConta] Step 7: Consuming token...');
-      await supabase.rpc('consume_signup_token', { p_token: token } as any);
-
-      // 7. Mark allowed signup as used
-      console.log('[CriarConta] Step 8: Marking allowed signup as used...');
-      await supabase
-        .from('allowed_establishment_signups')
-        .update({ used: true })
-        .eq('email', email);
+      if (hoursError) console.error('[CriarConta] Step 3 error (non-fatal):', hoursError);
 
       console.log('[CriarConta] Signup process completed successfully');
       setIsLoading(false);

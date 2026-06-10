@@ -15,16 +15,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
 
   useEffect(() => {
-    console.log('[ProtectedRoute] Diagnostic Log:', { 
-      authLoading, 
-      profileLoading, 
-      hasUser: !!user, 
-      userEmail: user?.email,
-      hasProfile: !!profile,
+    console.log('[PROTECTED ROUTE] logs detalhados', {
+      pathname: location.pathname,
+      authLoading,
+      userExiste: !!user,
+      profileLoading,
+      profileExiste: !!profile,
       profileError: profileError?.message,
-      path: location.pathname 
+      timedOut
     });
-  }, [authLoading, profileLoading, user, profile, profileError, location.pathname]);
+  }, [authLoading, profileLoading, user, profile, profileError, location.pathname, timedOut]);
 
   // Use a ref to track if we've already timed out
   const [timedOut, setTimedOut] = useState(false);
@@ -35,7 +35,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     const timer = setTimeout(() => {
       if ((authLoading || profileLoading)) {
-        console.warn('[ProtectedRoute] Loading timeout reached after 12s - forcing timeout state');
+        console.warn('[PROTECTED ROUTE] Loading timeout reached after 12s - forcing timeout state');
         setTimedOut(true);
       }
     }, 12000);
@@ -68,7 +68,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
                        errorMsg.toLowerCase().includes('refresh_token') ||
                        errorMsg.toLowerCase().includes('session_not_found');
 
-    console.error('[ProtectedRoute] Access verification failed:', { errorMsg, timedOut, authLoading, profileLoading });
+    console.error('[PROTECTED ROUTE] erro detectado', { errorMsg, timedOut, authLoading, profileLoading });
     
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -104,13 +104,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user && !authLoading) {
-    console.log('[ProtectedRoute] No user found and loading finished, redirecting to login');
+    console.log('[PROTECTED ROUTE] redirecionando para login', { motivoDoRedirect: 'Usuário não autenticado e loading de auth finalizado' });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Block customers from accessing establishment dashboard
   if (profile?.account_type === 'customer') {
-    console.warn('[ProtectedRoute] Customer tried to access establishment route');
+    console.log('[PROTECTED ROUTE] redirecionando para área do cliente', { motivoDoBloqueio: 'Conta de cliente tentando acessar rotas do estabelecimento' });
     return <Navigate to="/client" replace />;
   }
 

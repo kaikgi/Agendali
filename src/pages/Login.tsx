@@ -27,24 +27,60 @@ export default function Login() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    const startTime = Date.now();
+    const emailNormal = data.email.toLowerCase().trim();
+    console.log('[LOGIN] submit iniciado', {
+      email: emailNormal,
+      passwordPreenchida: !!data.password
+    });
+
     setAuthError(null);
     setIsLoading(true);
     try {
+      console.log('[LOGIN] limpando sessão local antes de entrar...');
       await clearLocalSession();
-      const { error } = await signIn(data.email, data.password);
+      
+      console.log('[LOGIN] chamando signInWithPassword');
+      const { error } = await signIn(emailNormal, data.password);
+      console.log('[LOGIN] signInWithPassword retornou', {
+        sucesso: !error,
+        erro: error?.message
+      });
+
       if (error) {
         setAuthError(error.message);
         return;
       }
-      const { data: { user } } = await supabase.auth.getUser();
+
+      console.log('[LOGIN] obtendo dados do usuário no Supabase...');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      console.log('[LOGIN] supabase.auth.getUser retornou', {
+        userExistente: !!userData?.user,
+        email: userData?.user?.email,
+        erro: userError?.message
+      });
+
+      if (userError) {
+        setAuthError(userError.message);
+        return;
+      }
+
+      const user = userData.user;
       if (user?.user_metadata?.account_type === 'customer') {
+        console.log('[LOGIN] acesso negado: conta do tipo cliente');
         setAuthError('Conta de cliente. Use a área do cliente.');
         return;
       }
+
+      console.log('[LOGIN] redirecionando para /dashboard');
       navigate('/dashboard');
     } catch (err: any) {
+      console.error('[LOGIN] erro capturado no catch:', err);
       setAuthError(err.message || 'Erro ao entrar');
     } finally {
+      console.log('[LOGIN] finally executado', {
+        tempoTotalMs: Date.now() - startTime
+      });
       setIsLoading(false);
     }
   };

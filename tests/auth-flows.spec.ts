@@ -51,7 +51,7 @@ test.describe('Authentication and Profile Flow', () => {
   test('Forgot password flow', async ({ page }) => {
     await page.goto('/esqueci-senha');
     
-    await expect(page.locator('h1')).toContainText('Recuperar Senha');
+    await expect(page.locator('h1')).toContainText('Esqueceu sua senha?');
     await page.fill('input[type="email"]', 'user@example.com');
     
     const submitBtn = page.locator('button[type="submit"]');

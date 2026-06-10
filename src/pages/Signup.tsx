@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, ShieldCheck, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { signupSchema, SignupFormData } from '@/lib/validations/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,15 +16,71 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackgroundGradient } from '@/components/ui/background-gradient';
+import { z } from 'zod';
+
+const phoneRegex = /^\d{10,11}$/;
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~';]).{8,}$/;
+
+const getSignupSchema = (isAuthenticated: boolean) => {
+  const base = z.object({
+    fullName: z
+      .string()
+      .min(2, 'Nome deve ter pelo menos 2 caracteres')
+      .max(100, 'Nome muito longo'),
+    companyName: z
+      .string()
+      .min(2, 'Nome da empresa deve ter pelo menos 2 caracteres')
+      .max(100, 'Nome da empresa muito longo'),
+    email: z
+      .string()
+      .min(1, 'Email é obrigatório')
+      .email('Email inválido'),
+    phone: z
+      .string()
+      .regex(phoneRegex, 'Telefone deve ter DDD + 8 ou 9 dígitos'),
+  });
+
+  if (isAuthenticated) {
+    return base;
+  }
+
+  return base.extend({
+    password: z
+      .string()
+      .min(8, 'Senha deve ter pelo menos 8 caracteres')
+      .regex(strongPasswordRegex, 'Senha deve conter maiúscula, minúscula, número e caractere especial'),
+    confirmPassword: z
+      .string()
+      .min(1, 'Confirmação de senha é obrigatória'),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
+};
+
+interface SignupFormData {
+  fullName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  confirmPassword?: string;
+}
 
 export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [ipAddress, setIpAddress] = useState<string | null>(null);
-  const { signUp } = useAuth();
+  const { signUp, completeSignup, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const isAuthenticated = !!user;
+
+  const schema = useMemo(() => {
+    return getSignupSchema(isAuthenticated);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
@@ -39,11 +94,18 @@ export default function Signup() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
+    resolver: zodResolver(schema),
     mode: 'onChange',
   });
+
+  useEffect(() => {
+    if (user?.email) {
+      setValue('email', user.email);
+    }
+  }, [user, setValue]);
 
   const password = watch('password', '');
 
@@ -60,56 +122,85 @@ export default function Signup() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { error } = await signUp({
-      email: data.email,
-      password: data.password,
-      fullName: data.fullName,
-      companyName: data.companyName,
-    });
+    try {
+      if (!isAuthenticated) {
+        // Cenário A: Usuário desautenticado. Cria credencial e completa cadastro via RPC
+        const { error } = await signUp({
+          email: data.email,
+          password: data.password || '',
+          fullName: data.fullName,
+          companyName: data.companyName,
+          phone: data.phone,
+        });
 
-    if (error) {
-      setIsLoading(false);
-      setAuthError(error.message);
+        if (error) {
+          setIsLoading(false);
+          setAuthError(error.message);
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao criar conta',
+            description: error.message,
+          });
+          return;
+        }
+      } else {
+        // Cenário B: Usuário já autenticado. Completa o cadastro diretamente
+        const { error } = await completeSignup({
+          userId: user.id,
+          fullName: data.fullName,
+          companyName: data.companyName,
+          phone: data.phone,
+        });
+
+        if (error) {
+          setIsLoading(false);
+          setAuthError(error.message);
+          toast({
+            variant: 'destructive',
+            title: 'Erro ao completar cadastro',
+            description: error.message,
+          });
+          return;
+        }
+      }
+
+      // Legal Acceptance logs
+      const { data: userData } = await supabase.auth.getUser();
+      const currentUserId = userData?.user?.id;
+      if (currentUserId) {
+        const { data: estData } = await supabase
+          .from('establishments')
+          .select('id')
+          .eq('owner_user_id', currentUserId)
+          .maybeSingle();
+
+        await supabase.from('legal_acceptance_logs').insert({
+          user_id: currentUserId,
+          establishment_id: estData?.id,
+          document_type: 'terms_and_privacy',
+          document_version: '1.0',
+          ip_address: ipAddress,
+          user_agent: navigator.userAgent
+        });
+      }
+
+      toast({
+        title: 'Conta criada com sucesso!',
+        description: 'Seu estabelecimento está pronto. Bem-vindo ao Agendali!',
+      });
+      
+      // Clear session/refresh cache
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      console.error('[Signup] Submit error:', err);
       toast({
         variant: 'destructive',
-        title: 'Erro ao criar conta',
-        description: error.message,
+        title: 'Erro inesperado',
+        description: err?.message || 'Ocorreu um erro ao processar o cadastro.',
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Profile is auto-created by database trigger with account_type from metadata.
-    // Update phone number since it's not in the signUp metadata.
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user?.id) {
-      await supabase.from('profiles').update({
-        phone: data.phone,
-      }).eq('id', userData.user.id);
-
-      // Log legal acceptance
-      const { data: estData } = await supabase
-        .from('establishments')
-        .select('id')
-        .eq('owner_user_id', userData.user.id)
-        .single();
-
-      await supabase.from('legal_acceptance_logs').insert({
-        user_id: userData.user.id,
-        establishment_id: estData?.id,
-        document_type: 'terms_and_privacy',
-        document_version: '1.0',
-        ip_address: ipAddress,
-        user_agent: navigator.userAgent
-      });
-    }
-
-    setIsLoading(false);
-    toast({
-      title: 'Conta criada com sucesso!',
-      description: 'Seu estabelecimento está pronto. Bem-vindo ao Agendali!',
-    });
-    // Clear query cache to ensure profile is fetched fresh after establishment creation
-    window.location.href = '/dashboard';
   };
 
   return (
@@ -136,6 +227,15 @@ export default function Signup() {
               </AlertDescription>
             </Alert>
 
+            {isAuthenticated && (
+              <Alert className="mb-4 border-amber-200 bg-amber-50">
+                <ShieldCheck className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-sm text-amber-800">
+                  Você já está autenticado como <strong>{user?.email}</strong>. Preencha os dados restantes abaixo para completar o cadastro do seu estabelecimento.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {authError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -158,7 +258,7 @@ export default function Signup() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-700">Email <span className="text-slate-500 text-xs">(mesmo usado na compra)</span></Label>
-                <Input id="email" type="email" placeholder="seu@email.com" autoComplete="email" className="bg-white border-slate-300" {...register('email')} />
+                <Input id="email" type="email" placeholder="seu@email.com" autoComplete="email" className="bg-white border-slate-300" disabled={isAuthenticated} {...register('email')} />
                 {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
               </div>
 
@@ -175,18 +275,22 @@ export default function Signup() {
                 {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700">Senha</Label>
-                <PasswordInput id="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password" className="bg-white border-slate-300" {...register('password')} />
-                <PasswordStrength password={password} />
-                {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-              </div>
+              {!isAuthenticated && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-slate-700">Senha</Label>
+                    <PasswordInput id="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password" className="bg-white border-slate-300" {...register('password')} />
+                    <PasswordStrength password={password || ''} />
+                    {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-700">Confirmar senha</Label>
-                <PasswordInput id="confirmPassword" placeholder="Repita a senha" autoComplete="new-password" className="bg-white border-slate-300" {...register('confirmPassword')} />
-                {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>}
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-slate-700">Confirmar senha</Label>
+                    <PasswordInput id="confirmPassword" placeholder="Repita a senha" autoComplete="new-password" className="bg-white border-slate-300" {...register('confirmPassword')} />
+                    {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>}
+                  </div>
+                </>
+              )}
 
               <div className="flex items-start space-x-2 py-2">
                 <input
