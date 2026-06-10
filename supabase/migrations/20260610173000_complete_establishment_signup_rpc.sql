@@ -156,14 +156,13 @@ BEGIN
   WHERE owner_user_id = p_user_id;
 
   IF v_establishment_id IS NULL THEN
-    INSERT INTO public.establishments (owner_user_id, name, status, plano, created_at, updated_at)
-    VALUES (p_user_id, trim(p_company_name), 'active', v_plan_id, now(), now())
+    INSERT INTO public.establishments (owner_user_id, name, status, plano, created_at)
+    VALUES (p_user_id, trim(p_company_name), 'active', v_plan_id, now())
     RETURNING id INTO v_establishment_id;
   ELSE
     UPDATE public.establishments
     SET name = trim(p_company_name),
-        plano = v_plan_id,
-        updated_at = now()
+        plano = v_plan_id
     WHERE id = v_establishment_id;
   END IF;
 
