@@ -94,18 +94,7 @@ serve(async (req) => {
       console.error('[RESEND-LINK] Error invalidating old tokens:', invalidateError)
     }
 
-    // 5. Also invalidate active signup_invitations
-    const { error: invalidateInvError } = await supabase
-      .from('signup_invitations')
-      .update({ status: 'cancelled' })
-      .eq('email', normalizedEmail)
-      .eq('status', 'pending')
-
-    if (invalidateInvError) {
-      console.error('[RESEND-LINK] Error invalidating old invitations:', invalidateInvError)
-    }
-
-    // 6. Generate new signup_token
+    // 5. Generate new signup_token
     const rawToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '')
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 

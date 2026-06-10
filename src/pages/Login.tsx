@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -57,17 +57,23 @@ export default function Login() {
           <div className="text-center space-y-2">
             <Logo size="lg" />
             <h1 className="text-2xl font-bold">Painel do Estabelecimento</h1>
+            <p className="text-sm text-slate-500">Entre com sua conta de estabelecimento</p>
           </div>
           {authError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{authError}</AlertDescription></Alert>}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" {...register('email')} placeholder="seu@email.com" />
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...register('email')} placeholder="seu@email.com" />
               {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Senha</Label>
-              <PasswordInput {...register('password')} placeholder="Sua senha" />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                <Link to="/esqueci-senha" className="text-xs text-slate-500 hover:text-slate-900 font-medium hover:underline">
+                  Esqueci minha senha
+                </Link>
+              </div>
+              <PasswordInput id="password" {...register('password')} placeholder="Sua senha" />
               {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -75,6 +81,26 @@ export default function Login() {
               Entrar
             </Button>
           </form>
+
+          <div className="mt-6 space-y-3 text-center text-sm border-t border-slate-100 pt-6">
+            <p className="text-slate-600">
+              Não tem uma conta?{' '}
+              <Link to="/signup" className="text-slate-900 font-semibold hover:underline">
+                Criar conta de estabelecimento
+              </Link>
+            </p>
+            <p className="text-slate-600">
+              É cliente e quer agendar?{' '}
+              <Link to="/cliente/login" className="text-slate-900 font-semibold hover:underline">
+                Área do Cliente
+              </Link>
+            </p>
+            <p className="text-slate-600 pt-1">
+              <Link to="/reenviar-link" className="text-slate-500 hover:text-slate-900 font-medium hover:underline">
+                Não recebeu o link de cadastro?
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

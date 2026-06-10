@@ -500,25 +500,26 @@ async function createInvitationAndSendEmail(
 ) {
   // 1. Generate secure token
   const rawToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '')
-  const tokenHash = await hashToken(rawToken)
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
-  // 2. Store invitation
+  // 2. Store signup token (no hashing, clear text)
   const { error: inviteError } = await supabase
-    .from('signup_invitations')
+    .from('signup_tokens')
     .insert({
       email,
-      plan_code: planCode,
-      kiwify_order_id: orderId,
-      token_hash: tokenHash,
+      plan_id: planCode,
+      order_id: orderId,
+      token: rawToken,
       status: 'pending',
+      expires_at: expiresAt,
     })
 
   if (inviteError) {
-    console.error('[KIWIFY] Error creating invitation:', inviteError)
+    console.error('[KIWIFY] Error creating signup token:', inviteError)
     return
   }
 
-  console.log(`[KIWIFY] ✅ Signup invitation created for ${email}`)
+  console.log(`[KIWIFY] ✅ Signup token created for ${email}`)
 
   // 3. Send invitation email
   const signupLink = `${APP_URL}/criar-conta?token=${rawToken}`
@@ -529,14 +530,6 @@ async function createInvitationAndSendEmail(
     .from('allowed_establishment_signups')
     .update({ activation_sent_at: new Date().toISOString() })
     .eq('email', email)
-}
-
-async function hashToken(token: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(token)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 async function sendInvitationEmail(

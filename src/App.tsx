@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Entrar from "./pages/Entrar";
 import ResetPassword from "./pages/ResetPassword";
 import Activate from "./pages/auth/Activate";
+import ReenviarLink from "./pages/ReenviarLink";
 import PublicBooking from "./pages/PublicBooking";
 import ManageAppointment from "./pages/ManageAppointment";
 import NotFound from "./pages/NotFound";
@@ -110,6 +111,7 @@ const App = () => (
               <Route path="/esqueci-senha" element={<ForgotPassword />} />
               <Route path="/resetar-senha" element={<ResetPassword />} />
               <Route path="/auth/activate" element={<Activate />} />
+              <Route path="/reenviar-link" element={<ReenviarLink />} />
               
               {/* Client Login & Signup */}
               <Route path="/cliente/login" element={<ClientLogin />} />
