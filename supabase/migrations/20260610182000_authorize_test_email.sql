@@ -8,21 +8,21 @@
 INSERT INTO public.allowed_establishment_signups (email, plan_id, kiwify_order_id, paid_at, used)
 VALUES (
   'kaikfarias051@gmail.com',
-  'basico',
+  'solo',
   'order_teste_kaik_farias_051',
   now(),
   false
 )
 ON CONFLICT (email) DO UPDATE
 SET used = false,
-    plan_id = 'basico',
+    plan_id = 'solo',
     kiwify_order_id = 'order_teste_kaik_farias_051';
 
 INSERT INTO public.signup_tokens (email, token, plan_id, order_id, status, expires_at)
 VALUES (
   'kaikfarias051@gmail.com',
   'token_teste_kaik_farias_051',
-  'basico',
+  'solo',
   'order_teste_kaik_farias_051',
   'pending',
   now() + interval '7 days'
