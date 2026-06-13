@@ -75,6 +75,11 @@ export default function Profissionais() {
   const handleOpenCreate = () => {
     // Check if can create professional based on plan limits
     if (limits && !limits.canAddProfessional) {
+      toast({
+        title: "Limite atingido",
+        description: "Limite de profissionais ativos atingido para o seu plano. Faça upgrade para ativar mais profissionais.",
+        variant: "destructive"
+      });
       setUpgradeDialogOpen(true);
       return;
     }
@@ -217,6 +222,11 @@ export default function Profissionais() {
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     // If reactivating, check plan limits first
     if (!currentActive && limits && !limits.canAddProfessional) {
+      toast({
+        title: "Limite atingido",
+        description: "Limite de profissionais ativos atingido para o seu plano. Faça upgrade para ativar mais profissionais.",
+        variant: "destructive"
+      });
       setUpgradeDialogOpen(true);
       return;
     }

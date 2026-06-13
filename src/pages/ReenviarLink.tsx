@@ -65,10 +65,11 @@ export default function ReenviarLink() {
 
   if (submitted) {
     return (
-      <div className="relative min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
         <BackgroundGradient />
-        <Card className="relative z-10 w-full max-w-md bg-white p-8 shadow-lg">
-          <CardContent className="space-y-6 text-center">
+        <div className="relative z-10 w-full max-w-md">
+          <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6 sm:p-8 space-y-6 text-center">
             <Link to="/" className="inline-block">
               <Logo size="lg" />
             </Link>
@@ -106,14 +107,16 @@ export default function ReenviarLink() {
           </CardContent>
         </Card>
       </div>
-    );
+    </div>
+  );
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
       <BackgroundGradient />
-      <Card className="relative z-10 w-full max-w-md bg-white p-8 shadow-lg">
-        <CardContent className="space-y-6">
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+          <CardContent className="p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
             <Link to="/" className="inline-block">
               <Logo size="lg" />
@@ -158,8 +161,9 @@ export default function ReenviarLink() {
               Voltar para o login
             </Button>
           </Link>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

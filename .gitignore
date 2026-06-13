@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables (não comitar credenciais locais ou de produção)
+.env
+.env.local
+.env.development
+.env.production

@@ -35,6 +35,8 @@ CREATE POLICY "Admins can view signup_tokens"
   USING (is_admin(auth.uid()));
 
 -- 2. Criar ou substituir a função RPC check_signup_token
+-- DROP necessário para permitir mudança na assinatura de retorno
+DROP FUNCTION IF EXISTS public.check_signup_token(text);
 CREATE OR REPLACE FUNCTION public.check_signup_token(p_token text)
 RETURNS TABLE (
   email text,
@@ -122,6 +124,8 @@ END;
 $$;
 
 -- 3. Criar ou substituir a função RPC consume_signup_token
+-- DROP necessário para permitir mudança na assinatura de retorno
+DROP FUNCTION IF EXISTS public.consume_signup_token(text);
 CREATE OR REPLACE FUNCTION public.consume_signup_token(p_token text)
 RETURNS TABLE (
   email text,

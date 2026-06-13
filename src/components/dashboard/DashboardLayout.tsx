@@ -15,7 +15,7 @@ import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function DashboardLayout() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const { data: establishment, isLoading: estLoading, error: estError } = useUserEstablishment();
   const { data: subscription, isLoading: subLoading, error: subError } = useSubscription();
@@ -90,6 +90,37 @@ export function DashboardLayout() {
                 Ir para Login
               </Button>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se o usuário está autenticado como estabelecimento, mas não possui estabelecimento associado
+  const isEstablishmentOwner = profile?.account_type === 'establishment_owner';
+  const hasNoEstablishment = !estLoading && isEstablishmentOwner && !establishment;
+
+  if (hasNoEstablishment) {
+    console.warn('[DashboardLayout] Dono de estabelecimento sem empresa vinculada. Mostrando fallback.');
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+        <div className="max-w-md w-full text-center space-y-6 bg-white p-8 rounded-lg shadow-sm border border-slate-100">
+          <div className="p-3 bg-amber-50 rounded-full w-fit mx-auto">
+            <AlertCircle className="h-10 w-10 text-amber-500" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-slate-800">Cadastro Incompleto</h2>
+            <p className="text-muted-foreground text-sm">
+              Sua conta de estabelecimento foi criada, mas a configuração da sua empresa não foi localizada ou está inconsistente.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => window.location.href = '/criar-conta'} className="w-full">
+              Finalizar Cadastro da Empresa
+            </Button>
+            <Button variant="outline" onClick={() => signOut()} className="w-full">
+              Sair da Conta
+            </Button>
           </div>
         </div>
       </div>

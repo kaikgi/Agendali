@@ -129,7 +129,7 @@ export default function ClientLogin() {
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-slate-700">Senha</Label>
                   <Link
-                    to="/cliente/forgot-password"
+                    to="/cliente/esqueci-senha"
                     className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
                   >
                     Esqueceu a senha?

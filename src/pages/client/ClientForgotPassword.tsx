@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { BackgroundGradient } from '@/components/ui/background-gradient';
 
 export default function ClientForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,62 +55,70 @@ export default function ClientForgotPassword() {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <Link to="/" className="inline-block">
-            <Logo />
-          </Link>
-          
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Mail className="h-6 w-6 text-primary" />
-          </div>
-          
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Verifique seu email
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Enviamos um link de recuperação para{' '}
-              <span className="font-medium text-foreground">{getValues('email')}</span>
-            </p>
-          </div>
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
+        <BackgroundGradient />
+        <div className="relative z-10 w-full max-w-md">
+          <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6 sm:p-8 space-y-6 text-center">
+              <Link to="/" className="inline-block">
+                <Logo />
+              </Link>
+              
+              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+              
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Verifique seu email
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Enviamos um link de recuperação para{' '}
+                  <span className="font-medium text-foreground">{getValues('email')}</span>
+                </p>
+              </div>
 
-          <div className="space-y-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => setEmailSent(false)}
-            >
-              Tentar outro email
-            </Button>
-            
-            <Link to="/cliente/login">
-              <Button variant="ghost" className="w-full">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar para o login
-              </Button>
-            </Link>
-          </div>
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setEmailSent(false)}
+                >
+                  Tentar outro email
+                </Button>
+                
+                <Link to="/cliente/login" className="block w-full">
+                  <Button variant="ghost" className="w-full">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar para o login
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <Link to="/" className="inline-block">
-            <Logo />
-          </Link>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight">
-            Esqueceu sua senha?
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Digite seu email e enviaremos um link para redefinir sua senha
-          </p>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
+      <BackgroundGradient />
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+          <CardContent className="p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <Link to="/" className="inline-block">
+                <Logo />
+              </Link>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Esqueceu sua senha?
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Digite seu email e enviaremos um link para redefinir sua senha
+              </p>
+            </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -131,12 +141,14 @@ export default function ClientForgotPassword() {
           </Button>
         </form>
 
-        <Link to="/cliente/login">
-          <Button variant="ghost" className="w-full">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para o login
-          </Button>
-        </Link>
+            <Link to="/cliente/login" className="block w-full pt-2">
+              <Button variant="ghost" className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar para o login
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

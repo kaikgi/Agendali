@@ -2,7 +2,7 @@ import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { Toaster as HookToaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ClientProtectedRoute } from "@/components/ClientProtectedRoute";
@@ -163,6 +163,7 @@ const App = () => (
               </Route>
               
               {/* Admin Panel (protected) */}
+              <Route path="/admin-panel" element={<Navigate to="/admin" replace />} />
               <Route path="/admin" element={<AdminProtectedRoute />}>
                 <Route element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />

@@ -14,6 +14,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const location = useLocation();
 
+  // Declarado aqui para estar disponível nos useEffects abaixo
+  const [timedOut, setTimedOut] = useState(false);
+
   useEffect(() => {
     console.log('[PROTECTED ROUTE] logs detalhados', {
       pathname: location.pathname,
@@ -25,9 +28,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       timedOut
     });
   }, [authLoading, profileLoading, user, profile, profileError, location.pathname, timedOut]);
-
-  // Use a ref to track if we've already timed out
-  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     // Only start timeout if loading is active

@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getPublicBaseUrl } from '@/lib/publicUrl';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SignUpData {
   email: string;
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const authTimeoutRef = useRef<any>(null);
   const isMounted = useRef(true);
   const initializationStarted = useRef(false);
@@ -55,6 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[AUTH] local signOut error:', e);
     }
     localStorage.removeItem('supabase.auth.token');
+    try {
+      queryClient.clear();
+    } catch (e) {
+      console.error('[AUTH] queryClient clear error:', e);
+    }
     setUser(null);
     setSession(null);
   };
@@ -62,6 +69,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleAuthError = async (error: any) => {
     console.error('[AUTH] Auth error:', error);
     const errorMsg = error?.message?.toLowerCase() || '';
+    
+    // Tratamento de falhas temporárias de rede (CORS, offline, timeout ou status 0)
+    const isNetworkError = 
+      errorMsg.includes('network') || 
+      errorMsg.includes('fetch') || 
+      errorMsg.includes('cors') || 
+      errorMsg.includes('failed to fetch') ||
+      errorMsg.includes('load failed') ||
+      error?.status === 0 ||
+      error?.status === 504;
+
+    if (isNetworkError) {
+      console.warn('[AUTH] Falha temporária de rede detectada. Mantendo sessão local.');
+      toast({
+        variant: 'destructive',
+        title: 'Conexão instável',
+        description: 'Não foi possível conectar ao Supabase. Verifique sua conexão.',
+      });
+      return;
+    }
+
     if (errorMsg.includes('refresh_token_not_found') || errorMsg.includes('session_not_found') || errorMsg.includes('jwt expired')) {
       await clearLocalSession('erro_autenticacao');
       toast({
@@ -73,6 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const ensureProfileExists = async (user: User) => {
+    // Evita concorrência e race condition no signup de estabelecimento
+    if (user.user_metadata?.account_type === 'establishment_owner') {
+      console.log('[AUTH] Pula ensureProfileExists para owner - a RPC cuidará disso de forma atômica.');
+      return;
+    }
+
     console.log('[AUTH] Profile check for:', user.id);
     try {
       const { data: existing, error: fetchError } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
@@ -152,7 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         if (currentSession?.user) {
-          await ensureProfileExists(currentSession.user);
+          // Não coloca await para não travar o setLoading em conexões lentas ou locks
+          ensureProfileExists(currentSession.user);
         }
         console.log('[AUTH] authLoading = false');
         setLoading(false);
@@ -266,7 +301,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setLoading(true);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('[AUTH] signOut error:', e);
+    }
+    try {
+      queryClient.clear();
+    } catch (e) {
+      console.error('[AUTH] queryClient clear error:', e);
+    }
     setUser(null);
     setSession(null);
     setLoading(false);

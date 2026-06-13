@@ -9,6 +9,7 @@ BEGIN
 END $$;
 
 -- Create slug availability check function
+DROP FUNCTION IF EXISTS public.check_establishment_slug_available(text, uuid);
 CREATE OR REPLACE FUNCTION public.check_establishment_slug_available(p_slug text, p_current_establishment_id uuid)
 RETURNS boolean
 LANGUAGE sql

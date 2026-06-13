@@ -11,6 +11,8 @@ import { Logo } from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
+import { Card, CardContent } from '@/components/ui/card';
+import { BackgroundGradient } from '@/components/ui/background-gradient';
 
 const resetPasswordSchema = z.object({
   password: z
@@ -114,28 +116,33 @@ export default function ResetPassword() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <Link to="/" className="inline-block">
-            <Logo />
-          </Link>
-          
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-          </div>
-          
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Senha redefinida!
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Você será redirecionado...
-            </p>
-          </div>
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
+        <BackgroundGradient />
+        <div className="relative z-10 w-full max-w-md">
+          <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6 sm:p-8 space-y-6 text-center">
+              <Link to="/" className="inline-block">
+                <Logo />
+              </Link>
+              
+              <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+              </div>
+              
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Senha redefinida!
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Sua senha foi redefinida com sucesso.
+                </p>
+              </div>
 
-          <Button asChild className="w-full">
-            <Link to={redirectPath}>Continuar</Link>
-          </Button>
+              <Button asChild className="w-full">
+                <Link to="/login">Ir para o login</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -143,51 +150,61 @@ export default function ResetPassword() {
 
   if (!hasSession) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <Link to="/" className="inline-block">
-            <Logo />
-          </Link>
-          
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Redefinir senha
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Clique no link enviado para seu email para continuar.
-            </p>
-          </div>
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
+        <BackgroundGradient />
+        <div className="relative z-10 w-full max-w-md">
+          <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6 sm:p-8 space-y-6 text-center">
+              <Link to="/" className="inline-block">
+                <Logo />
+              </Link>
+              
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Redefinir senha
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Clique no link enviado para seu email para continuar.
+                </p>
+              </div>
 
-          <div className="animate-pulse flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Aguardando autenticação...</span>
-          </div>
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="animate-pulse flex items-center justify-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Aguardando autenticação...</span>
+                </div>
 
-          <Link to="/entrar">
-            <Button variant="ghost" className="w-full">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para o login
-            </Button>
-          </Link>
+                <Link to="/login" className="block w-full">
+                  <Button variant="ghost" className="w-full">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar para o login
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <Link to="/" className="inline-block">
-            <Logo />
-          </Link>
-          <h1 className="mt-6 text-2xl font-bold tracking-tight">
-            Nova senha
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Crie uma nova senha segura para sua conta
-          </p>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center px-4 py-8">
+      <BackgroundGradient />
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="overflow-hidden bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow">
+          <CardContent className="p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <Link to="/" className="inline-block">
+                <Logo />
+              </Link>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Nova senha
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Crie uma nova senha segura para sua conta
+              </p>
+            </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -223,12 +240,14 @@ export default function ResetPassword() {
           </Button>
         </form>
 
-        <Link to="/entrar">
-          <Button variant="ghost" className="w-full">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para o login
-          </Button>
-        </Link>
+            <Link to="/login" className="block w-full pt-2">
+              <Button variant="ghost" className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar para o login
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

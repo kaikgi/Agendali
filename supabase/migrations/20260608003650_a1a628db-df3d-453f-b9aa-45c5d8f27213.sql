@@ -1,5 +1,5 @@
 -- 1. Funções Auxiliares de Segurança
-CREATE OR REPLACE FUNCTION public.is_admin()
+CREATE OR REPLACE FUNCTION public.is_admin(p_user_id uuid DEFAULT auth.uid())
  RETURNS boolean
  LANGUAGE sql
  SECURITY DEFINER
@@ -8,7 +8,7 @@ AS $function$
   SELECT exists (
     SELECT 1
     FROM public.admin_users au
-    WHERE au.user_id = auth.uid()
+    WHERE au.user_id = p_user_id
       AND au.status = 'ativo'
   );
 $function$;
@@ -113,7 +113,7 @@ DROP POLICY IF EXISTS "admin_all_subscriptions" ON public.subscriptions;
 DROP POLICY IF EXISTS "owner_select_subscriptions" ON public.subscriptions;
 
 CREATE POLICY "admin_all_subscriptions" ON public.subscriptions FOR ALL TO authenticated USING (public.is_admin());
-CREATE POLICY "owner_select_subscriptions" ON public.subscriptions FOR SELECT TO authenticated USING (establishment_id IN (SELECT id FROM public.establishments WHERE owner_user_id = auth.uid()));
+CREATE POLICY "owner_select_subscriptions" ON public.subscriptions FOR SELECT TO authenticated USING (owner_user_id = auth.uid());
 
 -- 11. PAYMENT_SETTINGS
 DROP POLICY IF EXISTS "admin_all_payment_settings" ON public.payment_settings;
@@ -132,5 +132,5 @@ CREATE POLICY "staff_select_payments" ON public.appointment_payments FOR SELECT 
 CREATE POLICY "customer_select_payments" ON public.appointment_payments FOR SELECT TO authenticated USING (appointment_id IN (SELECT id FROM public.appointments WHERE customer_user_id = auth.uid()));
 
 -- Grants
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.check_access(uuid) TO authenticated, anon;
