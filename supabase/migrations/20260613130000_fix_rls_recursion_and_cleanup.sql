@@ -53,10 +53,11 @@ DROP POLICY IF EXISTS "subscriptions_select" ON public.subscriptions;
 -- ==========================================
 -- 2. DROP FUNCTION (FUNÇÕES LEGADAS/AMBÍGUAS APENAS)
 -- ==========================================
--- Removemos apenas a assinatura sem parâmetros is_admin() para eliminar overload e ambiguidade.
--- As assinaturas que recebem parâmetros (uuid) possuem dezenas de dependências em políticas RLS de outras tabelas e
--- serão atualizadas de forma segura diretamente via CREATE OR REPLACE FUNCTION.
-DROP FUNCTION IF EXISTS public.is_admin();
+-- NÃO removemos is_admin() sem parâmetros: dezenas de policies em produção (signup_tokens,
+-- appointments, customers, professionals, services, payments, etc.) dependem diretamente
+-- dela e DROP (mesmo com CASCADE) apagaria essas policies de acesso do admin.
+-- A nova assinatura is_admin(uuid) é criada abaixo como um overload adicional,
+-- coexistindo com a versão sem parâmetros — não há chamada ambígua a is_admin() neste script.
 
 
 -- ==========================================
