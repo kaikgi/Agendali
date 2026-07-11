@@ -36,14 +36,6 @@ interface RescheduleResult {
   message: string;
 }
 
-async function hashToken(token: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 /**
  * Invalidate all appointment-related queries after a change
  * This ensures consistency across all views (dashboard, client, etc.)
@@ -62,52 +54,19 @@ export function useAppointmentByToken(slug: string | undefined, token: string | 
     queryFn: async () => {
       if (!slug || !token) throw new Error('Slug e token são obrigatórios');
 
-      const tokenHash = await hashToken(token);
+      // Server-side token validation (SECURITY DEFINER RPC) — the table itself has
+      // no public SELECT policy, so this is the only way to read an appointment by token.
+      const { data, error } = await (supabase.rpc as any)('public_get_appointment_by_token', {
+        p_slug: slug,
+        p_token: token,
+      });
 
-      // Fetch token record
-      const { data: tokenRecord, error: tokenError } = await (supabase as any)
-        .from('appointment_manage_tokens')
-        .select('appointment_id, expires_at, used_at')
-        .eq('token_hash', tokenHash)
-        .single();
-
-      if (tokenError || !tokenRecord) {
-        throw new Error('Token inválido ou não encontrado');
+      if (error) {
+        const message = error.message?.replace(/^.*EXCEPTION:\s*/, '').trim();
+        throw new Error(message || 'Agendamento não encontrado');
       }
 
-      // Check if token is expired
-      if (new Date(tokenRecord.expires_at) < new Date()) {
-        throw new Error('Este link expirou');
-      }
-
-      // Fetch appointment with details
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .select(`
-          id,
-          start_at,
-          end_at,
-          status,
-          customer_notes,
-          customer:customers(id, name, phone, email),
-          professional:professionals(id, name),
-          service:services(id, name, duration_minutes, price_cents),
-          establishment:establishments(id, name, slug, phone, address, reschedule_min_hours, cancellation_policy_text)
-        `)
-        .eq('id', tokenRecord.appointment_id)
-        .single();
-
-      if (appointmentError || !appointment) {
-        throw new Error('Agendamento não encontrado');
-      }
-
-      // Verify establishment slug matches
-      const est = appointment.establishment as any;
-      if (est?.slug !== slug) {
-        throw new Error('Agendamento não pertence a este estabelecimento');
-      }
-
-      return appointment as unknown as AppointmentWithDetails;
+      return data as unknown as AppointmentWithDetails;
     },
     enabled: !!slug && !!token,
     retry: false,
