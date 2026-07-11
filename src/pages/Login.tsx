@@ -14,11 +14,14 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackgroundGradient } from '@/components/ui/background-gradient';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { getPublicBaseUrl } from '@/lib/publicUrl';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
@@ -49,6 +52,18 @@ export default function Login() {
       console.warn('[AUTH] Erro bruto do Supabase:', message);
     }
     return 'Não foi possível entrar. Tente novamente.';
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    setIsGoogleLoading(true);
+
+    const { error } = await signInWithGoogle(`${getPublicBaseUrl()}/dashboard`);
+
+    if (error) {
+      setIsGoogleLoading(false);
+      setAuthError(translateAuthError(error.message));
+    }
   };
 
   const onSubmit = async (data: LoginFormData) => {
@@ -135,11 +150,22 @@ export default function Login() {
                 <PasswordInput id="password" {...register('password')} placeholder="Sua senha" />
                 {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
                 {isLoading ? <Loader2 className="animate-spin mr-2" /> : null}
                 Entrar
               </Button>
             </form>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-slate-500">Ou entre com</span>
+              </div>
+            </div>
+
+            <GoogleSignInButton onClick={handleGoogleSignIn} isLoading={isGoogleLoading} disabled={isLoading} />
 
             <div className="mt-6 space-y-3 text-center text-sm border-t border-slate-100 pt-6">
               <p className="text-slate-600">
