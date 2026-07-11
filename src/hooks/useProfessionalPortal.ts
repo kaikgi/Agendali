@@ -99,8 +99,13 @@ export function useProfessionalPortalAuth() {
   });
 
   const logout = useCallback(() => {
+    const currentToken = localStorage.getItem(PORTAL_TOKEN_KEY);
     localStorage.removeItem(PORTAL_TOKEN_KEY);
     setToken(null);
+    if (currentToken) {
+      // Revoke server-side so a captured token can't keep working after logout.
+      (supabase.rpc as any)('professional_portal_logout', { p_token: currentToken }).catch(() => {});
+    }
   }, []);
 
   const isPortalDisabled = sessionQuery.data?.reason === 'portal_disabled';

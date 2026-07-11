@@ -37,8 +37,9 @@ export default function Login() {
     if (lower.includes('too many requests')) {
       return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
     }
+    // Não diferenciar "usuário não encontrado" de senha inválida: evita enumeração de e-mails.
     if (lower.includes('user not found')) {
-      return 'Usuário não encontrado.';
+      return 'E-mail ou senha inválidos.';
     }
     if (lower.includes('network') || lower.includes('fetch')) {
       return 'Não foi possível entrar. Verifique sua conexão e tente novamente.';

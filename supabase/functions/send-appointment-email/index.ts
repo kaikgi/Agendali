@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RAW_RESEND_FROM = Deno.env.get("RESEND_FROM") || "noreply@agendali.online";
@@ -7,11 +8,6 @@ const RAW_RESEND_FROM = Deno.env.get("RESEND_FROM") || "noreply@agendali.online"
 const RESEND_FROM = RAW_RESEND_FROM.includes("<")
   ? RAW_RESEND_FROM.match(/<([^>]+)>/)?.[1] || RAW_RESEND_FROM
   : RAW_RESEND_FROM;
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 // Simple Resend API call function
 async function sendEmail(to: string, subject: string, html: string, from: string) {
@@ -250,6 +246,7 @@ function getEmailHtml(type: EmailRequest['type'], data: AppointmentData): string
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
