@@ -184,7 +184,7 @@ function PagamentosContent() {
       </div>
 
       <Tabs defaultValue="connection" className="space-y-4">
-        data-guide="pagamentos-tabs" <TabsList>
+        <TabsList data-guide="pagamentos-tabs">
           <TabsTrigger value="connection">Conexão</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="services" disabled={!isConnected || !s?.per_service_config}>Serviços</TabsTrigger>

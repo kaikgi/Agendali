@@ -40,9 +40,8 @@ export default function ClientSearch() {
     queryKey: ['establishments-search', debouncedSearch],
     queryFn: async () => {
       let query = supabase
-        .from('establishments')
+        .from('public_establishments')
         .select('id, name, slug, description, logo_url, address, city, state, phone, instagram')
-        .eq('booking_enabled', true)
         .order('name');
 
       if (debouncedSearch.trim()) {

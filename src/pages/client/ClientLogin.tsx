@@ -15,6 +15,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { BackgroundGradient } from '@/components/ui/background-gradient';
+import { getPublicBaseUrl } from '@/lib/publicUrl';
 
 export default function ClientLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +75,7 @@ export default function ClientLogin() {
     setAuthError(null);
     setIsLoading(true);
 
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(`${getPublicBaseUrl()}/client`);
 
     if (error) {
       setIsLoading(false);

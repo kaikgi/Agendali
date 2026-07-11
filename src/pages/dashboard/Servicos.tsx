@@ -412,10 +412,10 @@ export default function Servicos() {
           <p className="text-muted-foreground">Gerencie serviços e organize por categorias</p>
         </div>
         <div className="flex gap-2">
-          data-guide="svc-new-category" <Button variant="outline" onClick={openCreateCategory}>
+          <Button variant="outline" onClick={openCreateCategory} data-guide="svc-new-category">
             <FolderPlus className="h-4 w-4 mr-2" /> Nova Categoria
           </Button>
-          data-guide="svc-new-service" <Button onClick={openCreateService}>
+          <Button onClick={openCreateService} data-guide="svc-new-service">
             <Plus className="h-4 w-4 mr-2" /> Novo Serviço
           </Button>
         </div>

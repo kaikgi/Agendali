@@ -303,7 +303,7 @@ export default function Bloqueios() {
                 <CardTitle>Bloqueios Pontuais</CardTitle>
                 <CardDescription>Bloqueios para datas e horários específicos</CardDescription>
               </div>
-              data-guide="bloqueios-create" <Button onClick={openNewPontual} className="w-full sm:w-auto">
+              <Button onClick={openNewPontual} className="w-full sm:w-auto" data-guide="bloqueios-create">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Bloqueio
               </Button>

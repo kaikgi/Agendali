@@ -264,7 +264,7 @@ export default function Avaliacoes() {
       </div>
 
       {/* Filters */}
-      data-guide="avaliacoes-filters" <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3" data-guide="avaliacoes-filters">
         <Select value={starFilter} onValueChange={(v) => setStarFilter(v as StarFilter)}>
           <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por nota" />

@@ -395,9 +395,9 @@ export default function Configuracoes() {
       {/* ========== PUBLIC LINK ========== */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-guide="config-public-link">
             <Globe className="h-4 w-4 text-muted-foreground" />
-            data-guide="config-public-link" <CardTitle className="text-lg">Link Público</CardTitle>
+            <CardTitle className="text-lg">Link Público</CardTitle>
           </div>
           <CardDescription>
             Personalize o link que seus clientes usarão para agendar

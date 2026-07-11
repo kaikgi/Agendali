@@ -905,7 +905,7 @@ function ComissoesContent() {
       )}
 
       <Tabs defaultValue="entries" className="space-y-4">
-        data-guide="comissoes-tabs" <TabsList className="flex-wrap h-auto gap-1">
+        <TabsList className="flex-wrap h-auto gap-1" data-guide="comissoes-tabs">
           <TabsTrigger value="entries" className="gap-1.5">
             <FileText className="h-3.5 w-3.5" />
             Comissões

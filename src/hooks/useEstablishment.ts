@@ -9,17 +9,15 @@ export function useEstablishment(slug: string | undefined) {
     queryKey: ['establishment', slug],
     queryFn: async () => {
       if (!slug) throw new Error('Slug is required');
-      
-      const { data, error } = await supabase
-        .from('establishments')
-        .select('*')
-        .eq('slug', slug)
-        .eq('booking_enabled', true)
-        .maybeSingle();
+
+      const { data, error } = await (supabase.rpc as any)('public_get_establishment_by_slug', {
+        p_slug: slug,
+      });
 
       if (error) throw error;
-      if (!data) throw new Error('Estabelecimento não encontrado ou agendamento desativado');
-      return data as Establishment;
+      const establishment = Array.isArray(data) ? data[0] : data;
+      if (!establishment) throw new Error('Estabelecimento não encontrado ou agendamento desativado');
+      return establishment as Establishment;
     },
     enabled: !!slug,
   });
