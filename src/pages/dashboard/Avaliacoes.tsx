@@ -23,6 +23,22 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const AVALIACOES_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Avaliações',
+    description: 'Veja o que seus clientes estão dizendo depois de cada atendimento. As avaliações também aparecem publicamente na sua página de agendamento, ajudando a atrair novos clientes.',
+  },
+  {
+    id: 'filters',
+    title: 'Filtrar avaliações',
+    description: 'Filtre por nota (de 1 a 5 estrelas) ou por período — últimos 7, 30, 90 dias ou um intervalo personalizado.',
+    target: '[data-guide="avaliacoes-filters"]',
+    placement: 'bottom',
+  },
+];
 
 interface RatingWithDetails {
   id: string;
@@ -49,6 +65,7 @@ type PeriodFilter = 'all' | '7d' | '30d' | '90d' | 'custom';
 type StarFilter = 'all' | '1' | '2' | '3' | '4' | '5';
 
 export default function Avaliacoes() {
+  const guide = useInteractiveGuide('avaliacoes', AVALIACOES_GUIDE_STEPS);
   const { data: establishment } = useUserEstablishment();
   const [starFilter, setStarFilter] = useState<StarFilter>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
@@ -173,6 +190,7 @@ export default function Avaliacoes() {
   return (
     <div className="space-y-6">
       <div>
+      <GuideOverlay guide={guide} />
         <h1 className="text-2xl font-bold">Avaliações</h1>
         <p className="text-muted-foreground">
           Veja o que seus clientes estão dizendo
@@ -246,7 +264,7 @@ export default function Avaliacoes() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+      data-guide="avaliacoes-filters" <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <Select value={starFilter} onValueChange={(v) => setStarFilter(v as StarFilter)}>
           <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Filtrar por nota" />

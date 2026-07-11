@@ -209,6 +209,36 @@ export function useSubmitRating() {
   });
 }
 
+export interface PublicReview {
+  id: string;
+  stars: number;
+  professional_stars: number | null;
+  comment: string | null;
+  created_at: string;
+  customer_first_name: string;
+  service_name: string | null;
+  professional_name: string | null;
+}
+
+// Public reviews list for the booking page (safe fields only, via SECURITY DEFINER RPC)
+export function useEstablishmentReviews(establishmentId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['establishment-reviews', establishmentId],
+    queryFn: async (): Promise<PublicReview[]> => {
+      if (!establishmentId) return [];
+
+      const { data, error } = await (supabase.rpc as any)('get_establishment_reviews', {
+        p_establishment_id: establishmentId,
+      });
+
+      if (error) throw error;
+      return (data || []) as PublicReview[];
+    },
+    enabled: !!establishmentId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // Hook to get ratings for an establishment (for display)
 export function useEstablishmentRatings(establishmentId: string | undefined, limit = 10) {
   return useQuery({

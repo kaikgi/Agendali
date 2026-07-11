@@ -9,6 +9,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useBusinessHours } from '@/hooks/useBusinessHours';
 import { useToast } from '@/hooks/use-toast';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const HORARIOS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Horários de Funcionamento',
+    description: 'Configure em quais dias e horários seu estabelecimento aceita agendamentos. Fora desses horários, os clientes não conseguem marcar nada na página pública.',
+  },
+  {
+    id: 'days',
+    title: 'Configure cada dia da semana',
+    description: 'Marque os dias em que você funciona e defina o horário de abertura e fechamento de cada um. Dias desmarcados ficam fechados o dia todo. Não esqueça de clicar em "Salvar" no final.',
+  },
+];
 
 interface HourRow {
   weekday: number;
@@ -28,6 +42,7 @@ const DEFAULT_HOURS: HourRow[] = [
 ];
 
 export default function Horarios() {
+  const guide = useInteractiveGuide('horarios', HORARIOS_GUIDE_STEPS);
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { hours, isLoading, error, refetch, upsert, isUpdating, WEEKDAYS } = useBusinessHours(establishment?.id);
   const { toast } = useToast();
@@ -118,6 +133,7 @@ export default function Horarios() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+      <GuideOverlay guide={guide} />
           <h1 className="text-2xl font-bold">Horários de Funcionamento</h1>
           <p className="text-muted-foreground">
             Configure os horários em que seu estabelecimento está aberto

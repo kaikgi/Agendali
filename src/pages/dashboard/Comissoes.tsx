@@ -30,6 +30,22 @@ import {
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const COMISSOES_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Comissões',
+    description: 'Configure regras de comissão por profissional ou serviço, acompanhe o que cada profissional tem a receber e registre os repasses (acertos) feitos.',
+  },
+  {
+    id: 'tabs',
+    title: 'Abas de comissões',
+    description: '"Lançamentos" mostra cada comissão gerada por agendamento concluído. "Regras" é onde você define o percentual ou valor fixo de comissão. "Resumo" agrega tudo por profissional. "Histórico" mostra os repasses já registrados.',
+    target: '[data-guide="comissoes-tabs"]',
+    placement: 'bottom',
+  },
+];
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -782,6 +798,7 @@ function ComissoesContent() {
   const [expandedProfessional, setExpandedProfessional] = useState<string | null>(null);
 
   const deleteRule = useDeleteCommissionRule();
+  const guide = useInteractiveGuide('comissoes', COMISSOES_GUIDE_STEPS);
 
   // Aggregated data
   const summary = useMemo(() => aggregateByProfessional(entries), [entries]);
@@ -849,6 +866,7 @@ function ComissoesContent() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+      <GuideOverlay guide={guide} />
           <h1 className="text-2xl font-bold">Comissões</h1>
           <p className="text-muted-foreground text-sm">Gestão de comissões, repasses e controle financeiro</p>
         </div>
@@ -887,7 +905,7 @@ function ComissoesContent() {
       )}
 
       <Tabs defaultValue="entries" className="space-y-4">
-        <TabsList className="flex-wrap h-auto gap-1">
+        data-guide="comissoes-tabs" <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="entries" className="gap-1.5">
             <FileText className="h-3.5 w-3.5" />
             Comissões

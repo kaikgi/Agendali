@@ -38,6 +38,41 @@ import { ProfessionalServicesDialog } from '@/components/dashboard/ProfessionalS
 import { ProfessionalPortalDialog } from '@/components/dashboard/ProfessionalPortalDialog';
 import { UpgradePlanDialog } from '@/components/dashboard/UpgradePlanDialog';
 import { UsageBadge } from '@/components/dashboard/UsageBadge';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const PROFISSIONAIS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Profissionais',
+    description: 'Aqui você cadastra quem trabalha no seu estabelecimento — cada profissional tem sua própria agenda, horários e serviços.',
+  },
+  {
+    id: 'create-button',
+    title: 'Vamos cadastrar seu primeiro profissional',
+    description: 'Clique em "Novo Profissional" para começar. Você pode fazer isso agora e continuar o guia depois.',
+    target: '[data-guide="prof-create-button"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'name-field',
+    title: 'Nome e capacidade',
+    description: 'Preencha o nome do profissional e quantos clientes ele consegue atender ao mesmo tempo (normalmente 1). Depois clique em Criar.',
+    target: '[data-guide="prof-name-input"]',
+    placement: 'right',
+  },
+  {
+    id: 'actions',
+    title: 'Ações do profissional',
+    description: 'Com o profissional criado, use os ícones: chave (Portal — acesso próprio à agenda dele), tesoura (Serviços que ele realiza), relógio (Horários de trabalho), lápis (Editar) e lixeira (Remover).',
+    target: '[data-guide="prof-actions"]',
+    placement: 'top',
+  },
+  {
+    id: 'portal',
+    title: 'Portal do Profissional',
+    description: 'No ícone de chave, ative o "Portal ativo", defina uma senha e copie o link de acesso. Envie esse link para o profissional — com ele, o profissional acompanha a própria agenda pelo celular, sem precisar entrar no painel completo.',
+  },
+];
 
 interface ProfessionalForm {
   name: string;
@@ -231,7 +266,13 @@ export default function Profissionais() {
       return;
     }
     try {
-      await update({ id, active: !currentActive });
+      // Desativar o profissional também revoga o acesso ao portal dele — evita que
+      // alguém desligado/afastado continue conseguindo entrar na própria agenda.
+      await update(
+        currentActive
+          ? { id, active: false, portal_enabled: false }
+          : { id, active: true }
+      );
       toast({ title: currentActive ? 'Profissional desativado' : 'Profissional ativado' });
     } catch (err: any) {
       toast({ title: 'Erro ao alterar status', description: err?.message, variant: 'destructive' });
@@ -392,7 +433,7 @@ export default function Profissionais() {
                     />
                     <span className="text-sm text-muted-foreground">Ativo</span>
                   </div>
-                  <div className="flex gap-1 flex-wrap">
+                  <div data-guide="prof-actions" className="flex gap-1 flex-wrap">
                     {hasPortalAccess && (
                       <Button
                         variant="ghost"

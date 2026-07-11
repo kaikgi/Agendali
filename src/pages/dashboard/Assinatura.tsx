@@ -53,10 +53,27 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const ASSINATURA_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Sua Assinatura',
+    description: 'Aqui você acompanha seu plano atual, limites de uso (profissionais, agendamentos) e o status do pagamento.',
+  },
+  {
+    id: 'cancel',
+    title: 'Como cancelar',
+    description: 'A assinatura é gerenciada pela Kiwify, não por aqui. Clique em "Cancelar assinatura" pra ser levado até a Kiwify e concluir o cancelamento por lá. Seu acesso continua até o fim do período já pago.',
+    target: '[data-guide="assinatura-cancel"]',
+    placement: 'top',
+  },
+];
 
 const KIWIFY_MANAGE_URL = 'https://dashboard.kiwify.com.br';
 
 export default function Assinatura() {
+  const guide = useInteractiveGuide('assinatura', ASSINATURA_GUIDE_STEPS);
   const { user } = useAuth();
   const { data: subscription, isLoading: subscriptionLoading, error: subError } = useSubscription();
   const { data: establishment, isLoading: establishmentLoading, error: estError } = useUserEstablishment();
@@ -155,6 +172,7 @@ export default function Assinatura() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+      <GuideOverlay guide={guide} />
           <h1 className="text-2xl font-bold">Assinatura</h1>
           <p className="text-muted-foreground">Gerencie seu plano, ciclo e pagamento</p>
         </div>
@@ -333,7 +351,7 @@ export default function Assinatura() {
                   <Button
                     variant="ghost"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setCancelDialogOpen(true)}
+                    data-guide="assinatura-cancel" onClick={() => setCancelDialogOpen(true)}
                   >
                     <XCircle className="mr-2 h-4 w-4" />
                     Cancelar assinatura

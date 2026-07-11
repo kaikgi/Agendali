@@ -25,6 +25,34 @@ import { AppointmentDetailsDialog } from '@/components/dashboard/AppointmentDeta
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
 import { statusColors, statusLabels, legendStatuses, dotColors } from '@/lib/appointmentStatus';
 import { cn } from '@/lib/utils';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const AGENDA_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Sua Agenda',
+    description: 'Aqui ficam todos os agendamentos do seu estabelecimento. Você pode ver por semana, mês ou em lista.',
+  },
+  {
+    id: 'view-mode',
+    title: 'Modo de visualização',
+    description: 'Alterne entre visão semanal, mensal ou uma lista simples de agendamentos.',
+    target: '[data-guide="agenda-view-mode"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'filters',
+    title: 'Filtros',
+    description: 'Filtre a agenda por profissional específico, e escolha se quer ver os horários bloqueados junto com os agendamentos.',
+    target: '[data-guide="agenda-filters"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'appointment',
+    title: 'Detalhes do agendamento',
+    description: 'Clique em qualquer agendamento pra ver os detalhes completos: cliente, serviço, horário e opções de confirmar, remarcar ou cancelar.',
+  },
+];
 
 type AppointmentStatus = 'booked' | 'confirmed' | 'completed' | 'no_show' | 'canceled' | 'pending_approval' | 'rejected' | 'paid_pending_confirmation' | 'pending_payment';
 
@@ -198,15 +226,18 @@ export default function Agenda() {
     ? format(currentDate, "MMMM yyyy", { locale: ptBR })
     : `${format(rangeStart, "d 'de' MMMM", { locale: ptBR })} - ${format(rangeEnd, "d 'de' MMMM, yyyy", { locale: ptBR })}`;
 
+  const guide = useInteractiveGuide('agenda', AGENDA_GUIDE_STEPS);
+
   return (
     <div className="space-y-6">
+      <GuideOverlay guide={guide} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Agenda</h1>
           <p className="text-sm text-muted-foreground">Visualize e gerencie seus agendamentos</p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+        <div data-guide="agenda-view-mode" className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)}>
             <ToggleGroupItem value="week" aria-label="Semanal" className="touch-target">
               <CalendarDays className="h-4 w-4" />
@@ -234,7 +265,7 @@ export default function Agenda() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card data-guide="agenda-filters">
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-6">
             <div className="flex items-center gap-2">

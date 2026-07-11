@@ -16,6 +16,27 @@ import {
   UserCheck, UserX, Clock, Percent, Target, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const RELATORIOS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Relatórios',
+    description: 'Acompanhe o desempenho financeiro e operacional do seu estabelecimento em um período específico.',
+  },
+  {
+    id: 'filters',
+    title: 'Como filtrar',
+    description: 'Escolha um período de datas e, se quiser, filtre também por profissional, serviço ou status do agendamento. Os números abaixo se atualizam automaticamente.',
+    target: '[data-guide="relatorios-filters"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'export',
+    title: 'Exportar dados',
+    description: 'Use "Exportar CSV" pra baixar os dados filtrados e abrir no Excel ou Google Planilhas.',
+  },
+];
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -45,6 +66,7 @@ function RelatoriosContent() {
   });
 
   const data = useReportData(filters);
+  const guide = useInteractiveGuide('relatorios', RELATORIOS_GUIDE_STEPS);
 
   const handleExportCSV = () => {
     const headers = ['Métrica', 'Valor'];
@@ -92,6 +114,7 @@ function RelatoriosContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+      <GuideOverlay guide={guide} />
           <h1 className="text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground text-sm">Análise de desempenho e financeiro do seu estabelecimento</p>
         </div>
@@ -103,7 +126,7 @@ function RelatoriosContent() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          data-guide="relatorios-filters" <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Input

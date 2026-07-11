@@ -16,6 +16,22 @@ import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useManageProfessionals } from '@/hooks/useManageProfessionals';
 import { useTimeBlocks, useRecurringTimeBlocks } from '@/hooks/useTimeBlocks';
 import { useToast } from '@/hooks/use-toast';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const BLOQUEIOS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Bloqueios de Horários',
+    description: 'Use bloqueios pra impedir agendamentos em datas/horários específicos — férias, folga, almoço, manutenção etc. Um bloqueio pode ser pontual (uma data específica) ou recorrente (toda semana, no mesmo dia e horário).',
+  },
+  {
+    id: 'create',
+    title: 'Criar um bloqueio',
+    description: 'Clique em "Novo Bloqueio", escolha se é pra um profissional específico ou pra todo o estabelecimento, e defina a data/horário. Enquanto o bloqueio estiver ativo, ninguém consegue agendar naquele intervalo.',
+    target: '[data-guide="bloqueios-create"]',
+    placement: 'bottom',
+  },
+];
 
 const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -44,6 +60,7 @@ interface RecurringBlockWithProfessional {
 }
 
 export default function Bloqueios() {
+  const guide = useInteractiveGuide('bloqueios', BLOQUEIOS_GUIDE_STEPS);
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
   const { professionals } = useManageProfessionals(establishment?.id);
   const { blocks, isLoading, error, refetch, create, isCreating, update, isUpdating, remove } = useTimeBlocks(establishment?.id);
@@ -260,6 +277,7 @@ export default function Bloqueios() {
   return (
     <div className="space-y-6">
       <div>
+      <GuideOverlay guide={guide} />
         <h1 className="text-2xl font-bold">Bloqueios de Horários</h1>
         <p className="text-muted-foreground">
           Gerencie bloqueios pontuais e recorrentes para o estabelecimento ou profissionais específicos
@@ -285,7 +303,7 @@ export default function Bloqueios() {
                 <CardTitle>Bloqueios Pontuais</CardTitle>
                 <CardDescription>Bloqueios para datas e horários específicos</CardDescription>
               </div>
-              <Button onClick={openNewPontual} className="w-full sm:w-auto">
+              data-guide="bloqueios-create" <Button onClick={openNewPontual} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Bloqueio
               </Button>

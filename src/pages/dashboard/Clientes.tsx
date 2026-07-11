@@ -21,6 +21,34 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getStatusLabel, getStatusBadgeClasses } from '@/lib/appointmentStatus';
 import { TagManagerDialog } from '@/components/dashboard/TagManagerDialog';
 import { CustomerTagsDialog } from '@/components/dashboard/CustomerTagsDialog';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const CLIENTES_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Seus Clientes',
+    description: 'Aqui ficam todos os clientes que já agendaram com você, com histórico completo de agendamentos.',
+  },
+  {
+    id: 'search',
+    title: 'Buscar e filtrar',
+    description: 'Busque por nome, telefone ou email. Você também pode filtrar clientes por tag.',
+    target: '[data-guide="clientes-search"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'tags',
+    title: 'Tags de clientes',
+    description: 'Tags ajudam a organizar seus clientes (ex: "VIP", "Inadimplente", "Aniversariante do mês"). Clique em "Gerenciar Tags" para criar as suas próprias, com cores personalizadas. Depois, abra um cliente e atribua as tags que quiser a ele.',
+    target: '[data-guide="clientes-tag-manager"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'customer-detail',
+    title: 'Detalhes do cliente',
+    description: 'Clique em qualquer cliente da lista pra ver o histórico completo de agendamentos e gerenciar as tags dele.',
+  },
+];
 
 export default function Clientes() {
   const { data: establishment, isLoading: estLoading, error: estError, refetch: refetchEst } = useUserEstablishment();
@@ -140,8 +168,11 @@ export default function Clientes() {
     );
   }
 
+  const guide = useInteractiveGuide('clientes', CLIENTES_GUIDE_STEPS);
+
   return (
     <div className="space-y-6">
+      <GuideOverlay guide={guide} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
@@ -149,13 +180,13 @@ export default function Clientes() {
             Visualize seus clientes, tags e histórico de agendamentos
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setTagManagerOpen(true)}>
+        <Button data-guide="clientes-tag-manager" variant="outline" size="sm" onClick={() => setTagManagerOpen(true)}>
           <Settings className="h-4 w-4 mr-2" />
           Gerenciar Tags
         </Button>
       </div>
 
-      <div className="flex gap-3 flex-col sm:flex-row">
+      <div data-guide="clientes-search" className="flex gap-3 flex-col sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

@@ -27,6 +27,22 @@ import { CreditCard, Link2, Link2Off, Settings2, DollarSign, CheckCircle2, XCirc
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ServicePaymentSettingsTab from '@/components/payments/ServicePaymentSettingsTab';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const PAGAMENTOS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Pagamentos Online',
+    description: 'Aceite pagamentos (sinal ou valor integral) direto na hora do agendamento, via Mercado Pago. Isso reduz faltas e garante que o cliente já pagou antes de chegar.',
+  },
+  {
+    id: 'tabs',
+    title: 'Conexão e configurações',
+    description: 'Em "Conexão", vincule sua conta do Mercado Pago. Em "Configurações", defina se cobra sinal ou valor total. "Serviços" permite configurar cobrança por serviço específico, e "Pagamentos" mostra o histórico de cobranças.',
+    target: '[data-guide="pagamentos-tabs"]',
+    placement: 'bottom',
+  },
+];
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -56,6 +72,7 @@ function PagamentosContent() {
 
   const [paymentFilters, setPaymentFilters] = useState<{ status?: string }>({});
   const { data: payments = [], isLoading: paymentsLoading } = useAppointmentPayments(paymentFilters);
+  const guide = useInteractiveGuide('pagamentos', PAGAMENTOS_GUIDE_STEPS);
 
   // Handle OAuth return
   useEffect(() => {
@@ -130,6 +147,7 @@ function PagamentosContent() {
   return (
     <div className="space-y-6">
       <div>
+      <GuideOverlay guide={guide} />
         <h1 className="text-2xl font-bold">Pagamentos Online</h1>
         <p className="text-muted-foreground text-sm">Configure pagamentos via Mercado Pago e acompanhe recebimentos</p>
       </div>
@@ -166,7 +184,7 @@ function PagamentosContent() {
       </div>
 
       <Tabs defaultValue="connection" className="space-y-4">
-        <TabsList>
+        data-guide="pagamentos-tabs" <TabsList>
           <TabsTrigger value="connection">Conexão</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="services" disabled={!isConnected || !s?.per_service_config}>Serviços</TabsTrigger>

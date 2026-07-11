@@ -23,6 +23,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicUrl, PUBLIC_BASE_URL } from '@/lib/publicUrl';
 import { PhoneInput } from '@/components/ui/phone-input';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const CONFIGURACOES_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Configurações',
+    description: 'Aqui você ajusta os dados do seu estabelecimento: link público, logo, informações de contato, regras de agendamento e lembretes automáticos.',
+  },
+  {
+    id: 'link',
+    title: 'Seu link público de agendamento',
+    description: 'Esse é o link que você compartilha com seus clientes pra eles agendarem online. Você pode personalizar o identificador (slug) usado nesse link.',
+    target: '[data-guide="config-public-link"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'rules',
+    title: 'Regras de agendamento',
+    description: 'Defina com quantos dias de antecedência o cliente pode agendar, se o agendamento precisa de aprovação manual sua, e outras regras do fluxo de reserva.',
+  },
+];
 
 // Reserved slugs that cannot be used
 const RESERVED_SLUGS = ['app', 'dashboard', 'login', 'entrar', 'criar-conta', 'signup', 'api', 'admin', 'settings', 'configuracoes', 'agenda', 'profissionais', 'servicos', 'clientes', 'horarios', 'bloqueios'];
@@ -51,6 +72,7 @@ function validateSlug(slug: string): { valid: boolean; error?: string } {
 }
 
 export default function Configuracoes() {
+  const guide = useInteractiveGuide('configuracoes', CONFIGURACOES_GUIDE_STEPS);
   const { data: establishment, isLoading, error, refetch } = useUserEstablishment();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -363,6 +385,7 @@ export default function Configuracoes() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
+      <GuideOverlay guide={guide} />
         <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground">
           Gerencie as configurações do seu estabelecimento
@@ -374,7 +397,7 @@ export default function Configuracoes() {
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-lg">Link Público</CardTitle>
+            data-guide="config-public-link" <CardTitle className="text-lg">Link Público</CardTitle>
           </div>
           <CardDescription>
             Personalize o link que seus clientes usarão para agendar

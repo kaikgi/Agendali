@@ -25,6 +25,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { usePublicPlanLimits } from '@/hooks/usePlanLimits';
 import { PlanLimitAlert } from '@/components/billing/PlanLimitAlert';
 import { EstablishmentRatingDisplay } from '@/components/ratings/EstablishmentRatingDisplay';
+import { EstablishmentReviewsDialog } from '@/components/ratings/EstablishmentReviewsDialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import {
@@ -73,6 +74,7 @@ export default function PublicBooking() {
   const { user, session, loading: isLoadingAuth } = useAuth();
   const { profile, updateProfile } = useProfile();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showReviewsDialog, setShowReviewsDialog] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -613,6 +615,7 @@ export default function PublicBooking() {
                   establishmentId={establishment.id} 
                   size="sm"
                   className="mt-1"
+                  onClick={() => setShowReviewsDialog(true)}
                 />
               </div>
             </div>
@@ -730,6 +733,13 @@ export default function PublicBooking() {
       </main>
 
       {/* Login Modal */}
+      <EstablishmentReviewsDialog
+        open={showReviewsDialog}
+        onOpenChange={setShowReviewsDialog}
+        establishmentId={establishment.id}
+        establishmentName={establishment.name}
+      />
+
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

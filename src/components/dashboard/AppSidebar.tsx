@@ -125,7 +125,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
+          <SidebarGroupContent data-guide="sidebar-nav">
             <SidebarMenu>
               {navItems.map((item) => {
                 const isSuperAdmin = adminAccess?.isAdmin;

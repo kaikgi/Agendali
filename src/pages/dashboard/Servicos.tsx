@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Plus, Pencil, Trash2, Scissors, RefreshCw, GripVertical,
   ChevronUp, ChevronDown, FolderPlus, Tag, ChevronRight, AlertCircle,
@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Users, Check } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -29,8 +31,40 @@ import {
 import { useUserEstablishment } from '@/hooks/useUserEstablishment';
 import { useManageServices, type Service } from '@/hooks/useManageServices';
 import { useServiceCategories, type ServiceCategory } from '@/hooks/useServiceCategories';
+import { useManageProfessionals } from '@/hooks/useManageProfessionals';
+import { useServiceProfessionals } from '@/hooks/useServiceProfessionals';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const SERVICOS_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'intro',
+    title: 'Serviços e Categorias',
+    description: 'Aqui você organiza tudo o que seu estabelecimento oferece. Comece criando categorias (opcional) e depois cadastre os serviços dentro delas.',
+  },
+  {
+    id: 'category-button',
+    title: 'Categorias (opcional)',
+    description: 'Categorias ajudam a organizar serviços parecidos (ex: "Cabelo", "Barba", "Combos"). Clique aqui pra criar uma, se quiser.',
+    target: '[data-guide="svc-new-category"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'service-button',
+    title: 'Vamos cadastrar seu primeiro serviço',
+    description: 'Clique em "Novo Serviço" pra abrir o formulário de cadastro.',
+    target: '[data-guide="svc-new-service"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'service-professionals',
+    title: 'Escolha quem realiza o serviço',
+    description: 'Novidade: ao criar o serviço, você já escolhe direto aqui quais profissionais o realizam — não precisa mais ir até as configurações de cada profissional separadamente.',
+    target: '[data-guide="svc-professionals-field"]',
+    placement: 'right',
+  },
+];
 
 interface ServiceForm {
   name: string;
@@ -56,6 +90,7 @@ export default function Servicos() {
     remove: deleteCategory, isDeleting: isCatDeleting,
     reorder: reorderCategories, isReordering,
   } = useServiceCategories(establishment?.id);
+  const { professionals } = useManageProfessionals(establishment?.id);
   const { toast } = useToast();
 
   // Service dialog
@@ -64,6 +99,18 @@ export default function Servicos() {
   const [serviceForm, setServiceForm] = useState<ServiceForm>({
     name: '', description: '', duration_minutes: '30', price: '', category_id: '',
   });
+  const [selectedProfessionalIds, setSelectedProfessionalIds] = useState<string[]>([]);
+  const {
+    professionalIds: linkedProfessionalIds,
+    update: updateServiceProfessionals,
+  } = useServiceProfessionals(editingServiceId || undefined);
+
+  // Load the professionals already linked to this service when opening it for edit
+  useEffect(() => {
+    if (serviceDialogOpen && editingServiceId) {
+      setSelectedProfessionalIds(linkedProfessionalIds);
+    }
+  }, [serviceDialogOpen, editingServiceId, linkedProfessionalIds]);
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -196,6 +243,7 @@ export default function Servicos() {
   const openCreateService = () => {
     setEditingServiceId(null);
     setServiceForm({ name: '', description: '', duration_minutes: '30', price: '', category_id: '' });
+    setSelectedProfessionalIds([]);
     setServiceDialogOpen(true);
   };
 
@@ -231,6 +279,7 @@ export default function Servicos() {
     const categoryId = serviceForm.category_id || null;
 
     try {
+      let serviceId = editingServiceId;
       if (editingServiceId) {
         await update({
           id: editingServiceId,
@@ -243,7 +292,7 @@ export default function Servicos() {
         toast({ title: 'Serviço atualizado!' });
       } else {
         const maxOrder = services.reduce((max, s) => Math.max(max, s.sort_order), -1);
-        await create({
+        const newService = await create({
           establishment_id: establishment.id,
           name: trimmedName,
           description: serviceForm.description.trim() || undefined,
@@ -252,8 +301,14 @@ export default function Servicos() {
           category_id: categoryId ?? undefined,
           sort_order: maxOrder + 1,
         });
+        serviceId = newService.id;
         toast({ title: 'Serviço criado!' });
       }
+
+      if (serviceId) {
+        await updateServiceProfessionals({ serviceId, professionalIds: selectedProfessionalIds });
+      }
+
       setServiceDialogOpen(false);
     } catch (err: any) {
       console.error('Erro ao salvar serviço:', err);
@@ -306,6 +361,7 @@ export default function Servicos() {
   };
 
   const handleRetry = () => { if (estError) refetchEst(); else refetch(); };
+  const guide = useInteractiveGuide('servicos', SERVICOS_GUIDE_STEPS);
 
   if (estLoading || isLoading || catLoading) {
     return (
@@ -351,14 +407,15 @@ export default function Servicos() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+      <GuideOverlay guide={guide} />
           <h1 className="text-2xl font-bold">Serviços</h1>
           <p className="text-muted-foreground">Gerencie serviços e organize por categorias</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={openCreateCategory}>
+          data-guide="svc-new-category" <Button variant="outline" onClick={openCreateCategory}>
             <FolderPlus className="h-4 w-4 mr-2" /> Nova Categoria
           </Button>
-          <Button onClick={openCreateService}>
+          data-guide="svc-new-service" <Button onClick={openCreateService}>
             <Plus className="h-4 w-4 mr-2" /> Novo Serviço
           </Button>
         </div>
@@ -568,6 +625,44 @@ export default function Servicos() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Profissionais que realizam este serviço
+              </Label>
+              {professionals.length === 0 ? (
+                <p className="text-sm text-muted-foreground border rounded-lg p-3">
+                  Nenhum profissional cadastrado ainda. Cadastre profissionais na aba
+                  "Profissionais" para vinculá-los aqui.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-[180px] overflow-y-auto border rounded-lg p-2">
+                  {professionals.map((prof) => (
+                    <div
+                      key={prof.id}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => setSelectedProfessionalIds((prev) =>
+                        prev.includes(prof.id) ? prev.filter((id) => id !== prof.id) : [...prev, prof.id]
+                      )}
+                    >
+                      <Checkbox
+                        checked={selectedProfessionalIds.includes(prof.id)}
+                        onCheckedChange={() => setSelectedProfessionalIds((prev) =>
+                          prev.includes(prof.id) ? prev.filter((id) => id !== prof.id) : [...prev, prof.id]
+                        )}
+                      />
+                      <span className="text-sm flex-1">{prof.name}</span>
+                      {selectedProfessionalIds.includes(prof.id) && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Você também pode ajustar isso depois em Profissionais → Serviços.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

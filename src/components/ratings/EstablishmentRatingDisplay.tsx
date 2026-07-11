@@ -7,12 +7,14 @@ interface EstablishmentRatingDisplayProps {
   establishmentId: string | undefined;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  onClick?: () => void;
 }
 
 export function EstablishmentRatingDisplay({
   establishmentId,
   className,
   size = 'md',
+  onClick,
 }: EstablishmentRatingDisplayProps) {
   const { data: rating, isLoading } = useEstablishmentRating(establishmentId);
 
@@ -78,7 +80,7 @@ export function EstablishmentRatingDisplay({
     return stars;
   };
 
-  return (
+  const content = (
     <div className={cn('flex items-center gap-2', className)}>
       <div className="flex items-center gap-0.5">{renderStars()}</div>
       <span className={cn(textSize, 'font-medium')}>{rating.rating_avg}</span>
@@ -86,5 +88,13 @@ export function EstablishmentRatingDisplay({
         ({rating.rating_count} {rating.rating_count === 1 ? 'avaliação' : 'avaliações'})
       </span>
     </div>
+  );
+
+  if (!onClick) return content;
+
+  return (
+    <button type="button" onClick={onClick} className="hover:opacity-80 transition-opacity text-left">
+      {content}
+    </button>
   );
 }

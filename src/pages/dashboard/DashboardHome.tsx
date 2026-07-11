@@ -9,6 +9,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { PendingApprovalsSection } from '@/components/dashboard/PendingApprovalsSection';
+import { useInteractiveGuide, GuideOverlay, type GuideStep } from '@/components/guide';
+
+const DASHBOARD_GUIDE_STEPS: GuideStep[] = [
+  {
+    id: 'welcome',
+    title: 'Bem-vindo ao seu Dashboard!',
+    description: 'Aqui você acompanha, em tempo real, como está o dia a dia do seu estabelecimento. Vamos fazer um tour rápido pelas principais áreas.',
+  },
+  {
+    id: 'metrics',
+    title: 'Métricas principais',
+    description: 'Esses cartões mostram agendamentos de hoje, da semana, cancelamentos recentes, total de clientes, clientes recorrentes e profissionais ativos — atualizados automaticamente.',
+    target: '[data-guide="dashboard-metrics"]',
+    placement: 'bottom',
+  },
+  {
+    id: 'chart',
+    title: 'Gráfico de agendamentos',
+    description: 'Aqui você vê a evolução dos agendamentos ao longo dos últimos dias, pra identificar os dias mais movimentados.',
+    target: '[data-guide="dashboard-chart"]',
+    placement: 'top',
+  },
+  {
+    id: 'sidebar',
+    title: 'Menu lateral',
+    description: 'Use o menu à esquerda para navegar entre Agenda, Clientes, Profissionais, Serviços e todas as outras áreas do sistema. Cada uma tem seu próprio guia na primeira visita.',
+    target: '[data-guide="sidebar-nav"]',
+    placement: 'right',
+  },
+];
 
 function DashboardContent({ establishmentId }: { establishmentId: string }) {
   const { data: appointments = [] } = useAppointments(establishmentId);
@@ -50,8 +80,11 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
     },
   };
 
+  const guide = useInteractiveGuide('dashboard-home', DASHBOARD_GUIDE_STEPS);
+
   return (
     <div className="space-y-6">
+      <GuideOverlay guide={guide} />
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Visão geral do seu estabelecimento</p>
@@ -65,7 +98,7 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
       />
 
       {/* Metrics Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+      <div data-guide="dashboard-metrics" className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hoje</CardTitle>
@@ -146,7 +179,7 @@ function DashboardContent({ establishmentId }: { establishmentId: string }) {
       </div>
 
       {/* Appointments Chart */}
-      <Card>
+      <Card data-guide="dashboard-chart">
         <CardHeader>
           <CardTitle className="text-lg">Agendamentos por Dia</CardTitle>
           <p className="text-sm text-muted-foreground">Últimos 30 dias</p>
