@@ -1,13 +1,18 @@
+import { lazy, Suspense } from "react";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { Toaster as HookToaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ClientProtectedRoute } from "@/components/ClientProtectedRoute";
 import { AdminProtectedRoute } from "@/components/AdminProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+// Public/institutional and auth pages load eagerly — these are the first thing an
+// anonymous visitor (the booking page, most of our traffic) hits, so they should not
+// wait on code the visitor may never need (dashboard, admin panel, client portal).
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -29,52 +34,67 @@ import Privacidade from "./pages/Privacidade";
 import PoliticaCookies from "./pages/PoliticaCookies";
 import Seguranca from "./pages/Seguranca";
 import SolicitacaoPrivacidade from "./pages/SolicitacaoPrivacidade";
-import { DashboardLayout } from "./components/dashboard/DashboardLayout";
-import DashboardHome from "./pages/dashboard/DashboardHome";
-import Agenda from "./pages/dashboard/Agenda";
-import Clientes from "./pages/dashboard/Clientes";
-import Profissionais from "./pages/dashboard/Profissionais";
-import Servicos from "./pages/dashboard/Servicos";
-import Horarios from "./pages/dashboard/Horarios";
-import Bloqueios from "./pages/dashboard/Bloqueios";
-import Avaliacoes from "./pages/dashboard/Avaliacoes";
-import Configuracoes from "./pages/dashboard/Configuracoes";
-import Assinatura from "./pages/dashboard/Assinatura";
-import Comissoes from "./pages/dashboard/Comissoes";
-import Pagamentos from "./pages/dashboard/Pagamentos";
-import Relatorios from "./pages/dashboard/Relatorios";
-import ClientLayout from "./pages/client/ClientLayout";
-import ClientDashboard from "./pages/client/ClientDashboard";
-import ClientAppointments from "./pages/client/ClientAppointments";
-import ClientProfile from "./pages/client/ClientProfile";
-import ClientHistory from "./pages/client/ClientHistory";
-import ClientLogin from "./pages/client/ClientLogin";
-import ClientSignup from "./pages/client/ClientSignup";
-import ClientSearch from "./pages/client/ClientSearch";
-import ClientForgotPassword from "./pages/client/ClientForgotPassword";
-import ClientResetPassword from "./pages/client/ClientResetPassword";
-import ProfessionalPortalLogin from "./pages/professional/ProfessionalPortalLogin";
-import ProfessionalPortalAgenda from "./pages/professional/ProfessionalPortalAgenda";
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminEstablishments from "./pages/admin/AdminEstablishments";
-import AdminEstablishmentDetail from "./pages/admin/AdminEstablishmentDetail";
-import AdminMessages from "./pages/admin/AdminMessages";
-import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
-import AdminAdmins from "./pages/admin/AdminAdmins";
-import AdminDangerZone from "./pages/admin/AdminDangerZone";
-import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
-import AdminWhatsAppAnalytics from "./pages/admin/AdminWhatsAppAnalytics";
-import AdminBroadcasts from "./pages/admin/AdminBroadcasts";
-import AdminAllowedEmails from "./pages/admin/AdminAllowedEmails";
-import AdminWebhooks from "./pages/admin/AdminWebhooks";
-import AdminSettingsSaaS from "./pages/admin/AdminSettingsSaaS";
-import AdminLegalDocuments from "./pages/admin/AdminLegalDocuments";
+
+// Everything below is behind a login (establishment dashboard, client portal,
+// professional portal, admin panel) — code-split per section so each persona
+// only downloads the JS their own area needs.
+const DashboardLayout = lazy(() => import("./components/dashboard/DashboardLayout").then((m) => ({ default: m.DashboardLayout })));
+const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
+const Agenda = lazy(() => import("./pages/dashboard/Agenda"));
+const Clientes = lazy(() => import("./pages/dashboard/Clientes"));
+const Profissionais = lazy(() => import("./pages/dashboard/Profissionais"));
+const Servicos = lazy(() => import("./pages/dashboard/Servicos"));
+const Horarios = lazy(() => import("./pages/dashboard/Horarios"));
+const Bloqueios = lazy(() => import("./pages/dashboard/Bloqueios"));
+const Avaliacoes = lazy(() => import("./pages/dashboard/Avaliacoes"));
+const Configuracoes = lazy(() => import("./pages/dashboard/Configuracoes"));
+const Assinatura = lazy(() => import("./pages/dashboard/Assinatura"));
+const Comissoes = lazy(() => import("./pages/dashboard/Comissoes"));
+const Pagamentos = lazy(() => import("./pages/dashboard/Pagamentos"));
+const Relatorios = lazy(() => import("./pages/dashboard/Relatorios"));
+
+const ClientLayout = lazy(() => import("./pages/client/ClientLayout"));
+const ClientDashboard = lazy(() => import("./pages/client/ClientDashboard"));
+const ClientAppointments = lazy(() => import("./pages/client/ClientAppointments"));
+const ClientProfile = lazy(() => import("./pages/client/ClientProfile"));
+const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
+const ClientLogin = lazy(() => import("./pages/client/ClientLogin"));
+const ClientSignup = lazy(() => import("./pages/client/ClientSignup"));
+const ClientSearch = lazy(() => import("./pages/client/ClientSearch"));
+const ClientForgotPassword = lazy(() => import("./pages/client/ClientForgotPassword"));
+const ClientResetPassword = lazy(() => import("./pages/client/ClientResetPassword"));
+
+const ProfessionalPortalLogin = lazy(() => import("./pages/professional/ProfessionalPortalLogin"));
+const ProfessionalPortalAgenda = lazy(() => import("./pages/professional/ProfessionalPortalAgenda"));
+
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminEstablishments = lazy(() => import("./pages/admin/AdminEstablishments"));
+const AdminEstablishmentDetail = lazy(() => import("./pages/admin/AdminEstablishmentDetail"));
+const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
+const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
+const AdminAdmins = lazy(() => import("./pages/admin/AdminAdmins"));
+const AdminDangerZone = lazy(() => import("./pages/admin/AdminDangerZone"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
+const AdminWhatsAppAnalytics = lazy(() => import("./pages/admin/AdminWhatsAppAnalytics"));
+const AdminBroadcasts = lazy(() => import("./pages/admin/AdminBroadcasts"));
+const AdminAllowedEmails = lazy(() => import("./pages/admin/AdminAllowedEmails"));
+const AdminWebhooks = lazy(() => import("./pages/admin/AdminWebhooks"));
+const AdminSettingsSaaS = lazy(() => import("./pages/admin/AdminSettingsSaaS"));
+const AdminLegalDocuments = lazy(() => import("./pages/admin/AdminLegalDocuments"));
+const AdminDiagnostics = lazy(() => import("./pages/admin/AdminDiagnostics"));
 import { AdminPermissionGuard } from "./components/AdminPermissionGuard";
-import AdminDiagnostics from "./pages/admin/AdminDiagnostics";
-import ResponsiveTestPage from "./pages/dev/ResponsiveTest";
+const ResponsiveTestPage = lazy(() => import("./pages/dev/ResponsiveTest"));
 
 const queryClient = new QueryClient();
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const App = () => (
   <ErrorBoundary>
@@ -84,6 +104,7 @@ const App = () => (
         <HookToaster />
         <BrowserRouter>
           <AuthProvider>
+            <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
               {/* Home */}
               <Route path="/" element={<Index />} />
@@ -197,6 +218,7 @@ const App = () => (
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
