@@ -110,7 +110,10 @@ AS $$
 $$;
 
 -- D. Wrapper is_admin (Compatibilidade)
-CREATE OR REPLACE FUNCTION public.is_admin(p_user_id uuid DEFAULT auth.uid())
+-- SEM DEFAULT: um valor padrão tornaria is_admin() (chamada sem argumentos) ambígua
+-- em relação à função legada public.is_admin() de zero parâmetros, usada por 23+ policies
+-- (admin_all_professionals, admin_all_customers, etc). Todo call site já passa p_user_id explicitamente.
+CREATE OR REPLACE FUNCTION public.is_admin(p_user_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE SECURITY DEFINER
