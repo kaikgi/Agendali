@@ -56,6 +56,9 @@ export function useInteractiveGuide(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, stepIndex]);
 
+  // Only a real completion (reaching the last step and clicking "Concluir") marks
+  // the guide as permanently seen. Closing early (skip) just hides it for now —
+  // it reappears on the next visit until the user actually finishes it.
   const finish = useCallback(() => {
     setIsActive(false);
     markGuideSeen(guideKey);
@@ -76,8 +79,8 @@ export function useInteractiveGuide(
   }, []);
 
   const skip = useCallback(() => {
-    finish();
-  }, [finish]);
+    setIsActive(false);
+  }, []);
 
   const restart = useCallback(() => {
     setStepIndex(0);
