@@ -27,8 +27,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, FileText, CheckCircle2, Bell } from 'lucide-react';
+import { Loader2, FileText, CheckCircle2, Bell, CreditCard, Banknote } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Establishment } from '@/hooks/useEstablishment';
+
+export type PaymentMethodChoice = 'online' | 'cash';
 
 export interface PaymentConfigForTerms {
   enabled: boolean;
@@ -43,7 +46,7 @@ export interface PaymentConfigForTerms {
 
 interface CustomerStepProps {
   establishment: Establishment;
-  onSubmit: (data: CustomerFormData, terms: GeneratedTerms) => Promise<void>;
+  onSubmit: (data: CustomerFormData, terms: GeneratedTerms, paymentMethod: PaymentMethodChoice) => Promise<void>;
   isSubmitting: boolean;
   defaultValues?: {
     name?: string;
@@ -61,6 +64,13 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [ipAddress, setIpAddress] = useState<string | null>(null);
 
+  const requiresOnlinePayment = !!(
+    paymentConfig?.enabled &&
+    (paymentConfig?.deposit_required || paymentConfig?.full_payment_online) &&
+    servicePriceCents
+  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>('online');
+
   useEffect(() => {
     fetch('https://api.ipify.org?format=json')
       .then(res => res.json())
@@ -73,20 +83,23 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
   // Default reminder from establishment config
   const defaultReminder = (establishment as any).reminder_hours_before ?? 3;
 
+  // When the customer opts to pay cash in person, the online payment terms don't apply
+  const payingOnline = requiresOnlinePayment && paymentMethod === 'online';
+
   const generatedTerms = useMemo<GeneratedTerms>(() => {
     const params: TermsParams = {
       establishmentName: establishment.name,
       rescheduleMinHours: establishment.reschedule_min_hours || 2,
-      depositRequired: paymentConfig?.enabled && paymentConfig?.deposit_required || false,
+      depositRequired: (payingOnline && paymentConfig?.deposit_required) || false,
       depositType: (paymentConfig?.deposit_type as 'fixed' | 'percentage') || 'fixed',
       depositValue: paymentConfig?.deposit_value || 0,
-      fullPaymentOnline: paymentConfig?.enabled && paymentConfig?.full_payment_online || false,
+      fullPaymentOnline: (payingOnline && paymentConfig?.full_payment_online) || false,
       refundOnCancellation: paymentConfig?.refund_on_cancellation || false,
       refundDeadlineHours: paymentConfig?.refund_deadline_hours || 24,
       servicePriceCents: servicePriceCents || 0,
     };
     return generateBookingTerms(params);
-  }, [establishment, paymentConfig, servicePriceCents]);
+  }, [establishment, paymentConfig, servicePriceCents, payingOnline]);
 
   const {
     register,
@@ -147,8 +160,8 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
       }
     };
 
-    console.log('[CustomerStep] submit', { termsType: enrichedTerms.type });
-    await onSubmit(finalData, enrichedTerms);
+    console.log('[CustomerStep] submit', { termsType: enrichedTerms.type, paymentMethod });
+    await onSubmit(finalData, enrichedTerms, requiresOnlinePayment ? paymentMethod : 'online');
   };
 
   const termsTypeLabel = generatedTerms.type === 'deposit'
@@ -245,6 +258,47 @@ export function CustomerStep({ establishment, onSubmit, isSubmitting, defaultVal
                 <SelectItem value="24">24h antes</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        )}
+
+        {/* Payment method choice, only when the establishment requires online payment */}
+        {requiresOnlinePayment && (
+          <div className="space-y-2">
+            <Label>Como você quer pagar?</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('online')}
+                className={cn(
+                  'flex items-center gap-2 p-3 rounded-lg border text-left text-sm transition-colors',
+                  paymentMethod === 'online'
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-border hover:bg-muted/50'
+                )}
+              >
+                <CreditCard className="h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="font-medium">Pagar online agora</p>
+                  <p className="text-xs text-muted-foreground">Via Mercado Pago</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cash')}
+                className={cn(
+                  'flex items-center gap-2 p-3 rounded-lg border text-left text-sm transition-colors',
+                  paymentMethod === 'cash'
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-border hover:bg-muted/50'
+                )}
+              >
+                <Banknote className="h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="font-medium">Dinheiro no local</p>
+                  <p className="text-xs text-muted-foreground">Pague ao chegar</p>
+                </div>
+              </button>
+            </div>
           </div>
         )}
 

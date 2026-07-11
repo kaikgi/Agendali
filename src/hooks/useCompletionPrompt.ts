@@ -103,6 +103,63 @@ export function useCompleteAppointment() {
   });
 }
 
+interface CompletedAppointmentNeedingRating {
+  id: string;
+  end_at: string;
+  service: { name: string } | null;
+  professional: { id: string; name: string } | null;
+  customer: { id: string; name: string } | null;
+  establishment: { id: string; name: string } | null;
+}
+
+// Finds the customer's most recent completed appointment that hasn't been rated yet.
+// Needed because completion can now happen without the customer ever seeing the
+// "did it finish?" dialog (e.g. the auto-complete cron job) - so the rating prompt
+// can't only be triggered from inside that flow anymore.
+export function useRecentlyCompletedAppointmentNeedingRating(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['completed-needing-rating', userId],
+    queryFn: async (): Promise<CompletedAppointmentNeedingRating | null> => {
+      if (!userId) return null;
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          end_at,
+          service:services(name),
+          professional:professionals(id, name),
+          customer:customers(id, name),
+          establishment:establishments(id, name)
+        `)
+        .eq('customer_user_id', userId)
+        .eq('status', 'completed')
+        .order('end_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+
+      const ids = data.map((a) => a.id);
+      const [{ data: existingRatings }, { data: existingPrompts }] = await Promise.all([
+        supabase.from('ratings').select('appointment_id').in('appointment_id', ids),
+        (supabase as any)
+          .from('appointment_completion_prompts')
+          .select('appointment_id')
+          .eq('user_id', userId)
+          .in('appointment_id', ids),
+      ]);
+
+      const ratedIds = new Set((existingRatings || []).map((r) => r.appointment_id));
+      const promptedIds = new Set((existingPrompts || []).map((p: { appointment_id: string }) => p.appointment_id));
+      return (data.find((a) => !ratedIds.has(a.id) && !promptedIds.has(a.id)) as CompletedAppointmentNeedingRating) || null;
+    },
+    enabled: !!userId,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+}
+
 interface PendingCompletionAppointment {
   id: string;
   start_at: string;

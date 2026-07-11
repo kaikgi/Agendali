@@ -74,7 +74,7 @@ export function AppSidebar() {
   const { data: establishment } = useUserEstablishment();
   const { data: adminAccess } = useAdminAccess();
   const { features } = usePlanFeatures();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const { toast } = useToast();
   const collapsed = state === 'collapsed';
   const [copied, setCopied] = useState(false);
@@ -85,6 +85,10 @@ export function AppSidebar() {
       return location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
   };
 
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -137,7 +141,7 @@ export function AppSidebar() {
                       isActive={isActive(item.url)}
                       tooltip={locked ? `${item.title} (upgrade necessário)` : item.title}
                     >
-                      <Link to={item.url} className={cn(locked && 'opacity-60')}>
+                      <Link to={item.url} className={cn(locked && 'opacity-60')} onClick={closeMobileSidebar}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                         {locked && !collapsed && (
@@ -169,6 +173,7 @@ export function AppSidebar() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-foreground"
+                        onClick={closeMobileSidebar}
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span className="truncate">/{establishment.slug}</span>
@@ -199,7 +204,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4 space-y-2">
         {isAdmin && (
-          <Link to="/admin">
+          <Link to="/admin" onClick={closeMobileSidebar}>
             <Button
               variant="default"
               size={collapsed ? "icon" : "default"}

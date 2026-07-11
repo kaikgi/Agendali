@@ -17,6 +17,7 @@ import {
   useMarkPrompted,
   useCompleteAppointment,
   useHasBeenPrompted,
+  useRecentlyCompletedAppointmentNeedingRating,
 } from '@/hooks/useCompletionPrompt';
 import { RatingDialog } from '@/components/ratings/RatingDialog';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,6 +87,57 @@ export function CompletionPromptDialog({
       setOpen(true);
     }
   }, [pendingAppointments, hasBeenPrompted, checkingPrompted, user?.id]);
+
+  // Appointments can now be completed without the customer ever seeing the dialog
+  // above (auto-complete cron, or the establishment/professional marking it done).
+  // This covers those cases by prompting for a rating directly.
+  const [directRatingOpen, setDirectRatingOpen] = useState(false);
+  const [directRatingAppointment, setDirectRatingAppointment] = useState<{
+    id: string;
+    establishment_id: string;
+    establishment_name: string;
+    customer_id: string;
+    professional_id?: string;
+    professional_name?: string;
+  } | null>(null);
+
+  const { data: completedNeedingRating } = useRecentlyCompletedAppointmentNeedingRating(
+    userType === 'customer' ? user?.id : undefined
+  );
+  const { data: completedHasBeenPrompted } = useHasBeenPrompted(completedNeedingRating?.id, user?.id);
+
+  useEffect(() => {
+    if (
+      userType === 'customer' &&
+      completedNeedingRating &&
+      completedHasBeenPrompted === false &&
+      !open &&
+      !directRatingOpen &&
+      directRatingAppointment?.id !== completedNeedingRating.id
+    ) {
+      setDirectRatingAppointment({
+        id: completedNeedingRating.id,
+        establishment_id: completedNeedingRating.establishment?.id || '',
+        establishment_name: completedNeedingRating.establishment?.name || '',
+        customer_id: completedNeedingRating.customer?.id || '',
+        professional_id: completedNeedingRating.professional?.id,
+        professional_name: completedNeedingRating.professional?.name,
+      });
+      setDirectRatingOpen(true);
+    }
+  }, [completedNeedingRating, completedHasBeenPrompted, userType, open, directRatingOpen, directRatingAppointment]);
+
+  const handleDirectRatingOpenChange = (isOpen: boolean) => {
+    setDirectRatingOpen(isOpen);
+    if (!isOpen && directRatingAppointment && user?.id) {
+      markPrompted.mutate({
+        appointmentId: directRatingAppointment.id,
+        userId: user.id,
+        userType: 'customer',
+        actionTaken: 'completed',
+      });
+    }
+  };
 
   const handleNotYet = async () => {
     if (!currentAppointment || !user?.id) return;
@@ -164,10 +216,11 @@ export function CompletionPromptDialog({
 
   const isPending = markPrompted.isPending || completeAppointment.isPending;
 
-  if (!currentAppointment) return null;
+  if (!currentAppointment && !directRatingAppointment) return null;
 
   return (
     <>
+      {currentAppointment && (
       <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDismiss()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -224,8 +277,9 @@ export function CompletionPromptDialog({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* Rating dialog for customers */}
+      {/* Rating dialog for customers, reached via the "did it finish?" flow above */}
       {userType === 'customer' && currentAppointment && (
         <RatingDialog
           open={ratingOpen}
@@ -236,6 +290,21 @@ export function CompletionPromptDialog({
           establishmentName={currentAppointment.establishment_name}
           professionalId={currentAppointment.professional_id}
           professionalName={currentAppointment.professional_name}
+        />
+      )}
+
+      {/* Rating dialog for appointments completed without the "did it finish?" flow
+          (auto-complete cron, or the establishment/professional marking it done) */}
+      {userType === 'customer' && directRatingAppointment && (
+        <RatingDialog
+          open={directRatingOpen}
+          onOpenChange={handleDirectRatingOpenChange}
+          appointmentId={directRatingAppointment.id}
+          establishmentId={directRatingAppointment.establishment_id}
+          customerId={directRatingAppointment.customer_id}
+          establishmentName={directRatingAppointment.establishment_name}
+          professionalId={directRatingAppointment.professional_id}
+          professionalName={directRatingAppointment.professional_name}
         />
       )}
     </>

@@ -10,7 +10,7 @@ import { StepIndicator } from '@/components/booking/StepIndicator';
 import { ServiceStep } from '@/components/booking/ServiceStep';
 import { ProfessionalStep } from '@/components/booking/ProfessionalStep';
 import { DateTimeStep } from '@/components/booking/DateTimeStep';
-import { CustomerStep } from '@/components/booking/CustomerStep';
+import { CustomerStep, type PaymentMethodChoice } from '@/components/booking/CustomerStep';
 import { BookingSuccess } from '@/components/booking/BookingSuccess';
 import { PaymentStep, calculatePaymentAmount, type PaymentConfig } from '@/components/booking/PaymentStep';
 import { Button } from '@/components/ui/button';
@@ -84,6 +84,7 @@ export default function PublicBooking() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
   const [pendingCustomerData, setPendingCustomerData] = useState<CustomerFormData | null>(null);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<PaymentMethodChoice>('online');
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -169,7 +170,7 @@ export default function PublicBooking() {
   // After successful login, proceed with pending booking
   useEffect(() => {
     if (session && pendingCustomerData && !isSubmitting) {
-      handleConfirmedSubmit(pendingCustomerData);
+      handleConfirmedSubmit(pendingCustomerData, undefined, pendingPaymentMethod);
     }
   }, [session, pendingCustomerData]);
 
@@ -278,8 +279,10 @@ export default function PublicBooking() {
   // Store terms for persistence after appointment creation
   const [pendingTerms, setPendingTerms] = useState<GeneratedTerms | null>(null);
 
-  const handleConfirmedSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
+  const handleConfirmedSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms, paymentMethod: PaymentMethodChoice = 'online') => {
     if (terms) setPendingTerms(terms);
+    setPendingPaymentMethod(paymentMethod);
+    const effectiveRequiresPayment = requiresPayment && paymentMethod !== 'cash';
     if (isSubmitting) {
       console.warn('[Booking] handleConfirmedSubmit: already submitting, skipping');
       return;
@@ -333,7 +336,7 @@ export default function PublicBooking() {
         p_customer_notes: customerData.notes || null,
         p_customer_user_id: canonicalUserId,
         p_customer_reminder_hours: customerData.reminderHours ?? null,
-        p_requires_payment: requiresPayment,
+        p_requires_payment: effectiveRequiresPayment,
       });
 
       if (error) {
@@ -380,7 +383,7 @@ export default function PublicBooking() {
 
       // If payment is required, validate appointment status strictly.
       // Never silently skip payment when status lookup fails.
-      if (requiresPayment) {
+      if (effectiveRequiresPayment) {
         const { data: apt, error: aptError } = await supabase
           .from('appointments')
           .select('status')
@@ -420,7 +423,7 @@ export default function PublicBooking() {
     }
   };
 
-  const handleSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms) => {
+  const handleSubmit = async (customerData: CustomerFormData, terms?: GeneratedTerms, paymentMethod: PaymentMethodChoice = 'online') => {
     console.log('[Booking] handleSubmit called', { isSubmitting, hasSession: !!session });
     if (isSubmitting) return;
 
@@ -449,7 +452,7 @@ export default function PublicBooking() {
       return;
     }
 
-    await handleConfirmedSubmit(customerData, terms);
+    await handleConfirmedSubmit(customerData, terms, paymentMethod);
   };
 
   const handlePayment = async () => {
@@ -592,7 +595,7 @@ export default function PublicBooking() {
             time={selectedTime}
             establishmentName={establishment.name}
             manageUrl={manageUrl}
-            pendingApproval={!establishment.auto_confirm_bookings || (requiresPayment && paymentConfig?.require_manual_confirmation)}
+            pendingApproval={!establishment.auto_confirm_bookings || (requiresPayment && pendingPaymentMethod !== 'cash' && paymentConfig?.require_manual_confirmation)}
           />
         </div>
       </div>
