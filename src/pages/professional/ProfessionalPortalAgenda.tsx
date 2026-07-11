@@ -381,13 +381,13 @@ export default function ProfessionalPortalAgenda() {
                 <Skeleton className="h-64" />
               </div>
             ) : viewMode === 'week' ? (
-              <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-4 md:grid-cols-7">
+              <div className="flex sm:grid gap-3 sm:gap-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid-cols-4 md:grid-cols-7 snap-x snap-mandatory sm:snap-none">
                 {days.map((day) => {
                   const dayApts = getAppointmentsForDay(day);
                   return (
                     <Card
                       key={day.toISOString()}
-                      className={cn('min-h-[160px]', isToday(day) && 'ring-2 ring-primary shadow-sm')}
+                      className={cn('min-h-[160px] w-[42vw] shrink-0 snap-start sm:w-auto', isToday(day) && 'ring-2 ring-primary shadow-sm')}
                     >
                       <CardHeader className="pb-1 px-2 pt-2">
                         <CardTitle className={cn('text-center text-xs', isToday(day) && 'text-primary')}>

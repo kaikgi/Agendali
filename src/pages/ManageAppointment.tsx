@@ -444,12 +444,11 @@ export default function ManageAppointment() {
               {selectedDate && availableSlots && availableSlots.length > 0 && (
                 <div>
                   <p className="text-sm font-medium mb-2">Horários disponíveis:</p>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {availableSlots.map((slot) => (
                       <Button
                         key={slot}
                         variant={selectedTime === slot ? 'default' : 'outline'}
-                        size="sm"
                         onClick={() => setSelectedTime(slot)}
                       >
                         {slot}
