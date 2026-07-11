@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit } from "../_shared/rateLimit.ts";
 
 interface ContactRequest {
   name: string;
@@ -16,6 +17,14 @@ serve(async (req: Request) => {
   }
 
   try {
+    const allowed = await checkRateLimit(req, "send-contact", 5, 60);
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas mensagens enviadas. Tente novamente mais tarde." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY");

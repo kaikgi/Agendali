@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders } from '../_shared/cors.ts'
+import { checkRateLimit } from '../_shared/rateLimit.ts'
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://agendali.online'
 
@@ -11,6 +12,14 @@ serve(async (req) => {
   }
 
   try {
+    const allowed = await checkRateLimit(req, 'resend-signup-link', 5, 60)
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Muitas tentativas. Tente novamente mais tarde.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     const { email } = await req.json()
 
     if (!email || typeof email !== 'string') {
