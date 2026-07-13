@@ -59,13 +59,11 @@ export function useAvailableSlots({
           .eq('professional_id', professionalId)
           .eq('weekday', weekday)
           .maybeSingle(),
-        supabase
-          .from('appointments')
-          .select('start_at, end_at')
-          .eq('professional_id', professionalId)
-          .gte('start_at', dayStart.toISOString())
-          .lt('start_at', dayEnd.toISOString())
-          .in('status', ['booked', 'confirmed', 'pending_approval', 'pending_payment', 'paid_pending_confirmation']),
+        (supabase.rpc as any)('public_get_booked_slots', {
+          p_professional_id: professionalId,
+          p_range_start: dayStart.toISOString(),
+          p_range_end: dayEnd.toISOString(),
+        }),
         // Professional-specific time blocks
         supabase
           .from('time_blocks')
