@@ -384,11 +384,11 @@ export default function PublicBooking() {
       // If payment is required, validate appointment status strictly.
       // Never silently skip payment when status lookup fails.
       if (effectiveRequiresPayment) {
-        const { data: apt, error: aptError } = await supabase
-          .from('appointments')
-          .select('status')
-          .eq('id', appointmentId)
-          .maybeSingle();
+        const { data: aptRows, error: aptError } = await (supabase.rpc as any)('public_get_appointment_status', {
+          p_appointment_id: appointmentId,
+          p_manage_token: result.manage_token,
+        });
+        const apt = Array.isArray(aptRows) ? aptRows[0] : aptRows;
 
         if (aptError) {
           console.error('[Booking] Failed to read appointment status for payment:', aptError);
