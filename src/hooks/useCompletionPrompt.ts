@@ -3,6 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { parseISO, addMinutes, isAfter } from 'date-fns';
 
+// A logged-in customer has no RLS visibility into `establishments` (only
+// owner/admin/staff-member policies exist there), so embedding it via PostgREST's FK-join
+// shorthand (`establishment:establishments(...)`) always comes back null for a customer's
+// own appointments. Look it up separately via a SECURITY DEFINER RPC scoped to "the caller
+// has an appointment there" instead (not public_establishments, which hides
+// trialing/past_due establishments the customer may still have a real appointment with).
+async function attachEstablishmentNames<T extends { establishment_id: string }>(
+  rows: T[]
+): Promise<(T & { establishment: { id: string; name: string } | null })[]> {
+  const ids = Array.from(new Set(rows.map((r) => r.establishment_id)));
+  if (ids.length === 0) return rows.map((r) => ({ ...r, establishment: null }));
+
+  const { data } = await (supabase.rpc as any)('customer_get_own_appointment_establishments', {
+    p_establishment_ids: ids,
+  });
+  const byId = new Map((data || []).map((e: { id: string; name: string }) => [e.id, e]));
+  return rows.map((r) => ({ ...r, establishment: byId.get(r.establishment_id) || null }));
+}
+
 // Hook to check if a prompt has already been shown to this user for an appointment
 export function useHasBeenPrompted(appointmentId: string | undefined, userId: string | undefined) {
   return useQuery({
@@ -106,6 +125,7 @@ export function useCompleteAppointment() {
 interface CompletedAppointmentNeedingRating {
   id: string;
   end_at: string;
+  establishment_id: string;
   service: { name: string } | null;
   professional: { id: string; name: string } | null;
   customer: { id: string; name: string } | null;
@@ -127,10 +147,10 @@ export function useRecentlyCompletedAppointmentNeedingRating(userId: string | un
         .select(`
           id,
           end_at,
+          establishment_id,
           service:services(name),
           professional:professionals(id, name),
-          customer:customers(id, name),
-          establishment:establishments(id, name)
+          customer:customers(id, name)
         `)
         .eq('customer_user_id', userId)
         .eq('status', 'completed')
@@ -152,7 +172,11 @@ export function useRecentlyCompletedAppointmentNeedingRating(userId: string | un
 
       const ratedIds = new Set((existingRatings || []).map((r) => r.appointment_id));
       const promptedIds = new Set((existingPrompts || []).map((p: { appointment_id: string }) => p.appointment_id));
-      return (data.find((a) => !ratedIds.has(a.id) && !promptedIds.has(a.id)) as CompletedAppointmentNeedingRating) || null;
+      const candidate = data.find((a) => !ratedIds.has(a.id) && !promptedIds.has(a.id));
+      if (!candidate) return null;
+
+      const [withEstablishment] = await attachEstablishmentNames([candidate as unknown as { establishment_id: string }]);
+      return { ...(candidate as unknown as CompletedAppointmentNeedingRating), establishment: withEstablishment.establishment };
     },
     enabled: !!userId,
     refetchInterval: 60000,
@@ -201,7 +225,8 @@ export function usePendingCompletionAppointments(
       let query;
 
       if (userType === 'customer') {
-        // For customers, get their appointments
+        // For customers, get their appointments. establishment name is resolved
+        // separately below (customers have no RLS visibility into `establishments`).
         query = supabase
           .from('appointments')
           .select(`
@@ -209,10 +234,10 @@ export function usePendingCompletionAppointments(
             start_at,
             end_at,
             status,
+            establishment_id,
             service:services(name, duration_minutes),
             professional:professionals(id, name),
-            customer:customers(id, name),
-            establishment:establishments(id, name)
+            customer:customers(id, name)
           `)
           .eq('customer_user_id', effectiveUserId)
           .in('status', ['booked', 'confirmed'])
@@ -247,11 +272,19 @@ export function usePendingCompletionAppointments(
 
       // Filter for appointments that ended at least 1 minute ago
       const oneMinuteAgo = addMinutes(now, -1);
-      
-      return (data || []).filter((apt) => {
+
+      const filtered = (data || []).filter((apt) => {
         const endAt = parseISO(apt.end_at);
         return isAfter(oneMinuteAgo, endAt);
-      }) as PendingCompletionAppointment[];
+      });
+
+      if (userType === 'customer') {
+        return attachEstablishmentNames(
+          filtered as unknown as { establishment_id: string }[]
+        ) as unknown as PendingCompletionAppointment[];
+      }
+
+      return filtered as unknown as PendingCompletionAppointment[];
     },
     enabled: !!effectiveUserId,
     refetchInterval: 60000, // Refetch every minute to catch new completions

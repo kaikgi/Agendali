@@ -89,18 +89,18 @@ function AppointmentCard({
 
             <div className="flex items-center gap-2">
               <Avatar className="h-5 w-5 rounded-md">
-                {apt.establishment.logo_url && (
+                {apt.establishment?.logo_url && (
                   <AvatarImage
                     src={apt.establishment.logo_url}
                     alt={apt.establishment.name}
                   />
                 )}
                 <AvatarFallback className="rounded-md text-[9px]">
-                  {apt.establishment.name.charAt(0)}
+                  {apt.establishment?.name?.charAt(0) || '?'}
                 </AvatarFallback>
               </Avatar>
               <p className="text-xs text-muted-foreground truncate">
-                {apt.establishment.name}
+                {apt.establishment?.name || 'Estabelecimento'}
               </p>
             </div>
 
@@ -117,7 +117,7 @@ function AppointmentCard({
               )}
             </p>
 
-            {apt.establishment.address && isUpcoming && (
+            {apt.establishment?.address && isUpcoming && (
               <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1 truncate">
                 <MapPin className="h-3 w-3 shrink-0" />
                 {apt.establishment.address}
@@ -239,7 +239,7 @@ export default function ClientAppointments() {
       filtered = filtered.filter(
         (a) =>
           a.service.name.toLowerCase().includes(q) ||
-          a.establishment.name.toLowerCase().includes(q) ||
+          a.establishment?.name?.toLowerCase().includes(q) ||
           a.professional.name.toLowerCase().includes(q)
       );
     }

@@ -3,6 +3,20 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+interface ClientAppointmentEstablishment {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  max_future_days: number;
+  slot_interval_minutes: number;
+  buffer_minutes: number;
+}
+
 export interface ClientAppointment {
   id: string;
   start_at: string;
@@ -11,6 +25,7 @@ export interface ClientAppointment {
   customer_id: string;
   customer_notes: string | null;
   customer_reminder_hours: number | null;
+  establishment_id: string;
   service: {
     id: string;
     name: string;
@@ -22,19 +37,30 @@ export interface ClientAppointment {
     name: string;
     photo_url: string | null;
   };
-  establishment: {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    phone: string | null;
-    address: string | null;
-    city: string | null;
-    state: string | null;
-    max_future_days: number;
-    slot_interval_minutes: number;
-    buffer_minutes: number;
-  };
+  establishment: ClientAppointmentEstablishment;
+}
+
+// A logged-in customer has no RLS visibility into `establishments` (only
+// owner/admin/staff-member policies exist there), so embedding it via PostgREST's FK-join
+// shorthand always comes back null. Fetch establishment display data separately via a
+// SECURITY DEFINER RPC scoped to "the caller has an appointment there" (not the
+// booking_enabled/status='active' filter public_establishments uses, which would hide
+// trialing/past_due establishments the customer already has a real appointment with) and
+// merge client-side instead.
+async function attachEstablishments<T extends { establishment_id: string }>(
+  rows: T[]
+): Promise<(T & { establishment: ClientAppointmentEstablishment })[]> {
+  const ids = Array.from(new Set(rows.map((r) => r.establishment_id)));
+  if (ids.length === 0) return rows as (T & { establishment: ClientAppointmentEstablishment })[];
+
+  const { data, error } = await (supabase.rpc as any)('customer_get_own_appointment_establishments', {
+    p_establishment_ids: ids,
+  });
+
+  if (error) throw error;
+
+  const byId = new Map((data || []).map((e: ClientAppointmentEstablishment) => [e.id, e]));
+  return rows.map((r) => ({ ...r, establishment: byId.get(r.establishment_id) as ClientAppointmentEstablishment }));
 }
 
 interface UseClientAppointmentsFilters {
@@ -62,9 +88,9 @@ export function useClientAppointments(filters?: UseClientAppointmentsFilters) {
           customer_id,
           customer_notes,
           customer_reminder_hours,
+          establishment_id,
           service:services(id, name, duration_minutes, price_cents),
-          professional:professionals(id, name, photo_url),
-          establishment:establishments(id, name, slug, logo_url, phone, address, city, state, max_future_days, slot_interval_minutes, buffer_minutes)
+          professional:professionals(id, name, photo_url)
         `)
         .eq('customer_user_id', user.id)
         .order('start_at', { ascending: false });
@@ -84,7 +110,7 @@ export function useClientAppointments(filters?: UseClientAppointmentsFilters) {
       const { data, error } = await queryBuilder;
 
       if (error) throw error;
-      return data as unknown as ClientAppointment[];
+      return attachEstablishments(data as unknown as Omit<ClientAppointment, 'establishment'>[]);
     },
     enabled: !!user?.id,
   });
@@ -139,9 +165,9 @@ export function useClientAppointmentsByMonth(year: number, month: number) {
           status,
           customer_notes,
           customer_reminder_hours,
+          establishment_id,
           service:services(id, name, duration_minutes, price_cents),
-          professional:professionals(id, name, photo_url),
-          establishment:establishments(id, name, slug, logo_url, phone, address, city, state, max_future_days, slot_interval_minutes, buffer_minutes)
+          professional:professionals(id, name, photo_url)
         `)
         .eq('customer_user_id', user.id)
         .gte('start_at', startDate.toISOString())
@@ -150,7 +176,7 @@ export function useClientAppointmentsByMonth(year: number, month: number) {
         .order('start_at', { ascending: true });
 
       if (error) throw error;
-      return data as unknown as ClientAppointment[];
+      return attachEstablishments(data as unknown as Omit<ClientAppointment, 'establishment'>[]);
     },
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
